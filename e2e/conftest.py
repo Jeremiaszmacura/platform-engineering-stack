@@ -22,7 +22,7 @@ def cluster_ready():
 
 @pytest.fixture(params=BACKENDS, ids=lambda backend: backend.name)
 def backend(request):
-    """Run the requesting test once per sample backend (python-app and go-app).
+    """Run the requesting test once per sample backend (currently just go-app).
 
     Returns:
         The Backend under test.

@@ -1,0 +1,36 @@
+# Only tool configuration; the service is not packaged, it is copied into an
+# image and run as `src.main:app`.
+
+# datamodel-code-generator shells out to black, so it must agree with the
+# repo-wide `--line-length=120` in ../.pre-commit-config.yaml or the generated
+# file would be reformatted on commit and never match its own generator.
+[tool.black]
+line-length = 120
+
+# `tox -e api` regenerates the HTTP models from the contract with no arguments,
+# and `tox -e pre-commit` reruns the same generation into a temporary file to
+# fail on drift. Keeping the flags here means both use identical settings.
+[tool.datamodel-codegen]
+input = "openapi.yaml"
+input-file-type = "openapi"
+output = "src/adapters/inbound/http/models.py"
+output-model-type = "pydantic_v2.BaseModel"
+target-python-version = "3.14"
+formatters = ["black", "isort"]
+custom-file-header = """\
+# Generated from openapi.yaml by datamodel-code-generator - do not edit.
+# Change the contract and run `tox -e api`; `make lint-python` fails on drift."""
+# snake_case attributes with camelCase aliases: Pythonic in code, camelCase on
+# the wire, which is what the browser front end expects.
+snake-case-field = true
+allow-population-by-field-name = true
+# Enums become Literal types, so a two-value enum costs no extra class.
+enum-field-as-literal = "all"
+use-annotated = true
+use-double-quotes = true
+use-field-description = true
+use-schema-description = true
+use-standard-collections = true
+use-union-operator = true
+# A timestamp in the header would make every regeneration a diff.
+disable-timestamp = true

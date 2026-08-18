@@ -2,6 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: vault-configure
+  namespace: vault
   labels:
     app: vault
 spec:
@@ -12,6 +13,7 @@ spec:
       labels:
         app: vault-configure
     spec:
+      serviceAccountName: vault-configure
       restartPolicy: OnFailure
       containers:
         - name: vault-configure
@@ -19,7 +21,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: VAULT_ADDR
-              value: http://vault-service:8200
+              value: http://vault-service.vault:8200  # Same namespace, but kept fully qualified for consistency
             - name: VAULT_TOKEN
               value: root  # Dev-mode root token, see vault/README.md
           # Enable the two KV v2 root paths: services/ (per-service secrets,

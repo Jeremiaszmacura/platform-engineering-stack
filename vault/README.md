@@ -1,9 +1,9 @@
 # Vault
 
-HashiCorp Vault in **dev mode** — shared secret store for python-app and
-go-app, each scoped to its own path (`services/<service>/...`). In-memory
-storage, root token `root`. Full details:
-[documentation/docs/vault.md](../documentation/docs/vault.md).
+HashiCorp Vault in dev mode: the shared secret store behind both backends' /secret endpoints.
 
-- UI/API: http://vault.localhost (token `root`)
-- Redeploy: `kubectl apply -f vault/k8s/`
+**Documentation: [Vault](https://jeremiaszmacura.github.io/devops-stack/services/vault/)** — source:
+[`documentation/docs/services/vault.md`](../documentation/docs/services/vault.md)
+
+All documentation for this repository lives in the MkDocs site; component
+directories hold no prose, so a fact is written down in exactly one place.

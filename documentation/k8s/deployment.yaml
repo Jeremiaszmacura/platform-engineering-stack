@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mkdocs-deployment
+  namespace: docs
   labels:
     app: mkdocs
 spec:
@@ -14,6 +15,7 @@ spec:
       labels:
         app: mkdocs
     spec:
+      serviceAccountName: mkdocs
       containers:
       - name: mkdocs
         image: mkdocs-documentation:dev
@@ -24,6 +26,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mkdocs-service
+  namespace: docs
   labels:
     app: mkdocs
 spec:

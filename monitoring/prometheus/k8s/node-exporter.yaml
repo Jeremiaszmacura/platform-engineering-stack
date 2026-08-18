@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: node-exporter
+  namespace: monitoring
   labels:
     app: node-exporter
 spec:
@@ -13,6 +14,7 @@ spec:
       labels:
         app: node-exporter
     spec:
+      serviceAccountName: node-exporter
       hostPID: true
       containers:
         - name: node-exporter
@@ -55,8 +57,12 @@ apiVersion: v1
 kind: Service
 metadata:
   name: node-exporter
+  namespace: monitoring
   labels:
     app: node-exporter
+  annotations:
+    prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
+    prometheus.io/job: node-exporter  # Keeps the historic job label for dashboards
 spec:
   selector:
     app: node-exporter

@@ -1,0 +1,11 @@
+-r requirements.txt
+-r ../requirements-dev.txt
+# datamodel-code-generator formats its output with black. Pinning black to the
+# same version as the hook in ../.pre-commit-config.yaml keeps the generated
+# file byte-identical whichever of the two touches it last, so `tox -e
+# pre-commit` cannot report drift that is really a formatter disagreement.
+black==26.5.1
+datamodel-code-generator==0.71.0
+httpx==0.28.1
+import-linter==2.13
+openapi-spec-validator==0.9.0

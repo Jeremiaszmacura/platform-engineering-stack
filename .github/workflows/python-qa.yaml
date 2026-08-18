@@ -1,0 +1,35 @@
+# Covers every Python service the root Makefile discovers by its tox.ini,
+# not one named service - `make lint-python` and `make test-unit-python`
+# both iterate over all of them.
+name: python quality-assurance
+
+on:
+  pull_request:
+  push:
+    tags-ignore:
+      - '**'
+    branches:
+      - '**'
+
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+# Instead of setup Python and pip install there should be Docker container pulled with preinstalled deps
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install qa deps
+        run: pip install -r requirements-dev.txt
+
+      - name: Run linters
+        run: make lint-python
+
+      - name: Run app tests
+        run: make test-unit-python

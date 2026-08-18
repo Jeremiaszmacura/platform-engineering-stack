@@ -26,10 +26,14 @@
 
 - Each directory in project contain different component of the cluster.
 
-- Python and Go applications are simple sample applications. Their traffic is monitored with Prometheus and visualized in Grafana.
+- stock-app is a backend application that provides stock data to the frontend application. It should be designed to handle requests from the frontend application and return the appropriate stock data in a structured format.
+
+- go-app is a backend application that provides a simple API endpoints for cluster testing purposes.
 
 - Grafana dashboards are persisted in `monitoring/grafana/ansible/dashboards` directory. Each dashboard should be defined in a separate JSON file.
 
-- Frontend application is designed to provide a simple interface for testing the Python and Go applications. It should allow users to trigger requests to the backend applications and display the results. Those results are then monitored with Prometheus and visualized in Grafana.
+- stock-ui application is a frontend application that provides a simple interface for interacting with stock-app application. This application is aimed to present and visualize the stock data provided by the stock-app application.
+
+- frontend-app application is designed to provide a simple interface for testing Go application. It should allow users to trigger requests to the backend applications and display the results. Those results are then monitored with Prometheus and visualized in Grafana.
 
 - Documentation is built using mkdocs in `documentation` directory and should be clear and concise. Documentation should be up-to-date with the current state of the project. Each project should have own documentation page explaining its purpose. Documentation should include instructions for deploying the cluster, and explaining workflow of the cluster and its components.

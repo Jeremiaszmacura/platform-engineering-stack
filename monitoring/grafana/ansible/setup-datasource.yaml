@@ -6,7 +6,7 @@
     grafana_url: "http://grafana.localhost"
     grafana_user: "admin"
     grafana_password: "admin"
-    prometheus_url: "http://prometheus:9090"
+    prometheus_url: "http://prometheus.monitoring:9090"
   
   tasks:
     - name: Display environment information

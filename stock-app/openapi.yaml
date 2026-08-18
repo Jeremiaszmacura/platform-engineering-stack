@@ -1,0 +1,537 @@
+openapi: 3.1.0
+
+info:
+  title: stock-app
+  version: 1.0.0
+  summary: Daily OHLCV market data over TimescaleDB.
+  description: |
+    Standardized daily OHLCV bars. Windows already synced are answered from
+    TimescaleDB; only the part of a window that has never been requested
+    reaches the external market data provider.
+
+    This document is the contract, not a report about the code: the pydantic
+    models in `src/adapters/inbound/http/models.py` are generated from it, and
+    the service serves this file unchanged at `/openapi.json`.
+
+servers:
+  - url: http://stock.localhost
+    description: Cluster ingress host.
+
+tags:
+  - name: market-data
+    description: Daily bars, period analytics and the local sync ledger.
+  - name: secrets
+    description: |
+      Values kept in the cluster's Vault, under this service's own path. Not
+      market data - this is how the platform demonstrates that a workload can
+      hold credentials without them ever entering a manifest or an image.
+  - name: service
+    description: Identity, readiness and metrics, used by the cluster itself.
+
+paths:
+  /:
+    get:
+      operationId: getServiceIdentity
+      tags: [service]
+      summary: Identify the service.
+      responses:
+        "200":
+          description: The service name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceIdentity"
+
+  /health:
+    get:
+      operationId: getHealth
+      tags: [service]
+      summary: Report readiness.
+      description: |
+        Readiness for this service means a reachable database. Backs the pod's
+        `readinessProbe`, so an unreachable database takes the pod out of the
+        Service rather than answering requests it cannot serve.
+      responses:
+        "200":
+          description: The database answered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "503":
+          description: The database is unreachable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /metrics:
+    get:
+      operationId: getMetrics
+      tags: [service]
+      summary: Expose Prometheus metrics.
+      responses:
+        "200":
+          description: Metrics in Prometheus text exposition format.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /secret:
+    post:
+      operationId: storeSecret
+      tags: [secrets]
+      summary: Store a secret.
+      description: |
+        Writes a value under this service's path in Vault's KV v2 mount,
+        overwriting whatever was there. Services cannot read each other's keys.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SecretRequest"
+      responses:
+        "201":
+          description: The secret was stored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoredSecretResponse"
+        "422":
+          $ref: "#/components/responses/InvalidRequest"
+        "502":
+          $ref: "#/components/responses/SecretStoreUnavailable"
+
+  /secret/{key}:
+    get:
+      operationId: readSecret
+      tags: [secrets]
+      summary: Read a secret.
+      parameters:
+        - $ref: "#/components/parameters/SecretKey"
+      responses:
+        "200":
+          description: The stored value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SecretResponse"
+        "404":
+          description: No secret is stored under that key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/InvalidRequest"
+        "502":
+          $ref: "#/components/responses/SecretStoreUnavailable"
+
+  /api/v1/instruments:
+    get:
+      operationId: listInstruments
+      tags: [market-data]
+      summary: List locally held instruments.
+      description: |
+        Every instrument in the store with the session-date window synced for
+        it, ordered by symbol.
+      responses:
+        "200":
+          description: All known instruments.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InstrumentResponse"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
+
+  /api/v1/instruments/{symbol}/bars:
+    get:
+      operationId: getPriceHistory
+      tags: [market-data]
+      summary: Daily bars for a symbol.
+      description: |
+        Answers from the store, calling the provider at most once for the part
+        of the window that has never been synced. `source` reports which of the
+        two answered.
+      parameters:
+        - $ref: "#/components/parameters/Symbol"
+        - $ref: "#/components/parameters/Start"
+        - $ref: "#/components/parameters/End"
+      responses:
+        "200":
+          description: The bars held for the requested range.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceHistoryResponse"
+        "404":
+          $ref: "#/components/responses/SymbolNotFound"
+        "422":
+          $ref: "#/components/responses/InvalidRequest"
+        "502":
+          $ref: "#/components/responses/ProviderUnavailable"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
+
+  /api/v1/instruments/{symbol}/summary:
+    get:
+      operationId: getPriceSummary
+      tags: [market-data]
+      summary: Period statistics for a symbol.
+      description: |
+        Aggregates over the bars the store holds for the range. Does not fetch,
+        so a range never requested through `bars` holds no sessions.
+      parameters:
+        - $ref: "#/components/parameters/Symbol"
+        - $ref: "#/components/parameters/Start"
+        - $ref: "#/components/parameters/End"
+      responses:
+        "200":
+          description: The period statistics.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceSummaryResponse"
+        "404":
+          description: The range holds no trading sessions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/InvalidRequest"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
+
+components:
+  parameters:
+    Symbol:
+      name: symbol
+      in: path
+      required: true
+      description: Ticker symbol, case-insensitive.
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9.\-]{1,16}$
+      example: AAPL
+
+    SecretKey:
+      name: key
+      in: path
+      required: true
+      description: |
+        Key the secret is stored under, within this service's Vault path. The
+        alphabet is restricted because the key becomes part of a Vault path.
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9._\-]{1,64}$
+      example: api-token
+
+    Start:
+      name: start
+      in: query
+      required: true
+      description: |
+        First session date of the window, inclusive. Required: an implicit
+        "start defaults to N days ago" would make an identical request change
+        its answer under the caller.
+      schema:
+        type: string
+        format: date
+      example: "2026-06-01"
+
+    End:
+      name: end
+      in: query
+      required: true
+      description: |
+        Last session date of the window, inclusive. Must not be before `start`,
+        must not be in the future, and must not sit more than 3650 days after
+        it — the endpoint is unauthenticated and each request can reach the
+        provider. Those three rules are cross-parameter, which OpenAPI cannot
+        express, so they answer 422 from the request validator instead.
+      schema:
+        type: string
+        format: date
+      example: "2026-06-30"
+
+  responses:
+    SymbolNotFound:
+      description: The provider does not know the symbol.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InvalidRequest:
+      description: The symbol or the requested window violates a rule.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    ProviderUnavailable:
+      description: The market data provider is unreachable or answered garbage.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    StoreUnavailable:
+      description: TimescaleDB is unreachable.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    SecretStoreUnavailable:
+      description: Vault is unreachable or rejected the request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    ServiceIdentity:
+      type: object
+      description: The identity of this service.
+      required: [service]
+      properties:
+        service:
+          type: string
+          description: Service name.
+          examples: [stock-app]
+
+    HealthStatus:
+      type: object
+      description: Readiness of the service and of the store behind it.
+      required: [status, database]
+      properties:
+        status:
+          type: string
+          description: Whether the service can serve requests.
+          enum: [healthy, unhealthy]
+        database:
+          type: string
+          description: Whether the price bar store answered.
+          enum: [reachable, unreachable]
+
+    ErrorResponse:
+      type: object
+      description: |
+        The single error shape of this API. Every 4xx and 5xx answer carries
+        it, including request validation failures.
+      required: [detail]
+      properties:
+        detail:
+          type: string
+          description: Human-readable reason the request failed.
+          examples: [start must not be after end]
+
+    SecretRequest:
+      type: object
+      description: A value to keep in Vault under this service's path.
+      required: [key, value]
+      properties:
+        key:
+          type: string
+          description: Key to store the value under.
+          pattern: ^[A-Za-z0-9._\-]{1,64}$
+          examples: [api-token]
+        value:
+          type: string
+          description: The secret value. Never logged, and never echoed back on write.
+          minLength: 1
+
+    StoredSecretResponse:
+      type: object
+      description: |
+        Confirmation that a secret was written. The value is not echoed back:
+        a response body is far more likely to be logged than a request body.
+      required: [key, status]
+      properties:
+        key:
+          type: string
+          description: Key the value was stored under.
+        status:
+          type: string
+          description: Outcome of the write.
+          enum: [stored]
+
+    SecretResponse:
+      type: object
+      description: A secret read back from Vault.
+      required: [key, value]
+      properties:
+        key:
+          type: string
+          description: Key the value was stored under.
+        value:
+          type: string
+          description: The stored value.
+
+    SessionDateRange:
+      type: object
+      description: An inclusive range of trading session dates.
+      required: [start, end]
+      properties:
+        start:
+          type: string
+          format: date
+          description: First session date of the range.
+        end:
+          type: string
+          format: date
+          description: Last session date of the range.
+
+    BarResponse:
+      type: object
+      description: |
+        One OHLCV bar. `date` is a bare session date rather than an instant:
+        an ISO timestamp at UTC midnight renders as the previous day for
+        viewers west of UTC. Prices are JSON numbers, not strings, because
+        charting libraries will not accept strings.
+      required: [date, open, high, low, close, adjClose, volume]
+      properties:
+        date:
+          type: string
+          format: date
+          description: Trading session date in the exchange's local calendar.
+        open:
+          type: number
+          format: double
+          description: Opening price.
+        high:
+          type: number
+          format: double
+          description: Highest price of the session.
+        low:
+          type: number
+          format: double
+          description: Lowest price of the session.
+        close:
+          type: number
+          format: double
+          description: Closing price.
+        adjClose:
+          type: [number, "null"]
+          format: double
+          description: Split and dividend adjusted close, when the provider reports one.
+        volume:
+          type: integer
+          format: int64
+          description: Number of shares traded.
+
+    PriceHistoryResponse:
+      type: object
+      description: Bars for one symbol over a requested range.
+      required: [symbol, interval, currency, source, range, count, bars]
+      properties:
+        symbol:
+          type: string
+          description: Normalized ticker symbol.
+        interval:
+          type: string
+          description: Bar interval. Only daily bars are served today.
+          enum: ["1d"]
+        currency:
+          type: [string, "null"]
+          description: Currency the prices are quoted in.
+        source:
+          type: string
+          description: |
+            Whether the store answered on its own or the provider was called.
+            The cheapest way to observe the sync ledger working.
+          enum: [cache, provider]
+        range:
+          $ref: "#/components/schemas/SessionDateRange"
+        count:
+          type: integer
+          description: Number of bars returned.
+        bars:
+          type: array
+          description: The bars, in ascending session-date order.
+          items:
+            $ref: "#/components/schemas/BarResponse"
+
+    PriceSummaryResponse:
+      type: object
+      description: Aggregate statistics over the bars of a period.
+      required:
+        [symbol, interval, range, barCount, firstClose, lastClose, periodHigh, periodLow, averageVolume]
+      properties:
+        symbol:
+          type: string
+          description: Normalized ticker symbol.
+        interval:
+          type: string
+          description: Bar interval the statistics were computed over.
+          enum: ["1d"]
+        range:
+          $ref: "#/components/schemas/SessionDateRange"
+        barCount:
+          type: integer
+          description: Number of bars the statistics were computed from.
+        firstClose:
+          type: number
+          format: double
+          description: Close of the earliest bar in the period.
+        lastClose:
+          type: number
+          format: double
+          description: Close of the latest bar in the period.
+        periodHigh:
+          type: number
+          format: double
+          description: Highest price reached in the period.
+        periodLow:
+          type: number
+          format: double
+          description: Lowest price reached in the period.
+        averageVolume:
+          type: number
+          format: double
+          description: Mean traded volume per session.
+
+    InstrumentResponse:
+      type: object
+      description: |
+        An instrument held locally and its sync ledger. The synced dates record
+        the window that has been *requested* from the provider, not the dates
+        of the bars that came back — weekends and holidays produce no bars, so
+        a window derived from bar dates would look incomplete forever.
+      required:
+        [symbol, name, exchange, currency, firstSyncedDate, lastSyncedDate, lastSyncedAt, source]
+      properties:
+        symbol:
+          type: string
+          description: Normalized ticker symbol.
+        name:
+          type: [string, "null"]
+          description: Human-readable instrument name.
+        exchange:
+          type: [string, "null"]
+          description: Exchange the instrument trades on.
+        currency:
+          type: [string, "null"]
+          description: Currency the prices are quoted in.
+        firstSyncedDate:
+          type: [string, "null"]
+          format: date
+          description: Earliest session date requested from the provider.
+        lastSyncedDate:
+          type: [string, "null"]
+          format: date
+          description: Latest session date requested from the provider.
+        lastSyncedAt:
+          type: [string, "null"]
+          format: date-time
+          description: When the provider was last called for this instrument.
+        source:
+          type: string
+          description: Provider the data came from.

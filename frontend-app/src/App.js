@@ -1,269 +1,119 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import './App.css';
+/**
+ * The application shell: navigation bar, the request being built, and what
+ * came back from it.
+ *
+ * There is one screen here, so the state of a run lives in this component and
+ * everything below it is presentational. Results are replaced by each run
+ * rather than appended: the statistics describe the burst that was just sent,
+ * not a session's worth of history.
+ */
 
-function App() {
-  const [selectedApp, setSelectedApp] = useState('python-app');
-  const [selectedEndpoint, setSelectedEndpoint] = useState('Home');
-  const [requestCount, setRequestCount] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+import React, { useCallback, useMemo, useState } from 'react';
+
+import { APPS, DEFAULT_RANGE, ENDPOINTS, appById, buildUrl } from './lib/endpoints';
+import { NavBar } from './components/NavBar';
+import { RequestForm } from './components/RequestForm';
+import { ResultList } from './components/ResultList';
+import { RunStats } from './components/RunStats';
+import { sendBurst } from './api/backends';
+import { summarize } from './lib/run';
+import { useTheme } from './hooks/useTheme';
+
+/** Where a session starts: one request to the first endpoint of the first backend. */
+const INITIAL_APP_ID = APPS[0].id;
+const INITIAL_ENDPOINT_NAME = ENDPOINTS[INITIAL_APP_ID][0].name;
+
+/**
+ * Render the application.
+ *
+ * @returns {JSX.Element} The app.
+ */
+export default function App() {
+  const [theme, toggleTheme] = useTheme();
+  const [appId, setAppId] = useState(INITIAL_APP_ID);
+  const [endpointName, setEndpointName] = useState(INITIAL_ENDPOINT_NAME);
+  const [params, setParams] = useState({ symbol: 'AAPL', ...DEFAULT_RANGE, count: 1 });
+  const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    successful: 0,
-    failed: 0,
-    avgResponseTime: 0
-  });
 
-  const endpoints = {
-    'python-app': [
-      { path: '/', name: 'Home', method: 'GET', description: 'Get welcome message' },
-      { path: '/health', name: 'Health Check', method: 'GET', description: 'Check app health' },
-      { path: '/error', name: 'Error', method: 'GET', description: 'Simulate error (500)' },
-      { path: '/redirect', name: 'Redirect', method: 'GET', description: 'Redirect to health' },
-      { path: '/metrics', name: 'Metrics', method: 'GET', description: 'Prometheus metrics' }
-    ],
-    'go-app': [
-      { path: '/', name: 'Home', method: 'GET', description: 'Get welcome message' },
-      { path: '/health', name: 'Health Check', method: 'GET', description: 'Check app health' },
-      { path: '/error', name: 'Error', method: 'GET', description: 'Simulate error (500)' },
-      { path: '/redirect', name: 'Redirect', method: 'GET', description: 'Redirect to health' },
-      { path: '/metrics', name: 'Metrics', method: 'GET', description: 'Prometheus metrics' }
-    ]
-  };
+  const app = appById(appId);
+  const endpoints = ENDPOINTS[appId];
+  const endpoint = endpoints.find((candidate) => candidate.name === endpointName) ?? endpoints[0];
+  const targetUrl = buildUrl(app, endpoint, params);
+  const summary = useMemo(() => summarize(results), [results]);
 
-  const getBaseUrl = (app) => {
-    // Backends are called cross-origin via their ingress hosts (CORS enabled at the ingress)
-    if (app === 'python-app') {
-      return 'http://python.localhost';
-    } else if (app === 'go-app') {
-      return 'http://go.localhost';
-    }
-    return '';
-  };
+  // The two backends share no endpoints, so the selection cannot survive a
+  // change of target and falls back to the first one offered.
+  const selectApp = useCallback((chosen) => {
+    setAppId(chosen);
+    setEndpointName(ENDPOINTS[chosen][0].name);
+  }, []);
 
-  const getSelectedEndpointMeta = () => {
-    return endpoints[selectedApp].find((e) => e.name === selectedEndpoint);
-  };
+  const changeParam = useCallback((name, value) => {
+    setParams((current) => ({ ...current, [name]: value }));
+  }, []);
 
-  const makeRequest = async (url) => {
-    const startTime = Date.now();
-    try {
-      const response = await axios.get(url, {
-        timeout: 10000,
-        validateStatus: (status) => status < 600
-      });
-      const endTime = Date.now();
-      return {
-        success: true,
-        status: response.status,
-        statusText: response.statusText,
-        data: response.data,
-        responseTime: endTime - startTime,
-        timestamp: new Date().toLocaleTimeString()
-      };
-    } catch (error) {
-      const endTime = Date.now();
-      return {
-        success: false,
-        status: error.response?.status || 'ERROR',
-        statusText: error.response?.statusText || error.message,
-        data: error.response?.data || error.message,
-        responseTime: endTime - startTime,
-        timestamp: new Date().toLocaleTimeString()
-      };
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const run = useCallback(async () => {
+    setIsRunning(true);
     setResults([]);
-    
-    const meta = getSelectedEndpointMeta();
-    const baseUrl = getBaseUrl(selectedApp);
-    const fullUrl = `${baseUrl}${meta ? meta.path : '/'}`;
-    
-    const requests = [];
-    const newResults = [];
-    
-    // Make all requests concurrently for better performance
-    for (let i = 0; i < requestCount; i++) {
-      requests.push(makeRequest(fullUrl));
-    }
-    
     try {
-      const responses = await Promise.all(requests);
-      newResults.push(...responses);
-      
-      // Calculate statistics
-      const successful = responses.filter(r => r.success && r.status >= 200 && r.status < 400).length;
-      const failed = responses.length - successful;
-      const avgResponseTime = responses.reduce((sum, r) => sum + r.responseTime, 0) / responses.length;
-      
-      setStats({
-        total: responses.length,
-        successful,
-        failed,
-        avgResponseTime: Math.round(avgResponseTime)
-      });
-      
-      setResults(newResults);
-    } catch (error) {
-      console.error('Error making requests:', error);
+      setResults(await sendBurst(targetUrl, params.count));
     } finally {
-      setIsLoading(false);
+      setIsRunning(false);
     }
-  };
+  }, [targetUrl, params.count]);
 
-  const clearResults = () => {
-    setResults([]);
-    setStats({ total: 0, successful: 0, failed: 0, avgResponseTime: 0 });
-  };
-
-  const getStatusColor = (status) => {
-    if (typeof status === 'number') {
-      if (status >= 200 && status < 300) return 'success';
-      if (status >= 300 && status < 400) return 'redirect';
-      if (status >= 400 && status < 500) return 'client-error';
-      if (status >= 500) return 'server-error';
-    }
-    return 'error';
-  };
+  const clear = useCallback(() => setResults([]), []);
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>🚀 Kubernetes Cluster API Tester</h1>
-        <p>Test your Python and Go applications deployed in Kubernetes</p>
-      </header>
+    <div className="shell">
+      <NavBar
+        apps={APPS}
+        activeAppId={appId}
+        onSelectApp={selectApp}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
 
-      <main className="App-main">
-        <form onSubmit={handleSubmit} className="request-form">
-          <div className="form-group">
-            <label htmlFor="app-select">Select Application:</label>
-            <select
-              id="app-select"
-              value={selectedApp}
-              onChange={(e) => {
-                setSelectedApp(e.target.value);
-                setSelectedEndpoint('Home'); // Reset endpoint when app changes
-              }}
-              className="form-control"
-            >
-              <option value="python-app">🐍 Python App (FastAPI)</option>
-              <option value="go-app">🔧 Go App (Gin)</option>
-            </select>
-          </div>
+      <main className="page">
+        <div className="page__intro">
+          <h1 className="page__title">
+            Send traffic,
+            <br />
+            watch it land.
+          </h1>
+          <p className="page__lede">
+            Pick a backend and one of its endpoints, fire up to a hundred concurrent requests at it, and read
+            every response. The same traffic arrives on the Grafana dashboards a moment later.
+          </p>
+        </div>
 
-          <div className="form-group">
-            <label htmlFor="endpoint-select">Select Endpoint:</label>
-            <select
-              id="endpoint-select"
-              value={selectedEndpoint}
-              onChange={(e) => setSelectedEndpoint(e.target.value)}
-              className="form-control"
-            >
-              {endpoints[selectedApp].map((endpoint) => (
-                <option key={endpoint.name} value={endpoint.name}>
-                  [{endpoint.method}] {endpoint.name} ({endpoint.path}) - {endpoint.description}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="console-grid">
+          <RequestForm
+            app={app}
+            endpoints={endpoints}
+            endpoint={endpoint}
+            onSelectEndpoint={setEndpointName}
+            params={params}
+            onChangeParam={changeParam}
+            targetUrl={targetUrl}
+            isRunning={isRunning}
+            hasResults={results.length > 0}
+            onRun={run}
+            onClear={clear}
+          />
 
-          <div className="form-group">
-            <label htmlFor="request-count">Number of Requests:</label>
-            <input
-              type="number"
-              id="request-count"
-              value={requestCount}
-              onChange={(e) => setRequestCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
-              className="form-control"
-              min="1"
-              max="100"
-            />
-            <small className="form-text">Between 1 and 100 requests</small>
-          </div>
-
-          <div className="form-actions">
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="btn btn-primary"
-            >
-              {isLoading ? '🔄 Sending Requests...' : `🚀 Send ${requestCount} Request${requestCount > 1 ? 's' : ''}`}
-            </button>
-            
-            {results.length > 0 && (
-              <button
-                type="button"
-                onClick={clearResults}
-                className="btn btn-secondary"
-              >
-                🗑️ Clear Results
-              </button>
-            )}
-          </div>
-        </form>
-
-        {stats.total > 0 && (
-          <div className="stats-section">
-            <h3>📊 Request Statistics</h3>
-            <div className="stats-grid">
-              <div className="stat-item">
-                <span className="stat-label">Total Requests:</span>
-                <span className="stat-value">{stats.total}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Successful:</span>
-                <span className="stat-value success">{stats.successful}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Failed:</span>
-                <span className="stat-value error">{stats.failed}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Avg Response Time:</span>
-                <span className="stat-value">{stats.avgResponseTime}ms</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {results.length > 0 && (
-          <div className="results-section">
-            <h3>📋 Request Results</h3>
-            <div className="results-container">
-              {results.map((result, index) => (
-                <div key={index} className={`result-item ${getStatusColor(result.status)}`}>
-                  <div className="result-header">
-                    <span className="result-index">#{index + 1}</span>
-                    <span className="result-status">
-                      {result.status} {result.statusText}
-                    </span>
-                    <span className="result-time">{result.responseTime}ms</span>
-                    <span className="result-timestamp">{result.timestamp}</span>
-                  </div>
-                  <div className="result-body">
-                    <pre>{JSON.stringify(result.data, null, 2)}</pre>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          <section className="console-output" aria-label="Results">
+            {summary.total > 0 && <RunStats summary={summary} />}
+            <ResultList results={results} isRunning={isRunning} />
+          </section>
+        </div>
       </main>
 
-      <footer className="App-footer">
-        <p>
-          🎯 Target: <strong>{selectedApp}</strong> |
-          🌐 Endpoint: <strong>{getSelectedEndpointMeta()?.path || '/'}</strong> |
-          📦 Requests: <strong>{requestCount}</strong>
-        </p>
-      </footer>
+      <p className="footnote">
+        Requests go straight to {app.baseUrl} from the browser, cross-origin, the same path curl and the e2e
+        suite take. Market data charts live in Stock App at http://stock-ui.localhost.
+      </p>
     </div>
   );
 }
-
-export default App;

@@ -2,6 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: go-app-ingress
+  namespace: apps
   annotations:
     # The frontend at app.localhost calls this backend cross-origin
     nginx.ingress.kubernetes.io/enable-cors: "true"

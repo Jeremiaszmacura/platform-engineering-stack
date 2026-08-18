@@ -7,23 +7,35 @@ the ingress (`http://prometheus.localhost`, `http://grafana.localhost`).
 
 ## Prometheus
 
-Prometheus is deployed from `monitoring/prometheus/k8s/` with its scrape
-configuration in a ConfigMap (`prometheus-config.yaml`). Default scrape
-interval is 15s; the sample apps are scraped every 5s so dashboards react
-quickly to generated traffic.
+Prometheus is deployed from `monitoring/prometheus/k8s/` (see
+[Prometheus](services/prometheus.md)) with its scrape configuration in a
+ConfigMap (`prometheus-config.yaml`). Targets are not
+listed statically: Prometheus discovers them through the Kubernetes API
+(`kubernetes_sd_configs`, `endpoints` role, limited to the `apps` and
+`monitoring` namespaces) using two Service annotations:
 
-| Job | Target | What it measures |
+- `prometheus.io/scrape: "true"` — opt the Service's endpoints into scraping
+  (on `/metrics`)
+- `prometheus.io/job: <name>` — the `job` label to report, keeping dashboard
+  and e2e job names stable
+
+API access is read-only, granted to the `prometheus` ServiceAccount by the
+ClusterRole in `platform/rbac/prometheus.yaml`. Discovered targets are
+scraped every 5s so dashboards react quickly to generated traffic; Prometheus
+also scrapes itself statically as job `self`.
+
+| Job | Annotated Service | What it measures |
 |---|---|---|
-| `python-app` | `python-app-service:8000/metrics` | FastAPI backend HTTP metrics |
-| `go-app` | `go-app-service:8080/metrics` | Gin backend HTTP metrics |
-| `nginx-metrics` | `nginx-exporter:9113` | Standalone NGINX sample app (via `nginx-exporter` sidecar reading `stub_status`) |
-| `node-exporter` | `node-exporter:9100` | Node CPU/memory/disk, run as a DaemonSet on every cluster node |
-| `self` | `localhost:9090` | Prometheus itself |
+| `go-app` | `go-app-service` (ns `apps`) | Gin backend HTTP metrics |
+| `stock-app` | `stock-app-service` (ns `apps`) | Market data HTTP metrics plus the cache-aside pipeline |
+| `nginx-metrics` | `nginx-exporter` (ns `apps`) | Standalone NGINX sample app (via `nginx-exporter` reading `stub_status`) |
+| `node-exporter` | `node-exporter` (ns `monitoring`) | Node CPU/memory/disk, run as a DaemonSet on every cluster node |
+| `self` | — (static `localhost:9090`) | Prometheus itself |
 
 ## Application metrics
 
-Both sample backends implement the same instrumentation middleware
-(`python-app/src/prometheus_config.py`, `go-app/internal/appmetrics/prometheus.go`):
+The sample backend implements a Prometheus instrumentation middleware
+(`go-app/internal/appmetrics/prometheus.go`):
 
 - `http_requests_total{method, endpoint, status_code}` — request counter
 - `http_request_duration_seconds{method, endpoint}` — latency histogram
@@ -34,34 +46,40 @@ Both sample backends implement the same instrumentation middleware
 The `endpoint` label always holds a *registered route path*; requests to
 unknown paths are labeled with the constant `unmatched` to keep time-series
 cardinality bounded (bot scans must not mint a new series per probed URL).
+`stock-app` ships the same middleware, so its route paths keep their
+`{symbol}` placeholder instead of expanding to one series per ticker.
+
+## Stock data metrics
+
+`stock-app` adds five metrics describing its cache-aside pipeline
+(`stock-app/src/observability/metrics.py`):
+
+| Metric | Labels | What it answers |
+|---|---|---|
+| `stock_provider_requests_total` | `provider`, `outcome` (`success`/`not_found`/`error`) | How often the upstream market data API is called, and how it went |
+| `stock_provider_request_duration_seconds` | `provider` | How slow that upstream API is |
+| `stock_cache_lookups_total` | `outcome` (`hit`/`miss`/`refresh`) | How much traffic the local store absorbs |
+| `stock_bars_upserted_total` | `provider` | How much data has been ingested |
+| `stock_provider_rows_rejected_total` | `provider`, `reason` (`validation`/`malformed`) | How much upstream data violates the domain invariants |
+
+All five are created with zero-valued series at start-up, so a freshly rolled
+pod does not leave dashboards querying metrics that do not exist yet.
+
+**No metric is labeled by `symbol`.** Symbols arrive in request paths from
+untrusted callers, so a symbol label would be an unbounded-cardinality denial
+of service vector, not merely untidy.
 
 ## Grafana
 
-Grafana is deployed from `monitoring/grafana/k8s/`; admin credentials come
-from the `grafana-admin-secret` Secret (dev defaults: `admin`/`admin`).
+Grafana closes the pipeline: it queries Prometheus over in-cluster DNS
+(`http://prometheus.monitoring:9090`), registered as the default datasource by
+Ansible rather than clicked in by hand. One dashboard file per component lives
+in `monitoring/grafana/ansible/dashboards/` — `go-app`, `stock-app`, `nginx`,
+`infrastructure` — and every one of them is re-uploaded at the end of
+`./recreate-cluster.sh`.
 
-Provisioning is done as code with Ansible, via the Grafana HTTP API:
+The repository is the source of truth: a dashboard built in the UI and not
+exported is gone the next time the cluster is recreated.
 
-- `monitoring/grafana/ansible/setup-datasource.yaml` registers Prometheus
-  (`http://prometheus:9090`, in-cluster DNS) as the default datasource.
-- `monitoring/grafana/ansible/deploy-dashboards.yaml` uploads every JSON file
-  in `monitoring/grafana/ansible/dashboards/` — one file per dashboard:
-  `python-app`, `go-app`, `nginx`, `infrastructure`.
-
-Both playbooks run automatically at the end of `./recreate-cluster.sh`
-(wrapped by `deploy-dev.yaml`). They are idempotent — dashboards are uploaded
-with `overwrite: true` — so they can be re-run at any time:
-
-```sh
-ansible-playbook monitoring/grafana/ansible/deploy-dev.yaml
-```
-
-### Adding or changing a dashboard
-
-1. Edit the dashboard in the Grafana UI, or edit the JSON directly.
-2. Save the JSON model to `monitoring/grafana/ansible/dashboards/<name>.json`
-   (one dashboard per file, `"id": null` and `"overwrite": true` semantics are
-   handled by the playbook).
-3. Re-run the playbook above. The Git repository stays the source of truth —
-   dashboards clicked together in the UI but not exported are lost on the next
-   cluster recreation.
+For the playbooks, the deployment commands, how to add a dashboard, and
+troubleshooting, see [Grafana](services/grafana.md).

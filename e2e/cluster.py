@@ -17,6 +17,7 @@ METRICS_PIPELINE_TIMEOUT_SECONDS = 60
 POLL_INTERVAL_SECONDS = 2
 
 FRONTEND_URL = "http://app.localhost"
+STOCK_UI_URL = "http://stock-ui.localhost"
 PROMETHEUS_URL = "http://prometheus.localhost"
 GRAFANA_URL = "http://grafana.localhost"
 VAULT_URL = "http://vault.localhost"
@@ -40,15 +41,17 @@ class Backend:
     prometheus_job: str
 
 
-BACKENDS = (
-    Backend(name="python-app", base_url="http://python.localhost", prometheus_job="python-app"),
-    Backend(name="go-app", base_url="http://go.localhost", prometheus_job="go-app"),
-)
+BACKENDS = (Backend(name="go-app", base_url="http://go.localhost", prometheus_job="go-app"),)
+
+# stock-app is deliberately absent from BACKENDS: that fixture drives the
+# go-app shared contract, which stock-app does not implement.
+STOCK_APP_URL = "http://stock.localhost"
 
 SERVICE_URLS = {
-    "python-app": "http://python.localhost",
     "go-app": "http://go.localhost",
+    "stock-app": STOCK_APP_URL,
     "frontend-app": FRONTEND_URL,
+    "stock-ui": STOCK_UI_URL,
     "prometheus": PROMETHEUS_URL,
     "grafana": GRAFANA_URL,
     "nginx": "http://nginx.localhost",

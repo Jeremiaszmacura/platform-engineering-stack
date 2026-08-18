@@ -23,7 +23,9 @@ When the script finishes, every service is reachable through the ingress on
 `*.localhost` hostnames — see the routing map in [Design](design.md). Key entry
 points:
 
-- Frontend UI: http://app.localhost
+- Stock App (price charts): http://stock-ui.localhost
+- API tester UI: http://app.localhost
 - Grafana: http://grafana.localhost
+- Stock data API: http://stock.localhost (Swagger UI at `/docs`)
 - Vault UI: http://vault.localhost (token `root`)
 - Documentation: http://docs.localhost

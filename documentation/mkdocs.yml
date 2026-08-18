@@ -3,12 +3,34 @@ site_url: https://jeremiaszmacura.github.io/devops-stack/
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
-  - Adding a Service: adding-a-service.md
   - Design: design.md
   - Platform Decisions: platform-decisions.md
+  # One page per deployed component. Component READMEs are stubs pointing here,
+  # so every fact about a service is written down in exactly one place.
+  - Services:
+      - Overview: services/index.md
+      - go-app: services/go-app.md
+      - stock-app: services/stock-app.md
+      - stock-app API: services/stock-app-api.md
+      - TimescaleDB: services/timescaledb.md
+      - frontend-app: services/frontend-app.md
+      - stock-ui: services/stock-ui.md
+      - NGINX: services/nginx.md
+      - Vault: services/vault.md
+      - Prometheus: services/prometheus.md
+      - Grafana: services/grafana.md
+      - Documentation: services/documentation.md
   - Monitoring: monitoring.md
-  - Vault: vault.md
+  - Adding a Service: adding-a-service.md
   - End-to-End Tests: e2e-tests.md
+  - Validation Rules: validation-rules.md
+# Renders a service's OpenAPI contract without copying it into docs/; the hook
+# injects the file the service itself owns. See hooks/contracts.py.
+hooks:
+  - hooks/contracts.py
+plugins:
+  - search
+  - swagger-ui-tag
 theme:
   name: material
   palette:

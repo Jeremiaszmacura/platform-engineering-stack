@@ -1,0 +1,142 @@
+/*
+ * The shell: navigation bar, page frame, and the grid the console sits in.
+ *
+ * The console is two columns — the request being built on the left, what came
+ * back on the right — collapsing to one below 960px so neither gets too narrow
+ * to read. The bar holds only a brand, the backend tabs and the theme switch,
+ * so it needs no drawer: below 620px the tabs simply take their own row.
+ */
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Navigation ------------------------------------------------------------- */
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-6);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--step-heading);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.nav__mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.nav__tabs {
+  margin-inline: auto;
+}
+
+.nav__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+@media (max-width: 620px) {
+  .nav {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  /* Its own row, ahead of nothing else, so the two backends stay side by side. */
+  .nav__tabs {
+    order: 3;
+    width: 100%;
+    margin-inline: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}
+
+/* Page frame ------------------------------------------------------------- */
+
+.page {
+  flex: 1;
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.page__intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.page__title {
+  font-size: var(--step-display);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+
+.page__lede {
+  max-width: 52ch;
+  color: var(--text-muted);
+}
+
+.footnote {
+  color: var(--text-dim);
+  font-size: var(--step-small);
+  text-align: center;
+  padding-bottom: var(--space-6);
+}
+
+/* Console grid ----------------------------------------------------------- */
+
+.console-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.console-output {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+@media (max-width: 960px) {
+  .page {
+    padding: var(--space-4);
+  }
+
+  .console-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

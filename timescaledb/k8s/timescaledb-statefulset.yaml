@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: timescaledb
+  namespace: data
+  labels:
+    app: timescaledb
+spec:
+  serviceName: timescaledb-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: timescaledb
+  template:
+    metadata:
+      labels:
+        app: timescaledb
+    spec:
+      serviceAccountName: timescaledb
+      containers:
+        - name: timescaledb
+          image: timescale/timescaledb:2.28.3-pg17  # Public image, pulled by the node
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: stockdata
+            - name: POSTGRES_USER
+              value: stockapp
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: postgres-password
+            # Required: the mount point itself must not be the data directory,
+            # or initdb refuses to start on a non-empty volume.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "stockapp", "-d", "stockdata"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "stockapp", "-d", "stockdata"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+  # Generates PVC data-timescaledb-0 on kind's default local-path
+  # StorageClass. It survives pod restarts but not `kind delete cluster`, so
+  # the database is always cold after ./recreate-cluster.sh.
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: timescaledb-service
+  namespace: data
+spec:
+  type: ClusterIP  # In-cluster only: no Ingress, the database is not a web service
+  selector:
+    app: timescaledb
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP

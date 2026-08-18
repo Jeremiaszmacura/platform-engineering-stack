@@ -23,6 +23,9 @@ test: test-unit
 
 E2E_DIR := e2e
 E2E_VENV := $(E2E_DIR)/.venv
+# Extra pytest arguments, e.g. E2E_PYTEST_ARGS='-m "not external"' to skip the
+# tests that reach a third-party API (CI does exactly that).
+E2E_PYTEST_ARGS ?=
 
 test-unit: test-unit-go test-unit-python
 
@@ -30,7 +33,7 @@ test-e2e:
 	@echo "==> e2e tests: $(E2E_DIR) (requires a running cluster, see ./recreate-cluster.sh)"
 	python3 -m venv $(E2E_VENV)
 	$(E2E_VENV)/bin/pip install --quiet -r $(E2E_DIR)/requirements.txt
-	cd $(E2E_DIR) && .venv/bin/pytest
+	cd $(E2E_DIR) && .venv/bin/pytest $(E2E_PYTEST_ARGS)
 
 test-unit-go:
 	@for service in $(GO_SERVICES); do \
@@ -42,6 +45,18 @@ test-unit-python:
 	@for service in $(PYTHON_SERVICES); do \
 		echo "==> tox tests: $$service"; \
 		(cd $$service && tox -e tests) || exit 1; \
+	done
+
+# Dependency hygiene
+
+.PHONY: tidy tidy-go
+
+tidy: tidy-go
+
+tidy-go:
+	@for service in $(GO_SERVICES); do \
+		echo "==> go mod tidy: $$service"; \
+		(cd $$service && go mod tidy) || exit 1; \
 	done
 
 # Linting and formatting
@@ -69,3 +84,5 @@ help:
 	@echo "  build: Build all Go services"
 	@echo "  test-unit: Run unit tests"
 	@echo "  test-e2e: Run end-to-end tests against a running cluster"
+	@echo "  tidy: Run go mod tidy across all Go services"
+	@echo "  lint: Run all linters"

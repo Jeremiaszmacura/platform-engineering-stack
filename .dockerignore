@@ -1,0 +1,15 @@
+# Only the documentation image builds from the repository root, because the
+# site pulls stock-app's OpenAPI contract in from its own directory. Every
+# other image has its own context and its own .dockerignore, which this file
+# does not affect.
+
+.git
+**/.tox
+**/.venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/.import_linter_cache
+**/.coverage
+documentation/site
+frontend-app/build

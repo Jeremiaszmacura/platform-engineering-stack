@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-exporter
+  namespace: apps
   labels:
     app: nginx-exporter
 spec:
@@ -14,6 +15,7 @@ spec:
       labels:
         app: nginx-exporter
     spec:
+      serviceAccountName: nginx-exporter
       containers:
         - name: exporter
           image: nginx/nginx-prometheus-exporter:latest
@@ -26,6 +28,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nginx-exporter
+  namespace: apps
+  annotations:
+    prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
+    prometheus.io/job: nginx-metrics  # Keeps the historic job label for dashboards
 spec:
   selector:
     app: nginx-exporter

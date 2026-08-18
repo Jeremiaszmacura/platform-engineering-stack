@@ -1,0 +1,328 @@
+{
+    "dashboard": {
+      "id": null,
+      "title": "Stock App Metrics",
+      "tags": ["app", "stock", "prometheus", "timescaledb"],
+      "timezone": "browser",
+      "panels": [
+        {
+          "id": 1,
+          "title": "Cache Hit Ratio",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "description": "Share of price history lookups served from TimescaleDB without calling the provider.",
+          "targets": [
+            {
+              "expr": "sum(rate(stock_cache_lookups_total{outcome=\"hit\"}[5m])) / clamp_min(sum(rate(stock_cache_lookups_total[5m])), 0.0001)",
+              "refId": "A",
+              "legendFormat": "Hit ratio"
+            }
+          ],
+          "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 0,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "orange", "value": 0.5 },
+                  { "color": "green", "value": 0.8 }
+                ]
+              }
+            }
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            }
+          }
+        },
+        {
+          "id": 2,
+          "title": "Bars Ingested",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "description": "Price bars written to the store, all providers.",
+          "targets": [
+            {
+              "expr": "sum(stock_bars_upserted_total)",
+              "refId": "A",
+              "legendFormat": "Bars upserted"
+            }
+          ],
+          "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 8,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "short"
+            }
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            }
+          }
+        },
+        {
+          "id": 3,
+          "title": "Provider Error Rate",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "description": "Share of provider calls that failed upstream (excludes unknown symbols).",
+          "targets": [
+            {
+              "expr": "sum(rate(stock_provider_requests_total{outcome=\"error\"}[5m])) / clamp_min(sum(rate(stock_provider_requests_total[5m])), 0.0001)",
+              "refId": "A",
+              "legendFormat": "Error ratio"
+            }
+          ],
+          "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 16,
+            "y": 0
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "orange", "value": 0.05 },
+                  { "color": "red", "value": 0.2 }
+                ]
+              }
+            }
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "values": false,
+              "calcs": ["lastNotNull"],
+              "fields": ""
+            }
+          }
+        },
+        {
+          "id": 4,
+          "title": "Cache Lookups by Outcome",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "description": "hit: served from the store. miss: symbol unknown locally. refresh: trailing edge refetched.",
+          "targets": [
+            {
+              "expr": "sum(rate(stock_cache_lookups_total[5m])) by (outcome)",
+              "refId": "A",
+              "legendFormat": "{{outcome}}"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 6
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineWidth": 1,
+                "showPoints": "never"
+              },
+              "unit": "reqps"
+            }
+          }
+        },
+        {
+          "id": 5,
+          "title": "Provider Calls by Outcome",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "description": "Outbound market data calls, split by success, unknown symbol and upstream failure.",
+          "targets": [
+            {
+              "expr": "sum(rate(stock_provider_requests_total[5m])) by (provider, outcome)",
+              "refId": "A",
+              "legendFormat": "{{provider}} {{outcome}}"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 6
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineWidth": 1,
+                "showPoints": "never"
+              },
+              "unit": "reqps"
+            }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Provider Latency",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "description": "Median and 95th percentile duration of a market data provider call.",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(stock_provider_request_duration_seconds_bucket[5m])) by (le, provider))",
+              "refId": "A",
+              "legendFormat": "{{provider}} p95"
+            },
+            {
+              "expr": "histogram_quantile(0.50, sum(rate(stock_provider_request_duration_seconds_bucket[5m])) by (le, provider))",
+              "refId": "B",
+              "legendFormat": "{{provider}} p50"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 14
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "lineWidth": 1,
+                "showPoints": "never"
+              },
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": 7,
+          "title": "Rejected Provider Rows",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "description": "Rows dropped for violating a domain invariant. validation: bad prices or volume. malformed: unparseable session date.",
+          "targets": [
+            {
+              "expr": "sum(rate(stock_provider_rows_rejected_total[5m])) by (provider, reason)",
+              "refId": "A",
+              "legendFormat": "{{provider}} {{reason}}"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 14
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineWidth": 1,
+                "showPoints": "never"
+              },
+              "unit": "rowsps"
+            }
+          }
+        },
+        {
+          "id": 8,
+          "title": "HTTP Requests by Endpoint",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "description": "Route paths keep their {symbol} placeholder, so time series stay bounded.",
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"stock-app\"}[5m])) by (endpoint, status_code)",
+              "refId": "A",
+              "legendFormat": "{{endpoint}} {{status_code}}"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 22
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineWidth": 1,
+                "showPoints": "never"
+              },
+              "unit": "reqps"
+            }
+          }
+        }
+      ],
+      "time": {
+        "from": "now-15m",
+        "to": "now"
+      },
+      "refresh": "5s"
+    },
+    "overwrite": true
+  }

@@ -13,8 +13,13 @@ from cluster import (
     wait_until,
 )
 
-EXPECTED_PROMETHEUS_JOBS = {"self", "nginx-metrics", "node-exporter", "python-app", "go-app"}
-EXPECTED_DASHBOARD_TITLES = {"Go App Metrics", "Infrastructure Overview", "NGINX Monitoring", "Python App Metrics"}
+EXPECTED_PROMETHEUS_JOBS = {"self", "nginx-metrics", "node-exporter", "go-app", "stock-app"}
+EXPECTED_DASHBOARD_TITLES = {
+    "Go App Metrics",
+    "Infrastructure Overview",
+    "NGINX Monitoring",
+    "Stock App Metrics",
+}
 
 
 def fetch_up_jobs():
