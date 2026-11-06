@@ -1,6 +1,5 @@
 .venv/
+k8s/
 README.md
-k8s
-.gitignore
 Dockerfile
-README.md
+site/

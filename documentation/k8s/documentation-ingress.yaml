@@ -1,7 +1,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: mkdocs-ingress
+  name: documentation-ingress
+  labels:
+    app: documentation
 spec:
   ingressClassName: nginx
   rules:
@@ -12,6 +14,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: mkdocs-service
+                name: documentation-service
                 port:
                   number: 80

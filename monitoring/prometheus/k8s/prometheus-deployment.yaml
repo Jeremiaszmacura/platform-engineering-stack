@@ -14,13 +14,28 @@ spec:
       labels:
         app: prometheus
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534  # "nobody", the image's default user
       containers:
         - name: prometheus
-          image: prom/prometheus:latest
+          image: prom/prometheus:v3.15.1
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
           ports:
             - containerPort: 9090
+          securityContext:
+            allowPrivilegeEscalation: false
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 500m, memory: 1Gi}
+          readinessProbe:
+            httpGet: {path: /-/ready, port: 9090}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /-/healthy, port: 9090}
+            initialDelaySeconds: 15
+            periodSeconds: 20
           volumeMounts:
             - name: config-volume
               mountPath: /etc/prometheus/
@@ -32,7 +47,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: prometheus
+  name: prometheus-service
+  labels:
+    app: prometheus
 spec:
   type: ClusterIP
   selector:

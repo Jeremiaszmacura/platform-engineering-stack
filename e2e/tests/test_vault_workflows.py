@@ -73,6 +73,13 @@ def test_reading_missing_secret_returns_not_found(backend):
     assert response.status_code == 404
 
 
+def test_invalid_secret_payload_is_rejected(backend):
+    """Both backends answer 422 for an empty value or a key with a slash."""
+    for payload in ({"key": unique_key("e2e-empty"), "value": ""}, {"key": "a/b", "value": "x"}):
+        response = requests.post(f"{backend.base_url}/secret", json=payload, timeout=REQUEST_TIMEOUT_SECONDS)
+        assert response.status_code == 422, payload
+
+
 def test_secret_paths_are_isolated_between_backends():
     """A secret written through one backend is invisible to the other.
 

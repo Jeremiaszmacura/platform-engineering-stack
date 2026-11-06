@@ -1,20 +1,18 @@
-FROM python:3.9-slim
+# Build the static site once...
+FROM python:3.14-slim AS builder
 
-# Set the working directory
 WORKDIR /app
 
-# Copy the requirements file
 COPY requirements.txt .
-
-# Install the dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the documentation files
-COPY docs ./docs
 COPY mkdocs.yml .
+COPY docs ./docs
+RUN mkdocs build --strict
 
-# Expose port
-EXPOSE 11000
+# ...and serve it with non-root nginx on port 8080
+FROM nginxinc/nginx-unprivileged:1.30-alpine
 
-# Start MkDocs server
-CMD ["mkdocs", "serve", "--dev-addr=0.0.0.0:11000"]
+COPY --from=builder /app/site /usr/share/nginx/html
+
+EXPOSE 8080

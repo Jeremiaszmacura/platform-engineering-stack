@@ -1,0 +1,11 @@
+# Dev-mode root token, the single source for Vault and every client of it.
+# Fine for this local playground only.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-dev-token
+  labels:
+    app: vault
+type: Opaque
+stringData:
+  token: root

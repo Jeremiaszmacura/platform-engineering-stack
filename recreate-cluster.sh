@@ -1,131 +1,109 @@
 #!/bin/bash
+# Deletes and recreates the local kind cluster with every component.
+# Safe to run any number of times.
 set -euo pipefail
 
-# Poll an URL every 2s until it answers over HTTP or the timeout (seconds)
-# elapses; prints a success line or a warning, never fails the script.
+CLUSTER_NAME=sample-cluster
+
+# Locally built images: <image name> <build directory>
+IMAGES=(
+    "python-app:dev python-app"
+    "go-app:dev go-app"
+    "frontend-app:dev frontend-app"
+    "documentation:dev documentation"
+)
+
+# Manifest directories, applied in this order (Vault before its clients)
+COMPONENTS=(
+    monitoring/prometheus/k8s
+    monitoring/grafana/k8s
+    nginx/k8s
+    vault/k8s
+    python-app/k8s
+    go-app/k8s
+    frontend-app/k8s
+    documentation/k8s
+)
+
+# Ingress URLs printed and checked at the end: <name> <url>
+URLS=(
+    "Frontend http://app.localhost"
+    "Python-app http://python.localhost"
+    "Go-app http://go.localhost"
+    "NGINX http://nginx.localhost"
+    "Vault http://vault.localhost"
+    "Prometheus http://prometheus.localhost"
+    "Grafana http://grafana.localhost"
+    "Documentation http://docs.localhost"
+)
+
+# Poll a URL every 2s until it answers with a non-error status (curl -f) or
+# the timeout (seconds) elapses. Prints a warning on timeout; never fails.
 wait_for_url() {
     local name=$1 url=$2 timeout=$3
-    echo "  Checking ${name}..."
-    while ! curl -s "$url" > /dev/null && [ "$timeout" -gt 0 ]; do
+    until curl -sf -o /dev/null "$url"; do
+        if [ "$timeout" -le 0 ]; then
+            echo "⚠️  ${name} not reachable at ${url} (check: kubectl get pods)"
+            return 0
+        fi
         sleep 2
-        timeout=$((timeout-2))
+        timeout=$((timeout - 2))
     done
-    if [ "$timeout" -le 0 ]; then
-        echo "⚠️  Warning: ${name} not accessible at ${url}"
-        echo "   Check service and pod status with: kubectl get pods,services"
-        return 0
-    fi
-    echo "✅ ${name} is accessible"
+    echo "✅ ${name}: ${url}"
 }
 
-echo "🔄 Recreating Kind cluster..."
-
-# Cleanup and create cluster; deletion may fail when no cluster exists yet
-kind delete cluster --name sample-cluster || true
-kind create cluster --config kind-cluster.yaml --name sample-cluster
+echo "🔄 Recreating kind cluster..."
+# Deletion fails when no cluster exists yet, which is fine
+kind delete cluster --name "$CLUSTER_NAME" || true
+kind create cluster --config kind-cluster.yaml --name "$CLUSTER_NAME"
 
 # Install the ingress controller early so it starts while images build
 echo "🌐 Installing ingress-nginx controller..."
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.13.1/deploy/static/provider/kind/deploy.yaml
 
-# Build and load application images
-echo "🐳 Building and loading Docker images..."
-docker build -t python-app:dev ./python-app
-docker build -t go-app:dev ./go-app
-docker build -t mkdocs-documentation:dev ./documentation
-docker build -t frontend-app:dev ./frontend-app
-
-kind load docker-image python-app:dev --name sample-cluster
-kind load docker-image go-app:dev --name sample-cluster
-kind load docker-image mkdocs-documentation:dev --name sample-cluster
-kind load docker-image frontend-app:dev --name sample-cluster
+echo "🐳 Building and loading images..."
+for entry in "${IMAGES[@]}"; do
+    read -r image dir <<< "$entry"
+    docker build -t "$image" "./$dir"
+    kind load docker-image "$image" --name "$CLUSTER_NAME"
+done
 
 # The controller's admission webhook must be up before Ingress resources apply
 echo "⏳ Waiting for ingress-nginx controller..."
 kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=180s
 
-# Deploy applications in order
-echo "🚀 Deploying applications..."
+echo "🚀 Deploying components..."
+for dir in "${COMPONENTS[@]}"; do
+    echo "  ${dir}"
+    kubectl apply -f "$dir"
+done
 
-# Deploy monitoring (Prometheus, then Grafana)
-echo "  📊 Deploying Prometheus..."
-kubectl apply -f monitoring/prometheus/k8s/
+echo "⏳ Waiting for deployments and the Vault setup job..."
+kubectl wait --for=condition=available --timeout=300s deployment --all \
+    || echo "⚠️  Some deployments were not ready within 300s"
+kubectl wait --for=condition=complete --timeout=60s job/vault-configure \
+    || echo "⚠️  vault-configure job did not complete within 60s"
 
-echo "  📈 Deploying Grafana..."
-kubectl apply -f monitoring/grafana/k8s/
-
-# Deploy web services
-echo "  🌐 Deploying NGINX..."
-kubectl apply -f nginx/k8s/
-
-# Vault must exist before the backends that use it for secrets
-echo "  🔐 Deploying Vault..."
-kubectl apply -f vault/k8s/
-
-echo "  🐍 Deploying Python app..."
-kubectl apply -f python-app/k8s/
-
-echo "  🔧 Deploying Go app..."
-kubectl apply -f go-app/k8s/
-
-echo "  ⚛️  Deploying Frontend App..."
-kubectl apply -f frontend-app/k8s/
-
-echo "  📚 Deploying documentation..."
-kubectl apply -f documentation/k8s/
-
-# Wait for deployments to be ready
-echo "⏳ Waiting for deployments to be ready..."
-kubectl wait --for=condition=available --timeout=300s deployment --all || echo "⚠️  Warning: some deployments did not become ready within 300s"
-
-# Check for any failed pods
-echo "🔍 Checking pod status..."
-failed_pods=$(kubectl get pods --field-selector=status.phase!=Running -o jsonpath='{.items[*].metadata.name}')
-if [ ! -z "$failed_pods" ]; then
-    echo "⚠️  Some pods are not running:"
-    kubectl get pods --field-selector=status.phase!=Running
-    echo ""
-    echo "📋 Pod details:"
-    for pod in $failed_pods; do
-        echo "--- Pod: $pod ---"
-        kubectl describe pod $pod | grep -A 10 -B 5 "Events:" || true
-        echo ""
+# Completed Job pods are "Succeeded", which is expected
+not_running=$(kubectl get pods --field-selector=status.phase!=Running,status.phase!=Succeeded -o name)
+if [ -n "$not_running" ]; then
+    echo "⚠️  Pods not running:"
+    for pod in $not_running; do
+        kubectl describe "$pod" | grep -A 10 "Events:" || true
     done
 fi
 
-# Wait for services to be accessible
-echo "⏳ Waiting for services to be accessible..."
-wait_for_url "Grafana" http://grafana.localhost 60
-wait_for_url "Vault" http://vault.localhost 30
+echo "⏳ Checking ingress URLs..."
+for entry in "${URLS[@]}"; do
+    read -r name url <<< "$entry"
+    wait_for_url "$name" "$url" 60
+done
 
-# The backends store secrets in the services/ KV mount created by this job
-echo "⏳ Waiting for Vault KV mounts (services/, infra/)..."
-kubectl wait --for=condition=complete --timeout=60s job/vault-configure || echo "⚠️  Warning: vault-configure job did not complete within 60s"
-wait_for_url "Python app" http://python.localhost 30
-wait_for_url "Frontend app" http://app.localhost 30
-wait_for_url "Documentation" http://docs.localhost 30
-
-# Show service URLs
-echo ""
-echo "🎉 Cluster ready! Services available at:"
-echo "  📊 Prometheus: http://prometheus.localhost"
-echo "  📈 Grafana: http://grafana.localhost"
-echo "  🌐 NGINX: http://nginx.localhost"
-echo "  🔐 Vault: http://vault.localhost"
-echo "  🐍 Python App: http://python.localhost"
-echo "  🔧 Go App: http://go.localhost"
-echo "  ⚛️  Frontend App: http://app.localhost"
-echo "  📚 Documentation: http://docs.localhost"
-echo ""
-
-# Deploy Grafana dashboards only if Grafana is accessible
-if curl -s http://grafana.localhost > /dev/null; then
-    echo "🚀 Deploying dashboards to DEV environment..."
-    ansible-playbook monitoring/grafana/ansible/deploy-dev.yaml
+echo "📈 Provisioning Grafana datasource and dashboards..."
+if curl -sf -o /dev/null http://grafana.localhost/api/health; then
+    ansible-playbook monitoring/grafana/ansible/provision.yaml
 else
-    echo "⚠️  Skipping dashboard deployment - Grafana not accessible"
-    echo "   Run the following command manually once Grafana is ready:"
-    echo "   ansible-playbook monitoring/grafana/ansible/deploy-dev.yaml"
+    echo "⚠️  Grafana not reachable; run later: ansible-playbook monitoring/grafana/ansible/provision.yaml"
 fi
 
-echo "✅ Cluster setup complete!"
+echo "✅ Cluster ready. Grafana login: admin/admin, Vault token: root"
