@@ -8,7 +8,6 @@ from hvac.exceptions import InvalidPath, VaultError
 from requests.exceptions import RequestException
 
 DEFAULT_VAULT_ADDR = "http://vault-service:8200"
-DEFAULT_VAULT_TOKEN = "root"  # nosec B105 - dev-mode root token, see vault/README.md
 
 # Namespaces this service's secrets within the KV mount, so Vault policies
 # can scope each service to its own path.
@@ -76,7 +75,8 @@ class VaultClient:
 
         Raises:
             SecretNotFoundError: If no secret exists under key.
-            VaultClientError: If Vault is unreachable or rejects the read.
+            VaultClientError: If Vault is unreachable, rejects the read, or the
+                secret has no "value" field.
         """
         try:
             response = self._client.secrets.kv.v2.read_secret_version(
@@ -86,21 +86,24 @@ class VaultClient:
             raise SecretNotFoundError(key) from error
         except (VaultError, RequestException) as error:
             raise VaultClientError(f"failed to read secret '{key}'") from error
-        return response["data"]["data"]["value"]
+        try:
+            return response["data"]["data"]["value"]
+        except KeyError as error:
+            raise VaultClientError(f"secret '{key}' has no value field") from error
 
 
 @lru_cache(maxsize=1)
 def get_vault_client() -> VaultClient:
     """Return the process-wide VaultClient configured from the environment.
 
-    Reads VAULT_ADDR, VAULT_TOKEN and VAULT_SECRET_PATH, falling back to the
-    in-cluster service address, the dev-mode root token, and this service's
-    own path.
+    Reads VAULT_ADDR, VAULT_TOKEN and VAULT_SECRET_PATH. Address and path fall
+    back to the in-cluster service and this service's own path; the token has
+    no default and must be set.
 
     Returns:
         A cached VaultClient instance.
     """
     address = os.getenv("VAULT_ADDR", DEFAULT_VAULT_ADDR)
-    token = os.getenv("VAULT_TOKEN", DEFAULT_VAULT_TOKEN)
+    token = os.getenv("VAULT_TOKEN", "")
     secret_path = os.getenv("VAULT_SECRET_PATH", DEFAULT_SECRET_PATH)
     return VaultClient(address, token, secret_path)

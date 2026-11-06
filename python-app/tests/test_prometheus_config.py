@@ -1,3 +1,5 @@
+"""Tests for the Prometheus middleware labels and counters."""
+
 import unittest
 
 from fastapi.testclient import TestClient
