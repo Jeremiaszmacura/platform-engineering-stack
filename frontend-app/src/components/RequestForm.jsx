@@ -1,30 +1,9 @@
-/**
- * The request being built: which endpoint, with what parameters, how many
- * times — and the URL that comes out of those choices.
- */
-
 import React from 'react';
 
 import { EndpointPicker } from './EndpointPicker';
 import { MAX_REQUESTS, MIN_REQUESTS, clampCount } from '../lib/run';
 
-/**
- * Render the request form.
- *
- * @param {Object} props Component props.
- * @param {Object} props.app The backend being targeted.
- * @param {Array<Object>} props.endpoints Endpoints the backend offers.
- * @param {Object} props.endpoint The chosen endpoint.
- * @param {function(string): void} props.onSelectEndpoint Called with the chosen endpoint's name.
- * @param {{symbol: string, start: string, end: string, count: number}} props.params Request parameters.
- * @param {function(string, string|number): void} props.onChangeParam Called with a parameter name and its new value.
- * @param {string} props.targetUrl The URL a run would call.
- * @param {boolean} props.isRunning Whether a run is in flight.
- * @param {boolean} props.hasResults Whether there is anything to clear.
- * @param {function(): void} props.onRun Called to send the burst.
- * @param {function(): void} props.onClear Called to discard the results.
- * @returns {JSX.Element} The form.
- */
+/** Request form: endpoint, its parameters, request count and the resulting URL. */
 export function RequestForm({
   app,
   endpoints,

@@ -1,10 +1,4 @@
-"""End-to-end tests of Stock App: serving the UI and reaching stock-app from it.
-
-Stock App is served from its own host and calls stock-app on *its* host, so
-every price it draws is a cross-origin request. The stock-app Ingress must
-therefore answer requests carrying this origin with CORS headers — without
-them the interface loads and then shows nothing but errors.
-"""
+"""stock-ui is served, and stock-app answers its cross-origin calls with CORS headers."""
 
 import requests
 

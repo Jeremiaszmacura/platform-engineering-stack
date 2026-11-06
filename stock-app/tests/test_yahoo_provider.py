@@ -1,7 +1,4 @@
-"""Tests for the Yahoo adapter's DataFrame cleaning and mapping.
-
-yfinance is replaced by a stub, so no test here reaches the network.
-"""
+"""Tests for the Yahoo adapter's cleaning and mapping (yfinance is stubbed)."""
 
 import unittest
 from datetime import date
@@ -21,45 +18,20 @@ INFO = {"symbol": "AAPL", "longName": "Apple Inc.", "fullExchangeName": "NasdaqG
 
 
 def build_frame(rows, timestamps, timezone=EXCHANGE_TIMEZONE):
-    """Build a yfinance-shaped price history frame.
-
-    Args:
-        rows: One mapping of column name to value per row.
-        timestamps: Naive timestamp strings, localized to the exchange timezone.
-        timezone: Exchange timezone the index is localized to.
-
-    Returns:
-        A DataFrame indexed like ``Ticker.history()`` output.
-    """
+    """Return a frame shaped like Ticker.history(), indexed in the exchange timezone."""
     index = pd.DatetimeIndex(pd.to_datetime(timestamps)).tz_localize(timezone)
     return pd.DataFrame(rows, index=index)
 
 
 def build_row(close=105.0, **overrides):
-    """Build one valid OHLCV row.
-
-    Args:
-        close: Closing price, also used as the adjusted close.
-        **overrides: Column values replacing the valid defaults.
-
-    Returns:
-        A column-to-value mapping.
-    """
+    """Return one valid OHLCV row with the given columns overridden."""
     row = {"Open": 100.0, "High": 110.0, "Low": 90.0, "Close": close, "Adj Close": close, "Volume": 1000}
     row.update(overrides)
     return row
 
 
 class StubTicker:
-    """Stand-in for yfinance.Ticker returning canned data.
-
-    Attributes:
-        frame: Frame returned by history().
-        info: Mapping returned by get_info().
-        history_error: Exception history() raises instead of answering.
-        info_error: Exception get_info() raises instead of answering.
-        history_kwargs: Keyword arguments the last history() call received.
-    """
+    """Fake yfinance.Ticker returning canned data or raising the configured errors."""
 
     frame = None
     info = INFO

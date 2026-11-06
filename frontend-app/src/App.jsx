@@ -1,12 +1,4 @@
-/**
- * The application shell: navigation bar, the request being built, and what
- * came back from it.
- *
- * There is one screen here, so the state of a run lives in this component and
- * everything below it is presentational. Results are replaced by each run
- * rather than appended: the statistics describe the burst that was just sent,
- * not a session's worth of history.
- */
+/** App shell. Each run replaces the previous results, so the stats describe one burst. */
 
 import React, { useCallback, useMemo, useState } from 'react';
 
@@ -23,11 +15,7 @@ import { useTheme } from './hooks/useTheme';
 const INITIAL_APP_ID = APPS[0].id;
 const INITIAL_ENDPOINT_NAME = ENDPOINTS[INITIAL_APP_ID][0].name;
 
-/**
- * Render the application.
- *
- * @returns {JSX.Element} The app.
- */
+/** Render the app. */
 export default function App() {
   const [theme, toggleTheme] = useTheme();
   const [appId, setAppId] = useState(INITIAL_APP_ID);
@@ -42,8 +30,7 @@ export default function App() {
   const targetUrl = buildUrl(app, endpoint, params);
   const summary = useMemo(() => summarize(results), [results]);
 
-  // The two backends share no endpoints, so the selection cannot survive a
-  // change of target and falls back to the first one offered.
+  // Backends share no endpoints, so switching resets to the first one.
   const selectApp = useCallback((chosen) => {
     setAppId(chosen);
     setEndpointName(ENDPOINTS[chosen][0].name);

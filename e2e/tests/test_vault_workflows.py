@@ -1,9 +1,6 @@
-"""End-to-end tests of the Vault-backed secret workflow.
+"""Vault-backed /secret endpoints on go-app and stock-app (each has its own path under services/).
 
-go-app and stock-app expose the same /secret endpoints (see design.md), each
-backed by its own path in the services/ KV mount of the shared dev-mode Vault (services/<service>/<key>).
-Keys are randomized per test run because dev-mode Vault keeps state for the
-lifetime of its pod.
+Keys are random because dev-mode Vault keeps data while its pod lives.
 """
 
 import uuid
@@ -14,14 +11,7 @@ from cluster import REQUEST_TIMEOUT_SECONDS, SECRET_BACKENDS, VAULT_TOKEN, VAULT
 
 
 def unique_key(prefix):
-    """Return a secret key that no earlier test run can have written.
-
-    Args:
-        prefix: Human-readable prefix identifying the test.
-
-    Returns:
-        A key string of the form ``<prefix>-<random hex>``.
-    """
+    """Return a key no earlier run can have written."""
     return f"{prefix}-{uuid.uuid4().hex}"
 
 
@@ -80,12 +70,7 @@ def test_invalid_secret_payload_is_rejected(secret_backend):
 
 
 def test_secret_paths_are_isolated_between_backends():
-    """A secret written through one backend is invisible to the other.
-
-    Each service keeps its secrets under its own KV path
-    (services/go-app/... vs services/stock-app/...), so reading the same
-    key through the other backend must answer 404 in both directions.
-    """
+    """A secret written through one backend is a 404 through the other, in both directions."""
     go_app, stock_app = SECRET_BACKENDS
 
     for writer, reader in ((go_app, stock_app), (stock_app, go_app)):

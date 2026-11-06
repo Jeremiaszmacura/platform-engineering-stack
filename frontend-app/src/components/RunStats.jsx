@@ -1,23 +1,8 @@
-/**
- * The four figures that describe the last run.
- *
- * All of them are measured from the results already on screen, so nothing here
- * costs an extra request and nothing can disagree with the list below it.
- */
-
 import React from 'react';
 
-/**
- * Render the run statistics.
- *
- * @param {Object} props Component props.
- * @param {{total: number, successful: number, failed: number, averageResponseTime: number}} props.summary
- *   Figures from {@link summarize}.
- * @returns {JSX.Element} The statistics row.
- */
+/** Total, answered, failed and average time of the last run. */
 export function RunStats({ summary }) {
-  // A count of zero is not worth colouring: green on "0 answered" and red on
-  // "0 failed" both say the opposite of what the figure means.
+  // Zero counts stay uncoloured.
   const stats = [
     { label: 'Requests', value: summary.total, note: 'Sent in this run' },
     {

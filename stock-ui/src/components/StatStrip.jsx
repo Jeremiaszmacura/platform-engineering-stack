@@ -1,24 +1,9 @@
-/**
- * The four figures that describe the charted period.
- *
- * All of them are measured from the bars already on screen, so nothing here
- * costs an extra request and nothing can disagree with the chart.
- */
-
 import React from 'react';
 
 import { formatPercent, formatPrice, formatVolume } from '../lib/format';
 import { directionOf } from '../lib/series';
 
-/**
- * Render the period statistics.
- *
- * @param {Object} props Component props.
- * @param {Object} props.summary Period statistics from {@link summarize}.
- * @param {?string} props.currency Currency the prices are quoted in.
- * @param {Object} props.range Selected range.
- * @returns {JSX.Element} The statistics row.
- */
+/** Statistics for the charted period, computed from the bars on screen. */
 export function StatStrip({ summary, currency, range }) {
   const stats = [
     {

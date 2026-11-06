@@ -1,11 +1,4 @@
-/**
- * Colours handed to the chart library.
- *
- * The chart draws to a canvas, so it cannot inherit the CSS custom properties
- * in `styles/theme.css` — it has to be told its colours in JavaScript. These
- * values mirror the tokens of the same name there and must be changed together
- * with them; nothing else in the app duplicates a colour.
- */
+/** Chart colours (canvas can't use CSS variables); keep in sync with styles/theme.css. */
 
 /** Chart colours per theme, keyed by the values of `THEMES`. */
 export const PALETTES = {

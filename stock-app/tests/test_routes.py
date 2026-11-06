@@ -60,20 +60,10 @@ SUMMARY = PriceSummary(
 
 
 class FakeService:
-    """Stand-in for PriceHistoryService returning canned results.
-
-    Attributes:
-        error: Exception raised instead of answering, if set.
-        summary: Summary returned by get_price_summary().
-    """
+    """Fake PriceHistoryService returning canned results or raising error."""
 
     def __init__(self, error=None, summary=SUMMARY):
-        """Create the fake.
-
-        Args:
-            error: Exception to raise on every call, if any.
-            summary: Summary to return, possibly None.
-        """
+        """Create the fake with an optional error and the summary to return."""
         self.error = error
         self.summary = summary
 
@@ -106,18 +96,10 @@ class FakeService:
 
 
 class FakeRepository:
-    """Stand-in for the repository, used only by the health route.
-
-    Attributes:
-        healthy: Value returned by check_health().
-    """
+    """Fake repository for the health route."""
 
     def __init__(self, healthy=True):
-        """Create the fake.
-
-        Args:
-            healthy: Whether the store reports itself reachable.
-        """
+        """Create the fake; healthy is what check_health() returns."""
         self.healthy = healthy
 
     def check_health(self):
@@ -126,19 +108,10 @@ class FakeRepository:
 
 
 class FakeSecretStore:
-    """In-memory stand-in for the Vault-backed secret store.
-
-    Attributes:
-        stored: Values written, keyed by secret key.
-        error: Exception raised instead of answering, if set.
-    """
+    """In-memory secret store that can raise error."""
 
     def __init__(self, error=None):
-        """Create the fake.
-
-        Args:
-            error: Exception to raise on every call, if any.
-        """
+        """Create the fake with an optional error to raise."""
         self.stored = {}
         self.error = error
 
@@ -346,12 +319,7 @@ class TestSecretEndpoints(RouteTestCase):
 
 
 class TestErrorShape(RouteTestCase):
-    """Tests that every failure answers the single ErrorResponse of the contract.
-
-    The two sources of a 422 - a schema the framework rejected and a
-    cross-parameter rule the service checks itself - must not answer in two
-    different shapes.
-    """
+    """Tests that every failure, including both kinds of 422, uses the contract's ErrorResponse."""
 
     def test_a_rejected_schema_answers_one_detail_string(self):
         body = self.client.get(BARS_URL, params={"end": "2026-06-26"}).json()

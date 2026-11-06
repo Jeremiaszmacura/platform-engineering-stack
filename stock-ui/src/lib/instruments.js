@@ -1,53 +1,22 @@
-/**
- * Matching a typed query against the instruments stock-app already holds.
- *
- * stock-app has no company-search endpoint: `/api/v1/instruments` lists what
- * has been synced into TimescaleDB, with the company name attached. So the
- * suggestions come from that list and are filtered here in the browser, while
- * a ticker nobody has loaded yet is still reachable by typing it in full — the
- * bars request fetches it from the provider and it joins the list afterwards.
- */
+/** Search over the instruments stock-app holds (it has no search endpoint). */
 
-/**
- * Symbol alphabet stock-app accepts. Mirrors SYMBOL_PATTERN in its params
- * module: a query outside it cannot be a ticker, so it is never offered as one.
- */
+/** Same as stock-app's SYMBOL_PATTERN. */
 const SYMBOL_PATTERN = /^[A-Za-z0-9.-]{1,16}$/;
 
 /** How many suggestions the dropdown shows at once. */
 export const MAX_SUGGESTIONS = 7;
 
-/**
- * Report whether a query could be a ticker stock-app would accept.
- *
- * @param {string} query Raw text typed into the search box.
- * @returns {boolean} True when the query is shaped like a ticker symbol.
- */
+/** True if query looks like a ticker stock-app accepts. */
 export function isLoadableSymbol(query) {
   return SYMBOL_PATTERN.test(query.trim());
 }
 
-/**
- * Normalize typed text into the ticker stock-app is asked for.
- *
- * @param {string} query Raw text typed into the search box.
- * @returns {string} Trimmed, upper-cased symbol.
- */
+/** Return query trimmed and upper-cased. */
 export function toSymbol(query) {
   return query.trim().toUpperCase();
 }
 
-/**
- * Rank one instrument against a query. Lower sorts first; null means no match.
- *
- * Symbol matches outrank name matches, and matches at the start of either
- * outrank matches in the middle: someone typing "AA" wants AAPL before
- * Alcoa Corporation, and "app" should still find Apple Inc.
- *
- * @param {Object} instrument Instrument to score.
- * @param {string} query Lower-cased query.
- * @returns {?number} Rank of the match, or null when the instrument does not match.
- */
+/** Return a match rank (lower is better) or null: symbol before name, prefix before substring. */
 function rankMatch(instrument, query) {
   const symbol = instrument.symbol.toLowerCase();
   const name = (instrument.name || '').toLowerCase();
@@ -69,15 +38,7 @@ function rankMatch(instrument, query) {
   return null;
 }
 
-/**
- * Filter and rank instruments for the search dropdown.
- *
- * @param {Array<Object>} instruments Instruments held by stock-app.
- * @param {string} query Raw text typed into the search box; blank returns the
- *   head of the list, so the dropdown is useful before anything is typed.
- * @param {number} [limit] Maximum number of suggestions to return.
- * @returns {Array<Object>} Matching instruments, best match first.
- */
+/** Return up to `limit` instruments matching query, best first (a blank query returns the first ones). */
 export function matchInstruments(instruments, query, limit = MAX_SUGGESTIONS) {
   const normalized = query.trim().toLowerCase();
   if (normalized === '') {

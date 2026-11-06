@@ -1,9 +1,4 @@
-"""Tests for the Vault adapter, with hvac's KV engine replaced by a fake.
-
-The adapter's whole job is translating hvac's exceptions into the two domain
-errors and namespacing every key under this service's path, so both are what
-these tests pin down.
-"""
+"""Tests for the Vault adapter: error translation and per-service key paths, with a fake KV engine."""
 
 import unittest
 from types import SimpleNamespace
@@ -19,20 +14,10 @@ SECRET_PATH = "stock-app"  # nosec B105 - Vault path name, not a secret
 
 
 class FakeKeyValueEngine:
-    """Stand-in for hvac's KV v2 engine.
-
-    Attributes:
-        stored: Values written, keyed by the full path they were written to.
-        error: Exception raised instead of answering, if set.
-        calls: Mount points and paths seen, for asserting on namespacing.
-    """
+    """Fake hvac KV v2 engine that records calls and can raise error."""
 
     def __init__(self, error=None):
-        """Create the fake.
-
-        Args:
-            error: Exception to raise on every call, if any.
-        """
+        """Create the fake with an optional error to raise."""
         self.stored = {}
         self.error = error
         self.calls = []
@@ -58,17 +43,7 @@ class FakeKeyValueEngine:
 
 
 def build_store(error=None):
-    """Build a store whose hvac client is a fake.
-
-    ``hvac.Client.secrets.kv.v2`` is a read-only property, so the client is
-    replaced at construction time rather than reached into afterwards.
-
-    Args:
-        error: Exception the fake raises on every call, if any.
-
-    Returns:
-        The store and the fake KV engine behind it.
-    """
+    """Return a store with a fake KV engine (set at construction, as the hvac property is read-only) and the fake."""
     engine = FakeKeyValueEngine(error)
     client = SimpleNamespace(secrets=SimpleNamespace(kv=SimpleNamespace(v2=engine)))
     with patch("src.adapters.secrets.vault.hvac.Client", return_value=client):

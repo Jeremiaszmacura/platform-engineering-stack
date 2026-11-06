@@ -59,8 +59,7 @@ func PrometheusMiddleware() gin.HandlerFunc {
 		// Calculate duration
 		duration := time.Since(start).Seconds()
 
-		// Label with the matched route template; a constant for unmatched routes
-		// keeps label cardinality bounded (bot probes must not mint new series)
+		// Route template as label; unmatched paths share one label to bound cardinality.
 		endpoint := c.FullPath()
 		if endpoint == "" {
 			endpoint = "unmatched"

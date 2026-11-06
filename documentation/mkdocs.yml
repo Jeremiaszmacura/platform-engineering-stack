@@ -16,8 +16,7 @@ nav:
       - Vault: services/vault.md
       - Monitoring: services/monitoring.md
       - Documentation: services/documentation.md
-# Renders a service's OpenAPI contract without copying it into docs/; the hook
-# injects the file the service itself owns. See hooks/contracts.py.
+# Adds stock-app/openapi.yaml to the site (see hooks/contracts.py).
 hooks:
   - hooks/contracts.py
 plugins:

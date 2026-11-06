@@ -1,19 +1,8 @@
-/**
- * The icon set, inline so the app ships no icon font and makes no network
- * request for its own chrome. Every icon inherits `currentColor` and is hidden
- * from assistive technology — the control around it carries the label.
- */
+/** Inline SVG icons; they use currentColor and are hidden from screen readers. */
 
 import React from 'react';
 
-/**
- * Shared frame for every icon: a 24-unit square stroked in the current colour.
- *
- * @param {Object} props Component props.
- * @param {number} [props.size] Rendered edge length in pixels.
- * @param {React.ReactNode} props.children Path elements of the icon.
- * @returns {JSX.Element} The icon.
- */
+/** Shared 24-unit icon frame. */
 function Icon({ size = 18, children }) {
   return (
     <svg

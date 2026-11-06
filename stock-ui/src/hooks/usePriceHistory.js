@@ -1,11 +1,3 @@
-/**
- * Loading the bars for the selected symbol and range.
- *
- * Switching range while a slow first fetch is still running would otherwise
- * let the older response overwrite the newer one, so each run marks itself
- * stale on cleanup and a stale run drops its result.
- */
-
 import { useEffect, useState } from 'react';
 
 import { fetchPriceHistory } from '../api/stockApi';
@@ -22,13 +14,9 @@ export const LOAD_STATUS = {
 const IDLE_STATE = { status: LOAD_STATUS.idle, history: null, error: null };
 
 /**
- * Fetch daily bars whenever the symbol or the range changes.
+ * Return {status, history, error} for symbol and rangeId; onLoaded gets each loaded history.
  *
- * @param {?string} symbol Ticker to chart, or null when nothing is selected.
- * @param {string} rangeId Id of the selected range.
- * @param {function(Object): void} [onLoaded] Called with the history after a
- *   successful load, so a caller can react to a newly synced symbol.
- * @returns {{status: string, history: ?Object, error: ?Error}} The current load state.
+ * A superseded request's result is ignored, so a slow old response can't overwrite a newer one.
  */
 export function usePriceHistory(symbol, rangeId, onLoaded) {
   const [state, setState] = useState(IDLE_STATE);
@@ -61,8 +49,7 @@ export function usePriceHistory(symbol, rangeId, onLoaded) {
     return () => {
       stale = true;
     };
-    // onLoaded is intentionally not a dependency: it only reports a completed
-    // load, and re-running the fetch when the caller re-creates it would loop.
+    // onLoaded is left out on purpose: re-fetching when it changes would loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol, rangeId]);
 

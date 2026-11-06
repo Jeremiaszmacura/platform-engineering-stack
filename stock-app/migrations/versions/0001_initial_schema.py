@@ -1,4 +1,4 @@
-"""Initial market data schema: instruments ledger and the price_bars hypertable.
+"""Initial schema: instruments ledger and the price_bars hypertable.
 
 Revision ID: 0001
 Revises:
@@ -28,10 +28,8 @@ def upgrade() -> None:
         sa.Column("name", sa.Text),
         sa.Column("exchange", sa.Text),
         sa.Column("currency", sa.Text),
-        # The sync ledger: the session-date window already requested from the
-        # provider, not the dates of the bars that came back. Weekends and
-        # holidays produce no bars, so a window derived from bar dates would
-        # look incomplete forever and refetch on every request.
+        # Sync ledger: the window requested from the provider, not the bar dates
+        # (weekends and holidays have no bars).
         sa.Column("first_synced_date", sa.Date),
         sa.Column("last_synced_date", sa.Date),
         sa.Column("last_synced_at", sa.DateTime(timezone=True)),
@@ -42,8 +40,7 @@ def upgrade() -> None:
         "price_bars",
         sa.Column("symbol", sa.Text, sa.ForeignKey("instruments.symbol", ondelete="CASCADE"), nullable=False),
         sa.Column("interval", sa.Text, nullable=False),
-        # Session date at 00:00:00 UTC; the exchange-local to UTC conversion
-        # happens in the provider adapter.
+        # Session date at 00:00 UTC.
         sa.Column("ts", sa.DateTime(timezone=True), nullable=False),
         sa.Column("open", PRICE, nullable=False),
         sa.Column("high", PRICE, nullable=False),
@@ -53,9 +50,7 @@ def upgrade() -> None:
         sa.Column("volume", sa.BigInteger, nullable=False),
         sa.Column("source", sa.Text, nullable=False),
         sa.Column("ingested_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        # TimescaleDB requires the partitioning column in every unique index,
-        # which is why ts is part of the primary key. It is also the
-        # ON CONFLICT target of the upsert.
+        # TimescaleDB needs the partition column (ts) in every unique index; also the upsert target.
         sa.PrimaryKeyConstraint("symbol", "interval", "ts"),
     )
 

@@ -12,14 +12,7 @@ SESSION = date(2026, 6, 25)
 
 
 def build_bar(**overrides) -> PriceBar:
-    """Build a valid bar, overriding the given fields.
-
-    Args:
-        **overrides: Field values replacing the valid defaults.
-
-    Returns:
-        The constructed PriceBar.
-    """
+    """Return a valid bar with the given fields overridden."""
     fields = {
         "symbol": "AAPL",
         "interval": Interval.DAY,

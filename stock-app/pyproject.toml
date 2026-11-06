@@ -1,15 +1,10 @@
-# Only tool configuration; the service is not packaged, it is copied into an
-# image and run as `src.main:app`.
+# Tool configuration only; the service is not packaged.
 
-# datamodel-code-generator shells out to black, so it must agree with the
-# repo-wide `--line-length=120` in ../.pre-commit-config.yaml or the generated
-# file would be reformatted on commit and never match its own generator.
+# Must match pre-commit's line length, or generated models.py would be reformatted.
 [tool.black]
 line-length = 120
 
-# `tox -e api` regenerates the HTTP models from the contract with no arguments,
-# and `tox -e pre-commit` reruns the same generation into a temporary file to
-# fail on drift. Keeping the flags here means both use identical settings.
+# Shared by `tox -e api` and the drift check in `tox -e pre-commit`.
 [tool.datamodel-codegen]
 input = "openapi.yaml"
 input-file-type = "openapi"
@@ -20,8 +15,7 @@ formatters = ["black", "isort"]
 custom-file-header = """\
 # Generated from openapi.yaml by datamodel-code-generator - do not edit.
 # Change the contract and run `tox -e api`; `make lint-python` fails on drift."""
-# snake_case attributes with camelCase aliases: Pythonic in code, camelCase on
-# the wire, which is what the browser front end expects.
+# snake_case in Python, camelCase on the wire.
 snake-case-field = true
 allow-population-by-field-name = true
 # Enums become Literal types, so a two-value enum costs no extra class.

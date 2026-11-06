@@ -1,11 +1,4 @@
-/*
- * The pieces the console is assembled from.
- *
- * The one loud element is `.result` — the response that came back. It carries
- * the coloured rail on its left edge, the same device stock-ui gives its
- * crosshair readout, because reading a status code off the list is the reason
- * anyone opens this tool. Everything around it stays flat and quiet.
- */
+/* Components. Each result row has a coloured rail for its status. */
 
 /* Endpoint picker -------------------------------------------------------- */
 
@@ -264,10 +257,7 @@
   color: var(--tone);
 }
 
-/*
- * The hop a 3xx caused. The status reads 200 because the browser followed the
- * redirect before the app saw it, so the redirect has to announce itself.
- */
+/* Shows where a followed redirect landed (the browser reports 200). */
 .result__followed {
   color: var(--tone);
 }

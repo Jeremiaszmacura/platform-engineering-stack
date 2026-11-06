@@ -1,26 +1,11 @@
-/**
- * Turning stock-app's OHLCV bars into what the chart and the statistics row
- * need. Everything here is a pure function over the bar array, so the numbers
- * on screen can be tested without a browser or a running cluster.
- */
+/** Pure transforms from stock-app bars to chart series and period statistics. */
 
-/**
- * Map bars onto the point series a line chart draws, keyed on the closing price.
- *
- * @param {Array<Object>} bars Bars in ascending session-date order.
- * @returns {Array<{time: string, value: number}>} Points for a line/area series.
- */
+/** Return line/area points from closing prices. */
 export function toLinePoints(bars) {
   return bars.map((bar) => ({ time: bar.date, value: bar.close }));
 }
 
-/**
- * Map bars onto the candle series a candlestick chart draws.
- *
- * @param {Array<Object>} bars Bars in ascending session-date order.
- * @returns {Array<{time: string, open: number, high: number, low: number, close: number}>}
- *   Candles for a candlestick series.
- */
+/** Return candlestick points. */
 export function toCandlePoints(bars) {
   return bars.map((bar) => ({
     time: bar.date,
@@ -31,27 +16,12 @@ export function toCandlePoints(bars) {
   }));
 }
 
-/**
- * Index bars by session date so the crosshair can read a whole bar back from
- * the date it is hovering, whichever series type is drawn.
- *
- * @param {Array<Object>} bars Bars to index.
- * @returns {Map<string, Object>} Bars keyed by their `YYYY-MM-DD` session date.
- */
+/** Return bars keyed by session date, for the crosshair readout. */
 export function indexBarsByDate(bars) {
   return new Map(bars.map((bar) => [bar.date, bar]));
 }
 
-/**
- * Summarize a period the way the header and the statistics row present it.
- *
- * The change is measured close-to-close across the bars actually returned, so
- * it always describes the line that is drawn rather than the dates that were
- * requested — a range starting on a weekend begins at the first session in it.
- *
- * @param {Array<Object>} bars Bars in ascending session-date order.
- * @returns {?Object} Period statistics, or null when the period holds no bars.
- */
+/** Return period statistics (close-to-close change over the returned bars), or null if there are none. */
 export function summarize(bars) {
   if (bars.length === 0) {
     return null;
@@ -65,8 +35,7 @@ export function summarize(bars) {
     firstClose: first.close,
     lastClose: last.close,
     change,
-    // A zero opening close would make the percentage meaningless rather than
-    // infinite, so it is reported as absent and the UI shows a dash.
+    // A zero first close makes the percentage meaningless.
     changePercent: first.close === 0 ? null : (change / first.close) * 100,
     periodHigh: bars.reduce((high, bar) => Math.max(high, bar.high), first.high),
     periodLow: bars.reduce((low, bar) => Math.min(low, bar.low), first.low),
@@ -75,12 +44,7 @@ export function summarize(bars) {
   };
 }
 
-/**
- * Classify a change for colouring: gains, losses and flat read differently.
- *
- * @param {?number} change Signed change, or null when it could not be measured.
- * @returns {'up'|'down'|'flat'} Direction of the change.
- */
+/** Return 'up', 'down' or 'flat' for a change. */
 export function directionOf(change) {
   if (change === null || change === undefined || change === 0) {
     return 'flat';

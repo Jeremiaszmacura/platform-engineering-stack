@@ -1,9 +1,4 @@
-"""Yahoo Finance implementation of the MarketDataProvider port.
-
-This is the only module allowed to import pandas or yfinance: cleaning is done
-vectorized on the DataFrame, and domain objects are materialized once at the
-end, with pydantic acting as the final invariant gate on already-clean data.
-"""
+"""Yahoo Finance provider; the only module that imports pandas or yfinance."""
 
 import time
 from contextlib import contextmanager
@@ -38,11 +33,7 @@ PRICE_DECIMALS = 4
 
 
 class YahooMarketDataProvider:
-    """Fetches daily bars and instrument metadata from Yahoo Finance.
-
-    Attributes:
-        name: Provider name recorded on stored rows and used as a metric label.
-    """
+    """Fetches daily bars and instrument metadata from Yahoo Finance."""
 
     name = PROVIDER_NAME
 
@@ -51,20 +42,9 @@ class YahooMarketDataProvider:
         register_provider(self.name)
 
     def fetch_daily_bars(self, symbol: str, start: date, end: date) -> list[PriceBar]:
-        """Return Yahoo's daily bars for a symbol over an inclusive date range.
+        """Return validated bars for symbol within start..end, oldest first.
 
-        Args:
-            symbol: Normalized ticker symbol.
-            start: First session date to fetch.
-            end: Last session date to fetch.
-
-        Returns:
-            Validated bars in ascending session-date order; empty when the
-            range holds no trading sessions.
-
-        Raises:
-            SymbolNotFoundError: If Yahoo does not know the symbol.
-            ProviderError: If the request fails for any other reason.
+        Raises SymbolNotFoundError for an unknown symbol and ProviderError for other failures.
         """
         with self._timed_call():
             frame = self._request_history(symbol, start, end)
@@ -73,19 +53,7 @@ class YahooMarketDataProvider:
         return self._to_price_bars(symbol, self._clean(frame))
 
     def fetch_instrument(self, symbol: str) -> Instrument:
-        """Return Yahoo's metadata for a symbol.
-
-        Args:
-            symbol: Normalized ticker symbol.
-
-        Returns:
-            The instrument with descriptive fields filled in and an empty
-            sync ledger.
-
-        Raises:
-            SymbolNotFoundError: If Yahoo does not know the symbol.
-            ProviderError: If the request fails for any other reason.
-        """
+        """Return metadata for symbol; raise SymbolNotFoundError or ProviderError."""
         with self._timed_call():
             info = self._request_info(symbol)
         return Instrument(
@@ -98,11 +66,7 @@ class YahooMarketDataProvider:
 
     @contextmanager
     def _timed_call(self):
-        """Time one provider call and count its outcome.
-
-        Yields:
-            Control to the caller, whose exceptions classify the outcome.
-        """
+        """Time one provider call and record its outcome."""
         started_at = time.monotonic()
         try:
             yield
@@ -115,24 +79,9 @@ class YahooMarketDataProvider:
         record_provider_call(self.name, ProviderOutcome.SUCCESS, time.monotonic() - started_at)
 
     def _request_history(self, symbol: str, start: date, end: date) -> pd.DataFrame:
-        """Call yfinance for the raw daily price history.
-
-        Args:
-            symbol: Normalized ticker symbol.
-            start: First session date to fetch.
-            end: Last session date to fetch.
-
-        Returns:
-            The raw DataFrame, empty when Yahoo holds no prices for the range.
-
-        Raises:
-            SymbolNotFoundError: If Yahoo does not know the symbol.
-            ProviderError: If the request fails for any other reason.
-        """
+        """Return yfinance's raw daily history; raise SymbolNotFoundError or ProviderError."""
         try:
-            # yfinance treats `end` as exclusive while the port's range is
-            # inclusive. auto_adjust=False is load-bearing: the default folds
-            # adjustments into Close and drops Adj Close, and both are stored.
+            # yfinance's end is exclusive. auto_adjust=False keeps both Close and Adj Close.
             return yf.Ticker(symbol).history(
                 start=start,
                 end=end + timedelta(days=1),
@@ -149,18 +98,7 @@ class YahooMarketDataProvider:
             raise ProviderError(f"yahoo price history request failed for {symbol}") from error
 
     def _request_info(self, symbol: str) -> dict:
-        """Call yfinance for the raw instrument metadata.
-
-        Args:
-            symbol: Normalized ticker symbol.
-
-        Returns:
-            Yahoo's info mapping for the symbol.
-
-        Raises:
-            SymbolNotFoundError: If Yahoo does not know the symbol.
-            ProviderError: If the request fails for any other reason.
-        """
+        """Return yfinance's info mapping; raise SymbolNotFoundError or ProviderError."""
         try:
             info = yf.Ticker(symbol).get_info()
         except YFTickerMissingError as error:
@@ -173,19 +111,7 @@ class YahooMarketDataProvider:
 
     @staticmethod
     def _clean(frame: pd.DataFrame) -> pd.DataFrame:
-        """Drop unusable rows and normalize the frame, vectorized.
-
-        Holiday and trading-halt rows carry NaN prices, Yahoo occasionally
-        repeats a session, and rows are not guaranteed to arrive in order.
-
-        Args:
-            frame: Raw DataFrame as returned by yfinance.
-
-        Returns:
-            A frame with NaN-priced rows dropped, duplicate sessions collapsed
-            to the last occurrence, rows sorted chronologically and prices
-            rounded to the stored precision.
-        """
+        """Drop NaN-priced rows, dedupe sessions (keep last), sort and round prices."""
         cleaned = frame.dropna(subset=PRICE_COLUMNS)
         cleaned = cleaned[~cleaned.index.duplicated(keep="last")].sort_index()
         rounded = [column for column in (*PRICE_COLUMNS, ADJ_CLOSE_COLUMN) if column in cleaned.columns]
@@ -193,19 +119,7 @@ class YahooMarketDataProvider:
         return cleaned
 
     def _to_price_bars(self, symbol: str, frame: pd.DataFrame) -> list[PriceBar]:
-        """Materialize domain objects from a cleaned frame.
-
-        The index is already localized to the exchange timezone by yfinance,
-        so its ``date`` is the trading session in the exchange's own calendar.
-
-        Args:
-            symbol: Normalized ticker symbol.
-            frame: Cleaned DataFrame.
-
-        Returns:
-            The bars that satisfy every domain invariant; rows that do not are
-            counted as rejections and dropped.
-        """
+        """Build PriceBars from a cleaned frame; invalid rows are counted and dropped."""
         bars = []
         for session_date, row in zip(frame.index.date, frame.to_dict("records"), strict=True):
             bar = self._to_price_bar(symbol, session_date, row)
@@ -214,16 +128,7 @@ class YahooMarketDataProvider:
         return bars
 
     def _to_price_bar(self, symbol: str, session_date, row: dict) -> PriceBar | None:
-        """Build one bar, counting and dropping the row if it violates an invariant.
-
-        Args:
-            symbol: Normalized ticker symbol.
-            session_date: Session date taken from the exchange-local index.
-            row: One row of the cleaned frame as a column-to-value mapping.
-
-        Returns:
-            The bar, or None when the row could not be validated.
-        """
+        """Return one PriceBar, or None (counted as rejected) if the row breaks an invariant."""
         try:
             return PriceBar(
                 symbol=symbol,
@@ -239,24 +144,13 @@ class YahooMarketDataProvider:
         except ValidationError:
             record_rejected_row(self.name, RejectionReason.VALIDATION)
         except (TypeError, ValueError):
-            # A pd.NaT index entry raises a bare TypeError rather than a
-            # ValidationError, so a malformed date is a rejection, not a 500.
+            # A NaT index raises TypeError, not ValidationError.
             record_rejected_row(self.name, RejectionReason.MALFORMED)
         return None
 
     @staticmethod
     def _optional_price(value) -> float | None:
-        """Return a price, or None when the provider left it unreported.
-
-        The adjusted close is optional in the domain, so a missing one drops
-        that single column rather than the whole bar.
-
-        Args:
-            value: Raw value from the frame, possibly NaN or absent.
-
-        Returns:
-            The value, or None when it is absent or NaN.
-        """
+        """Return the price, or None if it is missing or NaN."""
         if value is None or pd.isna(value):
             return None
         return value

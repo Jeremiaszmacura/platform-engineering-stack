@@ -1,11 +1,3 @@
-/**
- * The navigation bar: brand, section tabs, company search, theme switch and
- * the account chip.
- *
- * Below 960px the tabs move to their own row behind a toggle. The search box
- * never collapses into an icon — finding a company is the bar's main job.
- */
-
 import React, { useState } from 'react';
 
 import { AccountMenu } from './AccountMenu';
@@ -13,19 +5,7 @@ import { MarkIcon, MenuIcon } from './Icons';
 import { SymbolSearch } from './SymbolSearch';
 import { ThemeToggle } from './ThemeToggle';
 
-/**
- * Render the navigation bar.
- *
- * @param {Object} props Component props.
- * @param {Array<{id: string, label: string}>} props.sections Sections to offer.
- * @param {string} props.activeSection Id of the section on screen.
- * @param {function(string): void} props.onSelectSection Called with the chosen section id.
- * @param {Array<Object>} props.instruments Instruments the search suggests from.
- * @param {function(string): void} props.onSelectSymbol Called with a chosen ticker symbol.
- * @param {string} props.theme Active colour scheme.
- * @param {function(): void} props.onToggleTheme Called to switch the colour scheme.
- * @returns {JSX.Element} The navigation bar.
- */
+/** Navigation bar: brand, section tabs, search, theme switch and account chip (tabs collapse below 960px). */
 export function NavBar({
   sections,
   activeSection,

@@ -1,21 +1,13 @@
-"""Prometheus instrumentation for stock-app.
+"""Prometheus metrics for stock-app.
 
-Metric definitions live here rather than in an adapter because both the
-application layer (cache outcomes) and the adapters (provider calls, upserts,
-HTTP requests) report into them. The module deliberately imports no web
-framework, so the application layer stays free of adapter dependencies.
-
-No metric is ever labeled by symbol: symbols arrive in request paths from
-untrusted callers, so a symbol label would be an unbounded-cardinality denial
-of service vector rather than merely untidy.
+Never label by symbol: symbols come from untrusted requests and would create unbounded series.
 """
 
 from enum import StrEnum
 
 from prometheus_client import Counter, Histogram
 
-# Generic HTTP instrumentation, using the same metric names as go-app so
-# dashboards can share queries.
+# Same names as go-app, so dashboards share queries.
 REQUEST_COUNT = Counter("http_requests_total", "Total number of HTTP requests", ["method", "endpoint", "status_code"])
 
 REQUEST_DURATION = Histogram(
@@ -74,15 +66,7 @@ class RejectionReason(StrEnum):
 
 
 def register_provider(provider: str) -> None:
-    """Create zero-valued series for every label combination of a provider.
-
-    Counters are invisible until their first increment, which would leave
-    dashboards and alerts querying metrics that do not exist yet on a freshly
-    started pod.
-
-    Args:
-        provider: Provider name used as the ``provider`` label value.
-    """
+    """Create zero-valued series for a provider, so they exist before the first call."""
     for outcome in ProviderOutcome:
         PROVIDER_REQUESTS.labels(provider=provider, outcome=outcome.value)
     for reason in RejectionReason:
@@ -92,44 +76,23 @@ def register_provider(provider: str) -> None:
 
 
 def record_cache_lookup(outcome: CacheOutcome) -> None:
-    """Count one price history lookup.
-
-    Args:
-        outcome: Whether the request was served from cache, missed entirely,
-            or refreshed the trailing edge.
-    """
+    """Count one price history lookup by cache outcome."""
     CACHE_LOOKUPS.labels(outcome=outcome.value).inc()
 
 
 def record_provider_call(provider: str, outcome: ProviderOutcome, duration_seconds: float) -> None:
-    """Count one provider call and record how long it took.
-
-    Args:
-        provider: Provider name.
-        outcome: Result of the call.
-        duration_seconds: Wall-clock duration of the call.
-    """
+    """Count one provider call and record its duration."""
     PROVIDER_REQUESTS.labels(provider=provider, outcome=outcome.value).inc()
     PROVIDER_DURATION.labels(provider=provider).observe(duration_seconds)
 
 
 def record_rejected_row(provider: str, reason: RejectionReason) -> None:
-    """Count one provider row dropped before it reached the domain.
-
-    Args:
-        provider: Provider name.
-        reason: Why the row was dropped.
-    """
+    """Count one provider row dropped by validation."""
     ROWS_REJECTED.labels(provider=provider, reason=reason.value).inc()
 
 
 def record_bars_upserted(provider: str, count: int) -> None:
-    """Count bars written to the store.
-
-    Args:
-        provider: Provider the bars originated from.
-        count: Number of bars written.
-    """
+    """Count bars written to the store."""
     BARS_UPSERTED.labels(provider=provider).inc(count)
 
 

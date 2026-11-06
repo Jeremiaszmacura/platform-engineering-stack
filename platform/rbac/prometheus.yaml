@@ -1,7 +1,4 @@
-# Cluster-scoped RBAC for Prometheus Kubernetes service discovery.
-# Read-only: Prometheus only lists/watches discovery objects and scrapes
-# /metrics. The prometheus ServiceAccount itself lives with the component
-# (monitoring/prometheus/k8s/) — only the cluster-scoped grant lives here.
+# Read-only API access for Prometheus service discovery (its ServiceAccount lives in monitoring/prometheus/k8s/).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

@@ -1,12 +1,3 @@
-/**
- * Colour scheme selection.
- *
- * Dark is the default because the interface is built for it; the choice is
- * kept in local storage so it survives a reload, and applied as a `data-theme`
- * attribute on the document root that every stylesheet keys off. This is the
- * same arrangement stock-ui uses, under this app's own storage key.
- */
-
 import { useCallback, useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'api-tester:theme';
@@ -14,14 +5,7 @@ const STORAGE_KEY = 'api-tester:theme';
 /** Colour schemes the interface can be shown in. */
 export const THEMES = { dark: 'dark', light: 'light' };
 
-/**
- * Read the stored preference, falling back to dark.
- *
- * Private-mode browsers throw on local storage access rather than returning
- * null, so a failure to read is treated as "no preference stored".
- *
- * @returns {string} The theme to start in.
- */
+/** Return the stored theme, or dark (storage access can throw in private mode). */
 function readStoredTheme() {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -31,11 +15,7 @@ function readStoredTheme() {
   }
 }
 
-/**
- * Hold the active theme, apply it to the document, and remember the choice.
- *
- * @returns {[string, function(): void]} The active theme and a function toggling it.
- */
+/** Return [theme, toggle]; the theme is stored and set as data-theme on <html>. */
 export function useTheme() {
   const [theme, setTheme] = useState(readStoredTheme);
 

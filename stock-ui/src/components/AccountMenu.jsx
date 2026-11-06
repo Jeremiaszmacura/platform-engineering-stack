@@ -1,10 +1,4 @@
-/**
- * The account chip and its menu.
- *
- * There are no accounts and no sign-in: this app holds no session and calls no
- * auth backend. The menu is here so the shell reads as a complete product, and
- * it says so rather than pretending an action happened.
- */
+/** Account chip and menu. There are no accounts; the menu says so. */
 
 import React, { useRef, useState } from 'react';
 
@@ -13,11 +7,7 @@ import { DEMO_ACCOUNT } from '../mocks/demoData';
 
 const MENU_ITEMS = ['Profile', 'Preferences', 'Billing', 'Sign out'];
 
-/**
- * Render the account chip, opening a menu of items that do nothing.
- *
- * @returns {JSX.Element} The account control.
- */
+/** Render the account chip and its inert menu. */
 export function AccountMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);

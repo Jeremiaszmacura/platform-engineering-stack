@@ -1,6 +1,4 @@
-# Machine-checked hexagonal architecture. `make lint-python` runs `lint-imports`
-# here, so a violation of the dependency rule fails the build instead of waiting
-# for a reviewer to notice it.
+# Hexagonal layering rules, checked by `lint-imports` in `make lint-python`.
 [importlinter]
 root_package = src
 # Required for the forbidden contracts below, which name third-party packages.

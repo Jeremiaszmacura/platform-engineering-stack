@@ -1,6 +1,5 @@
 ---
-# Shared settings for the Grafana playbooks. Dev-only credentials; they must
-# match monitoring/grafana/k8s/grafana-admin-secret.yaml.
+# Dev-only; must match monitoring/grafana/k8s/grafana-admin-secret.yaml.
 grafana_url: "http://grafana.localhost"
 grafana_user: "admin"
 grafana_password: "admin"

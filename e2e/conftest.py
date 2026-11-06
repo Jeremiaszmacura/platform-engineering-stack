@@ -14,11 +14,7 @@ from cluster import (
 
 @pytest.fixture(scope="session", autouse=True)
 def cluster_ready():
-    """Block until every cluster service answers on its host port.
-
-    Fails the whole session fast with a clear message naming the unreachable
-    service instead of letting every test time out individually.
-    """
+    """Wait until every service answers, failing fast with the name of the one that doesn't."""
     for name, url in SERVICE_URLS.items():
         wait_until(
             lambda url=url: service_responds(url),
@@ -29,19 +25,11 @@ def cluster_ready():
 
 @pytest.fixture(params=BACKENDS, ids=lambda backend: backend.name)
 def backend(request):
-    """Run the requesting test once per sample backend (currently just go-app).
-
-    Returns:
-        The Backend under test.
-    """
+    """Run the test once per sample backend (go-app)."""
     return request.param
 
 
 @pytest.fixture(params=SECRET_BACKENDS, ids=lambda backend: backend.name)
 def secret_backend(request):
-    """Run the requesting test once per backend with /secret endpoints (go-app, stock-app).
-
-    Returns:
-        The Backend under test.
-    """
+    """Run the test once per backend with /secret endpoints (go-app, stock-app)."""
     return request.param

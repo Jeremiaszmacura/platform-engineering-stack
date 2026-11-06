@@ -1,11 +1,4 @@
-/*
- * The pieces the views are assembled from.
- *
- * The one loud element on the page is `.readout` — the card that follows the
- * crosshair and reads out the hovered session. It is the reason someone opens
- * a price chart, so it gets the accent rail, the float shadow and the largest
- * data type; everything around it stays flat and quiet.
- */
+/* Components. The crosshair readout is the only emphasized element. */
 
 /* Search ----------------------------------------------------------------- */
 

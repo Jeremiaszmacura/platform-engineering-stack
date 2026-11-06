@@ -19,8 +19,7 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001  # Matches the stockapp user created in the Dockerfile
-      # The migration container and the app container must agree on the
-      # database, so both take the same environment through this anchor.
+      # Both containers share this environment (YAML anchor).
       initContainers:
         - name: migrate
           image: stock-app:dev  # LOCAL image name
@@ -77,8 +76,7 @@ spec:
           securityContext: *stockAppSecurity
           resources: *stockAppResources
           volumeMounts: *stockAppVolumeMounts
-          # No livenessProbe on purpose: /health checks the database, and a
-          # database outage must not restart every stock-app pod.
+          # No livenessProbe: /health checks the database, and a DB outage must not restart the app.
           readinessProbe:
             httpGet: {path: /health, port: 8000}
             initialDelaySeconds: 10  # pandas and yfinance take a few seconds to import

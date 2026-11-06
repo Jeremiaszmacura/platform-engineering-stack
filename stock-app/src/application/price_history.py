@@ -13,16 +13,7 @@ def utc_now() -> datetime:
 
 
 def is_stale(last_synced_at: datetime | None, now: datetime, stale_after: timedelta) -> bool:
-    """Return True when the last provider call is older than the staleness window.
-
-    Args:
-        last_synced_at: When the provider was last called, or None if never.
-        now: Current instant.
-        stale_after: How long a sync stays fresh.
-
-    Returns:
-        True when the trailing edge should be refetched.
-    """
+    """Return True if the last provider call is older than stale_after (or never happened)."""
     if last_synced_at is None:
         return True
     return now - last_synced_at > stale_after
@@ -31,27 +22,10 @@ def is_stale(last_synced_at: datetime | None, now: datetime, stale_after: timede
 def missing_range(
     coverage: Instrument | None, requested: DateRange, now: datetime, stale_after: timedelta
 ) -> DateRange | None:
-    """Return the range that must be fetched from the provider, or None if fully cached.
+    """Return the range to fetch from the provider, or None if the store covers the request.
 
-    Cache completeness cannot be decided by counting rows: markets close on
-    weekends and holidays, so a 30-day window holds about 21 bars and the exact
-    number varies by exchange. The decision is made from the sync ledger, which
-    records how far the provider has been queried, never how many bars to
-    expect.
-
-    When both ends of the requested range are missing, the whole range is
-    returned rather than a list of gaps, so a request costs at most one
-    provider call.
-
-    Args:
-        coverage: Stored instrument with its sync ledger, or None if unknown.
-        requested: Session-date range the caller asked for.
-        now: Current instant, used for the staleness check.
-        stale_after: How long a sync stays fresh before the trailing edge is
-            refetched.
-
-    Returns:
-        The range to fetch, or None when the store already covers the request.
+    Decided from the sync ledger, not by counting bars (markets close on weekends and holidays).
+    Missing parts on both ends are fetched as one range, so a request makes at most one provider call.
     """
     if coverage is None or coverage.first_synced_date is None or coverage.last_synced_date is None:
         return requested
@@ -59,9 +33,7 @@ def missing_range(
     if requested.start < coverage.first_synced_date:
         return requested
 
-    # The most recent synced day is unsettled: today's bar moves intraday and
-    # closes get revised by later splits and dividends. Anything strictly
-    # older is immutable and always served from the store.
+    # The last synced day can still change (intraday bar, later revisions); older days never do.
     beyond_synced = requested.end > coverage.last_synced_date
     at_unsettled_edge = requested.end == coverage.last_synced_date
     if beyond_synced or (at_unsettled_edge and is_stale(coverage.last_synced_at, now, stale_after)):
@@ -71,44 +43,18 @@ def missing_range(
 
 
 class PriceHistoryService:
-    """Serves price history and summaries, filling the store from a provider on demand.
-
-    Both collaborators are injected as ports, so the service can be exercised
-    without a database or a network.
-
-    Attributes:
-        _provider: Market data provider used to fill gaps.
-        _repository: Local store of instruments and bars.
-        _stale_after: How long a sync stays fresh before the trailing edge is
-            refetched.
-    """
+    """Serves price history and summaries, filling the store from the provider on demand."""
 
     def __init__(self, provider: MarketDataProvider, repository: PriceBarRepository, stale_after: timedelta):
-        """Wire the use case to its ports.
-
-        Args:
-            provider: Market data provider used to fill gaps.
-            repository: Local store of instruments and bars.
-            stale_after: How long a sync stays fresh.
-        """
+        """Wire the use case to its ports."""
         self._provider = provider
         self._repository = repository
         self._stale_after = stale_after
 
     def get_price_history(self, symbol: str, requested: DateRange) -> PriceHistory:
-        """Return the bars for a symbol over a range, fetching them if needed.
+        """Return the bars for symbol over requested, fetching missing ones first.
 
-        Args:
-            symbol: Ticker symbol in any case.
-            requested: Inclusive session-date range.
-
-        Returns:
-            The bars held for the range, with the source they were served from.
-
-        Raises:
-            SymbolNotFoundError: If the provider does not know the symbol.
-            ProviderError: If a needed provider call fails.
-            RepositoryError: If the store is unreachable.
+        Raises SymbolNotFoundError, ProviderError or RepositoryError.
         """
         normalized, source, instrument = self._ensure_coverage(symbol, requested)
         bars = self._repository.bars_in_range(normalized, Interval.DAY, requested.start, requested.end)
@@ -122,44 +68,18 @@ class PriceHistoryService:
         )
 
     def get_price_summary(self, symbol: str, requested: DateRange) -> PriceSummary | None:
-        """Return aggregate statistics for a symbol over a range, fetching bars if needed.
-
-        Args:
-            symbol: Ticker symbol in any case.
-            requested: Inclusive session-date range.
-
-        Returns:
-            The summary, or None when the range holds no trading sessions.
-
-        Raises:
-            SymbolNotFoundError: If the provider does not know the symbol.
-            ProviderError: If a needed provider call fails.
-            RepositoryError: If the store is unreachable.
-        """
+        """Return statistics for symbol over requested (None if no sessions), fetching missing bars first."""
         normalized, _, _ = self._ensure_coverage(symbol, requested)
         return self._repository.summarize(normalized, Interval.DAY, requested.start, requested.end)
 
     def list_instruments(self) -> list[Instrument]:
-        """Return every instrument held locally, with its synced date window.
-
-        Returns:
-            All known instruments, ordered by symbol.
-
-        Raises:
-            RepositoryError: If the store is unreachable.
-        """
+        """Return all stored instruments; raise RepositoryError if the store is down."""
         return self._repository.list_instruments()
 
     def _ensure_coverage(self, symbol: str, requested: DateRange) -> tuple[str, DataSource, Instrument]:
-        """Fill any gap in the store for the requested range.
+        """Fetch and store whatever the store lacks for requested.
 
-        Args:
-            symbol: Ticker symbol in any case.
-            requested: Inclusive session-date range.
-
-        Returns:
-            The normalized symbol, whether a provider was called, and the
-            instrument carrying the up-to-date sync ledger.
+        Returns the normalized symbol, the data source and the instrument with its updated ledger.
         """
         normalized = normalize_symbol(symbol)
         coverage = self._repository.get_instrument(normalized)

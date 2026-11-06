@@ -11,18 +11,7 @@ const CHART_TYPE_LABELS = [
   { id: CHART_TYPES.candles, label: 'Candles' },
 ];
 
-/**
- * Render the chart-shape and time-range filters, plus the zoom controls.
- *
- * @param {Object} props Component props.
- * @param {string} props.chartType Selected chart shape.
- * @param {function(string): void} props.onSelectChartType Called with the chosen shape.
- * @param {string} props.rangeId Selected range id.
- * @param {function(string): void} props.onSelectRange Called with the chosen range id.
- * @param {?{zoomIn: function(): void, zoomOut: function(): void, fit: function(): void}} props.zoom
- *   Zoom controls exposed by the chart, absent until it is on screen.
- * @returns {JSX.Element} The toolbar.
- */
+/** Chart type and range filters, plus zoom controls (zoom is null until the chart exists). */
 export function ChartToolbar({ chartType, onSelectChartType, rangeId, onSelectRange, zoom }) {
   return (
     <div className="toolbar">

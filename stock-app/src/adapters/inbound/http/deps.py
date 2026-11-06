@@ -1,9 +1,4 @@
-"""Dependency accessors for the objects built by the composition root.
-
-The adapters themselves are constructed in ``main.create_app`` and parked on
-the application state; these functions only hand them to routes, which keeps
-them overridable through ``app.dependency_overrides`` in tests.
-"""
+"""Hand the adapters built in main.create_app() to routes (overridable in tests)."""
 
 from fastapi import Request
 
@@ -12,36 +7,15 @@ from src.application.price_history import PriceHistoryService
 
 
 def get_price_history_service(request: Request) -> PriceHistoryService:
-    """Return the price history use case wired up in main.create_app().
-
-    Args:
-        request: Incoming request, carrying the application state.
-
-    Returns:
-        The process-wide PriceHistoryService.
-    """
+    """Return the PriceHistoryService from the app state."""
     return request.app.state.price_history_service
 
 
 def get_repository(request: Request) -> PriceBarRepository:
-    """Return the price bar repository wired up in main.create_app().
-
-    Args:
-        request: Incoming request, carrying the application state.
-
-    Returns:
-        The process-wide PriceBarRepository.
-    """
+    """Return the PriceBarRepository from the app state."""
     return request.app.state.repository
 
 
 def get_secret_store(request: Request) -> SecretStore:
-    """Return the secret store wired up in main.create_app().
-
-    Args:
-        request: Incoming request, carrying the application state.
-
-    Returns:
-        The process-wide SecretStore.
-    """
+    """Return the SecretStore from the app state."""
     return request.app.state.secret_store

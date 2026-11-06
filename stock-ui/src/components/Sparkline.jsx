@@ -2,17 +2,7 @@
 
 import React from 'react';
 
-/**
- * Project values onto the points of a polyline filling the given box.
- *
- * A flat series has no range to scale against, so it is drawn along the middle
- * rather than dividing by zero.
- *
- * @param {Array<number>} values Series to draw, oldest first.
- * @param {number} width Width of the box, in user units.
- * @param {number} height Height of the box, in user units.
- * @returns {string} Points attribute for an SVG polyline.
- */
+/** Return SVG polyline points for values in a width x height box (a flat series is drawn mid-height). */
 export function toPolylinePoints(values, width, height) {
   const highest = Math.max(...values);
   const lowest = Math.min(...values);
@@ -26,14 +16,7 @@ export function toPolylinePoints(values, width, height) {
     .join(' ');
 }
 
-/**
- * Render a sparkline for a series of values.
- *
- * @param {Object} props Component props.
- * @param {Array<number>} props.values Series to draw, oldest first.
- * @param {string} props.tone Direction class colouring the line.
- * @returns {JSX.Element} The sparkline.
- */
+/** Render a sparkline coloured by tone. */
 export function Sparkline({ values, tone }) {
   const width = 76;
   const height = 26;

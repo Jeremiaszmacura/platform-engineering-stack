@@ -1,10 +1,4 @@
-/**
- * Holdings, entirely from fixed demonstration data.
- *
- * There is no portfolio service in this cluster and no account to attach one
- * to. The view says so once, at the top, and then behaves like the real thing
- * would so the shell can be judged on its layout.
- */
+/** Portfolio view built from demo data (there is no portfolio service). */
 
 import React from 'react';
 
@@ -12,23 +6,14 @@ import { DEMO_HOLDINGS } from '../mocks/demoData';
 import { formatPercent, formatPrice } from '../lib/format';
 import { directionOf } from '../lib/series';
 
-/**
- * Value a position and measure it against what it cost.
- *
- * @param {Object} holding Position to value.
- * @returns {Object} The position with its market value and return.
- */
+/** Return the holding with its market value and return. */
 function valuePosition(holding) {
   const value = holding.shares * holding.lastPrice;
   const cost = holding.shares * holding.averageCost;
   return { ...holding, value, gain: value - cost, gainPercent: ((value - cost) / cost) * 100 };
 }
 
-/**
- * Render the portfolio view.
- *
- * @returns {JSX.Element} The view.
- */
+/** Render the portfolio view. */
 export function PortfolioView() {
   const positions = DEMO_HOLDINGS.map(valuePosition);
   const total = positions.reduce((sum, position) => sum + position.value, 0);

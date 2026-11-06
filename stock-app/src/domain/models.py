@@ -1,9 +1,4 @@
-"""Provider-independent model of daily market data.
-
-Every bar that reaches the database passes through :class:`PriceBar`, so the
-invariants declared here hold regardless of which provider produced the data.
-This module depends on nothing but the standard library and pydantic.
-"""
+"""Provider-independent domain model; every stored bar passes these invariants."""
 
 import re
 from datetime import date, datetime, timedelta, timezone
@@ -13,33 +8,20 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-# Bounds the *shape* of a symbol, not its existence: the provider decides
-# whether it exists. Also a security control - the symbol reaches provider
-# URLs and metric labels, so nothing outside this alphabet may pass.
+# Shape only, not existence. Also guards provider URLs and metric labels.
 SYMBOL_PATTERN = re.compile(r"^[A-Z0-9.\-]{1,16}$")
 
 # Matches numeric(18,4) in the database schema.
 PRICE_EXPONENT = Decimal("0.0001")
 
-# Exchange calendars east of UTC open on a session date that can still be
-# "tomorrow" in UTC, so allow a day of slack before calling a bar future-dated.
+# Exchanges east of UTC can be a day ahead of UTC.
 MAX_SESSION_DATE_SKEW = timedelta(days=1)
 
 Price = Annotated[Decimal, Field(gt=0)]
 
 
 def normalize_symbol(value: str) -> str:
-    """Return the canonical form of a ticker symbol.
-
-    Args:
-        value: Raw symbol, in any case and with surrounding whitespace.
-
-    Returns:
-        The symbol stripped and uppercased.
-
-    Raises:
-        ValueError: If the normalized symbol does not match SYMBOL_PATTERN.
-    """
+    """Return the symbol stripped and uppercased; raise ValueError if it doesn't match SYMBOL_PATTERN."""
     symbol = value.strip().upper()
     if not SYMBOL_PATTERN.match(symbol):
         raise ValueError(f"invalid symbol: {value!r}")
@@ -65,12 +47,7 @@ class DataSource(StrEnum):
 
 
 class DateRange(BaseModel):
-    """An inclusive range of trading session dates.
-
-    Attributes:
-        start: First session date in the range.
-        end: Last session date in the range.
-    """
+    """An inclusive range of session dates."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -86,22 +63,9 @@ class DateRange(BaseModel):
 
 
 class PriceBar(BaseModel):
-    """One standardized OHLCV bar for a single trading session.
+    """One validated OHLCV bar for a trading session.
 
-    Raw prices are kept alongside ``adj_close`` because adjusted prices are
-    rewritten retroactively by every split and dividend, which makes the raw
-    columns the only ones that can be reconciled against a provider later.
-
-    Attributes:
-        symbol: Normalized ticker symbol.
-        interval: Bar interval.
-        session_date: Trading session in the exchange's local calendar.
-        open: Opening price.
-        high: Highest price of the session.
-        low: Lowest price of the session.
-        close: Closing price.
-        adj_close: Split/dividend-adjusted close, when the provider reports one.
-        volume: Number of shares traded.
+    Raw prices are kept next to adj_close, which providers rewrite after splits and dividends.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -145,23 +109,10 @@ class PriceBar(BaseModel):
 
 
 class Instrument(BaseModel):
-    """A tradable instrument and the ledger of how far it has been synced.
+    """An instrument and its sync ledger.
 
-    ``first_synced_date`` and ``last_synced_date`` record the session-date
-    window that has been requested from the provider - not the dates of the
-    bars that came back. Weekends and holidays produce no bars, so a window
-    derived from bar dates would look incomplete forever and refetch on every
-    request.
-
-    Attributes:
-        symbol: Normalized ticker symbol.
-        name: Human-readable instrument name, when the provider reports one.
-        exchange: Exchange code the instrument trades on.
-        currency: Currency the prices are quoted in.
-        first_synced_date: Earliest session date synced from the provider.
-        last_synced_date: Latest session date synced from the provider.
-        last_synced_at: When the provider was last called for this instrument.
-        source: Name of the provider the metadata came from.
+    first/last_synced_date are the window requested from the provider, not bar dates,
+    so weekends and holidays don't look like gaps.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -182,17 +133,7 @@ class Instrument(BaseModel):
         return normalize_symbol(value)
 
     def with_metadata(self, other: "Instrument") -> "Instrument":
-        """Return a copy of this instrument with descriptive fields taken from another.
-
-        Used to refresh name, exchange and currency from the provider while
-        keeping the sync ledger already recorded locally.
-
-        Args:
-            other: Instrument carrying freshly fetched provider metadata.
-
-        Returns:
-            A copy of this instrument with refreshed descriptive fields.
-        """
+        """Return a copy with name, exchange and currency from other, keeping this sync ledger."""
         return self.model_copy(
             update={
                 "name": other.name,
@@ -203,15 +144,7 @@ class Instrument(BaseModel):
         )
 
     def with_coverage(self, synced: DateRange, synced_at: datetime) -> "Instrument":
-        """Return a copy whose sync ledger also spans the given range.
-
-        Args:
-            synced: Session-date range just requested from the provider.
-            synced_at: Time of that provider call.
-
-        Returns:
-            A copy of this instrument with a widened sync window.
-        """
+        """Return a copy whose sync ledger also covers synced, last synced at synced_at."""
         first = synced.start if self.first_synced_date is None else min(self.first_synced_date, synced.start)
         last = synced.end if self.last_synced_date is None else max(self.last_synced_date, synced.end)
         return self.model_copy(
@@ -220,19 +153,7 @@ class Instrument(BaseModel):
 
 
 class PriceSummary(BaseModel):
-    """Aggregate statistics for one symbol over a range of sessions.
-
-    Attributes:
-        symbol: Normalized ticker symbol.
-        interval: Bar interval the statistics were computed over.
-        period: Session-date range the statistics cover.
-        first_close: Close of the earliest bar in the period.
-        last_close: Close of the latest bar in the period.
-        period_high: Highest price reached in the period.
-        period_low: Lowest price reached in the period.
-        average_volume: Mean traded volume per session.
-        bar_count: Number of bars the statistics were computed from.
-    """
+    """Statistics for one symbol over a period."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -248,16 +169,7 @@ class PriceSummary(BaseModel):
 
 
 class PriceHistory(BaseModel):
-    """Bars for one symbol over a requested range, and where they came from.
-
-    Attributes:
-        symbol: Normalized ticker symbol.
-        interval: Bar interval.
-        currency: Currency the prices are quoted in.
-        source: Whether the request was served from cache or hit the provider.
-        period: Session-date range that was requested.
-        bars: Bars in the range, in ascending session-date order.
-    """
+    """Bars for a symbol over a period, and whether they came from cache or the provider."""
 
     model_config = ConfigDict(frozen=True)
 

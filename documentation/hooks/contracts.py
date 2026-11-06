@@ -1,14 +1,4 @@
-"""Pull service API contracts into the site at build time.
-
-A service's OpenAPI contract belongs to the service, not to the documentation:
-`stock-app/openapi.yaml` is what generates that service's models and what it
-serves at `/openapi.yaml`. Copying it under `docs/` would create a second copy
-to keep in step, so it is read from its own directory and injected into the
-built site instead. There is still exactly one file.
-
-The path is resolved relative to `mkdocs.yml`, and the documentation image
-mirrors the repository layout so the same expression works in both.
-"""
+"""MkDocs hook: add stock-app/openapi.yaml to the site at build time instead of copying it into docs/."""
 
 from pathlib import Path
 
@@ -19,19 +9,7 @@ CONTRACTS = {"services/stock-app-openapi.yaml": "stock-app/openapi.yaml"}
 
 
 def on_files(files, config):
-    """Add every service contract to the site as a generated file.
-
-    Args:
-        files: The file collection MkDocs has gathered from ``docs_dir``.
-        config: The MkDocs configuration, used to locate the repository root.
-
-    Returns:
-        The collection with each contract appended.
-
-    Raises:
-        FileNotFoundError: If a declared contract is missing, which would
-            otherwise surface as an empty API page.
-    """
+    """Add each contract to the site files; raise FileNotFoundError if one is missing."""
     root = Path(config.config_file_path).resolve().parent.parent
     for site_path, source_path in CONTRACTS.items():
         contract = root / source_path

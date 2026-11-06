@@ -1,8 +1,4 @@
-"""Alembic environment.
-
-Runs online only: the migrations execute as an initContainer against a live
-database, so there is no use for offline SQL generation.
-"""
+"""Alembic environment, online mode only (migrations run in an init container)."""
 
 from alembic import context
 

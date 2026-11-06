@@ -1,22 +1,7 @@
-"""End-to-end tests of every stock-app endpoint, checked against its own contract.
+"""Every stock-app endpoint, each response validated against the /openapi.yaml the pod publishes.
 
-Each response is validated with ``openapi-core`` against the document the
-running service publishes at ``/openapi.yaml``, so these tests assert what the
-service *promises* rather than a copy of that promise kept here. A response
-that stops matching its declared schema fails, and so does one the service
-honours but never published.
-
-Two status codes are deliberately absent. 502 and 503 need the market data
-provider or TimescaleDB to be unreachable, which a black-box test against a
-healthy cluster cannot arrange; `stock-app/tests/test_routes.py` covers them
-with both ports replaced.
-
-Nothing here carries the ``external`` marker. Whether this module touches a
-third-party API is decided by the cluster, not by the test run: deployed with
-``STOCK_PROVIDER=fixture`` it replays a recording baked into the image and
-reaches no network at all, which is how CI runs it. Deployed with
-``STOCK_PROVIDER=yahoo`` the same tests exercise the real provider. See
-documentation/docs/testing.md.
+502/503 need a broken provider or database and are covered by stock-app/tests/test_routes.py.
+Not marked external: with STOCK_PROVIDER=fixture (as in CI) no network is used.
 """
 
 from datetime import date, timedelta
@@ -33,9 +18,7 @@ from cluster import REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL
 SYMBOL = "AAPL"
 PROVIDER_TIMEOUT_SECONDS = 60
 
-# A year-long window ending a week back: never future-dated, certain to hold
-# trading sessions, and wide enough that it keeps overlapping the recorded
-# window in `stock-app/fixtures/` for about a year before a re-record is due.
+# A year ending a week ago: has sessions and overlaps the fixture recording.
 WINDOW_END = date.today() - timedelta(days=7)
 WINDOW_START = WINDOW_END - timedelta(days=365)
 WINDOW = {"start": WINDOW_START.isoformat(), "end": WINDOW_END.isoformat()}
@@ -47,11 +30,7 @@ SUMMARY = f"/api/v1/instruments/{SYMBOL}/summary"
 
 @pytest.fixture(scope="module")
 def contract():
-    """Return the OpenAPI document the running service publishes.
-
-    Returns:
-        The contract, ready to validate responses against.
-    """
+    """Return the contract the running service publishes."""
     response = requests.get(f"{STOCK_APP_URL}/openapi.yaml", timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     return OpenAPI.from_dict(yaml.safe_load(response.text))
@@ -59,31 +38,13 @@ def contract():
 
 @pytest.fixture(scope="module")
 def synced_window(contract):
-    """Make sure the store holds ``WINDOW`` for ``SYMBOL`` before the tests that need it.
-
-    Fetching once per module keeps the provider out of the individual tests, so
-    each of them observes the same synced state whatever order they run in.
-
-    Returns:
-        The window the store is now known to cover.
-    """
+    """Sync WINDOW for SYMBOL once per module, so the tests read from the store."""
     call(contract, BARS, params=WINDOW, timeout=PROVIDER_TIMEOUT_SECONDS)
     return WINDOW
 
 
 def call(contract, path, params=None, timeout=REQUEST_TIMEOUT_SECONDS):
-    """GET an endpoint and assert the answer is one its declaration allows.
-
-    Args:
-        contract: The published contract to validate against.
-        path: Path to request, relative to the ingress host.
-        params: Query parameters, if any.
-        timeout: Seconds to wait; raised for calls that may reach the provider.
-
-    Returns:
-        The response, once its status code, content type and body have been
-        checked against the operation the contract declares for that path.
-    """
+    """GET path and assert status, content type and body match the contract; return the response."""
     response = requests.get(f"{STOCK_APP_URL}{path}", params=params, timeout=timeout)
     try:
         contract.validate_response(RequestsOpenAPIRequest(response.request), RequestsOpenAPIResponse(response))
@@ -126,11 +87,7 @@ def test_instruments_are_listed(contract):
 
 
 def test_contract_is_published():
-    """GET /openapi.yaml serves the authored YAML contract shipped in the image.
-
-    Not routed through ``call``: this endpoint and ``/docs`` publish the
-    contract, so the contract neither declares nor should declare them.
-    """
+    """GET /openapi.yaml serves the authored contract."""
     response = requests.get(f"{STOCK_APP_URL}/openapi.yaml", timeout=REQUEST_TIMEOUT_SECONDS)
 
     assert response.status_code == 200
@@ -138,8 +95,7 @@ def test_contract_is_published():
     document = yaml.safe_load(response.text)
     assert document["info"]["title"] == "stock-app"
     assert "/api/v1/instruments/{symbol}/bars" in document["paths"]
-    # Reusable parameters only exist in the authored file; a document derived
-    # from the code would inline them, so this pins down which one is served.
+    # Only the authored file has reusable parameters; a derived document would inline them.
     assert "Symbol" in document["components"]["parameters"]
 
 
@@ -214,11 +170,7 @@ def test_summary_is_served_for_the_requested_window(contract, synced_window):
 
 
 def test_window_without_trading_sessions_is_not_found(contract, synced_window):
-    """A weekend answers 404: the range is synced, it just holds no sessions.
-
-    Taken from inside the synced window so the store answers on its own - this
-    exercises the 404 branch of the summary endpoint, not the provider.
-    """
+    """A weekend inside the synced window answers 404 from the store, without the provider."""
     saturday = WINDOW_START + timedelta(days=(5 - WINDOW_START.weekday()) % 7)
     weekend = {"start": saturday.isoformat(), "end": (saturday + timedelta(days=1)).isoformat()}
 

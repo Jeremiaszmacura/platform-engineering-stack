@@ -1,8 +1,4 @@
-"""TimescaleDB-backed implementation of the PriceBarRepository port.
-
-Owns its own mapping between database rows and domain objects; every
-statement uses bound parameters, never string interpolation.
-"""
+"""TimescaleDB implementation of the PriceBarRepository port."""
 
 from collections.abc import Sequence
 from contextlib import contextmanager
@@ -17,8 +13,7 @@ from src.domain.errors import RepositoryError
 from src.domain.models import DateRange, Instrument, Interval, PriceBar, PriceSummary
 from src.observability.metrics import record_bars_upserted
 
-# first() and last() are TimescaleDB aggregates: they return the value of one
-# column ordered by another, which plain Postgres cannot do in a single pass.
+# first()/last() are TimescaleDB aggregates.
 SUMMARY_SQL = text("""
     SELECT first(close, ts) AS first_close,
            last(close, ts)  AS last_close,
@@ -32,30 +27,15 @@ SUMMARY_SQL = text("""
 
 
 def to_timestamp(session_date: date) -> datetime:
-    """Return the UTC midnight timestamp a session date is stored at.
-
-    Args:
-        session_date: Trading session date in the exchange's local calendar.
-
-    Returns:
-        The same date at 00:00:00 UTC.
-    """
+    """Return the session date as a UTC midnight timestamp."""
     return datetime.combine(session_date, time.min, tzinfo=timezone.utc)
 
 
 class TimescalePriceBarRepository:
-    """Stores instruments and price bars in TimescaleDB.
-
-    Attributes:
-        _engine: Engine every statement runs on.
-    """
+    """Stores instruments and price bars in TimescaleDB."""
 
     def __init__(self, engine: Engine):
-        """Bind the repository to a database engine.
-
-        Args:
-            engine: Engine the repository runs its statements on.
-        """
+        """Bind the repository to an engine."""
         self._engine = engine
 
     def get_instrument(self, symbol: str) -> Instrument | None:
@@ -134,21 +114,7 @@ class TimescalePriceBarRepository:
 
     @contextmanager
     def _translating_errors(self, open_connection):
-        """Yield a connection, turning every driver failure into RepositoryError.
-
-        The yield sits inside the try block on purpose, so failures raised
-        while executing statements are translated too, not only failures to
-        connect.
-
-        Args:
-            open_connection: Engine method opening the connection.
-
-        Yields:
-            An open Connection.
-
-        Raises:
-            RepositoryError: If the database is unreachable or rejects a statement.
-        """
+        """Yield a connection; raise RepositoryError for any database failure, including during statements."""
         try:
             with open_connection() as connection:
                 yield connection
@@ -165,14 +131,7 @@ class TimescalePriceBarRepository:
 
     @staticmethod
     def _upsert_instrument_statement(instrument: Instrument):
-        """Build the statement that inserts or refreshes one instrument row.
-
-        Args:
-            instrument: Instrument with its updated sync ledger.
-
-        Returns:
-            An INSERT ... ON CONFLICT DO UPDATE statement.
-        """
+        """Return the upsert statement for one instrument."""
         values = {
             "symbol": instrument.symbol,
             "name": instrument.name,
@@ -191,18 +150,7 @@ class TimescalePriceBarRepository:
 
     @staticmethod
     def _upsert_bars_statement(source: str, bars: Sequence[PriceBar]):
-        """Build the statement that inserts or refreshes a batch of bars.
-
-        Adjusted closes are rewritten by every split and dividend, so an
-        existing row is overwritten rather than kept.
-
-        Args:
-            source: Provider name recorded on every row.
-            bars: Bars to write.
-
-        Returns:
-            An INSERT ... ON CONFLICT DO UPDATE statement.
-        """
+        """Return the upsert statement for a batch of bars (existing rows are overwritten)."""
         rows = [
             {
                 "symbol": bar.symbol,
@@ -227,14 +175,7 @@ class TimescalePriceBarRepository:
 
     @staticmethod
     def _to_instrument(row: Row) -> Instrument:
-        """Map an instruments row to its domain object.
-
-        Args:
-            row: Row selected from the instruments table.
-
-        Returns:
-            The corresponding Instrument.
-        """
+        """Map an instruments row to an Instrument."""
         return Instrument(
             symbol=row.symbol,
             name=row.name,
@@ -248,14 +189,7 @@ class TimescalePriceBarRepository:
 
     @staticmethod
     def _to_price_bar(row: Row) -> PriceBar:
-        """Map a price_bars row to its domain object.
-
-        Args:
-            row: Row selected from the price_bars table.
-
-        Returns:
-            The corresponding PriceBar, with ts converted back to a session date.
-        """
+        """Map a price_bars row to a PriceBar."""
         return PriceBar(
             symbol=row.symbol,
             interval=Interval(row.interval),

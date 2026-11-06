@@ -1,8 +1,4 @@
-"""Tests for the cache-aside use case and the missing_range decision it rests on.
-
-Both ports are replaced by in-memory fakes, so nothing here touches a
-database or the network.
-"""
+"""Tests for the cache-aside use case, with in-memory fakes for both ports."""
 
 import unittest
 from datetime import date, datetime, timedelta, timezone
@@ -19,15 +15,7 @@ JUNE = DateRange(start=date(2026, 6, 1), end=date(2026, 6, 30))
 
 
 def build_bar(session_date: date, symbol: str = "AAPL") -> PriceBar:
-    """Build a valid bar for a session.
-
-    Args:
-        session_date: Trading session the bar belongs to.
-        symbol: Ticker symbol.
-
-    Returns:
-        The constructed PriceBar.
-    """
+    """Return a valid bar for session_date."""
     return PriceBar(
         symbol=symbol,
         interval=Interval.DAY,
@@ -42,16 +30,7 @@ def build_bar(session_date: date, symbol: str = "AAPL") -> PriceBar:
 
 
 def build_coverage(first: date, last: date, synced_at: datetime) -> Instrument:
-    """Build an instrument whose sync ledger spans the given window.
-
-    Args:
-        first: Earliest synced session date.
-        last: Latest synced session date.
-        synced_at: When the provider was last called.
-
-    Returns:
-        The constructed Instrument.
-    """
+    """Return an instrument whose sync ledger spans first..last."""
     return Instrument(
         symbol="AAPL",
         currency="USD",
@@ -63,24 +42,12 @@ def build_coverage(first: date, last: date, synced_at: datetime) -> Instrument:
 
 
 class FakeProvider:
-    """In-memory MarketDataProvider that serves preset bars and counts calls.
-
-    Attributes:
-        name: Provider name.
-        bars: Bars returned for any requested range, filtered by that range.
-        calls: Ranges the provider was asked for, in order.
-        error: Exception to raise instead of answering, if set.
-    """
+    """In-memory provider that serves preset bars, records requested ranges and can raise error."""
 
     name = "fake"
 
     def __init__(self, bars=(), error=None):
-        """Create the fake.
-
-        Args:
-            bars: Bars the provider knows about.
-            error: Exception to raise on every call, if any.
-        """
+        """Create the fake with known bars and an optional error to raise."""
         self.bars = list(bars)
         self.calls = []
         self.error = error
@@ -100,12 +67,7 @@ class FakeProvider:
 
 
 class FakeRepository:
-    """In-memory PriceBarRepository keyed by symbol and session date.
-
-    Attributes:
-        instruments: Stored instruments by symbol.
-        bars: Stored bars by symbol, then by session date.
-    """
+    """In-memory repository keyed by symbol and session date."""
 
     def __init__(self):
         """Create an empty store."""

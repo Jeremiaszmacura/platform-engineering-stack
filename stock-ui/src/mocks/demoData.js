@@ -1,11 +1,4 @@
-/**
- * Demonstration data for the parts of the interface that have no backend.
- *
- * Accounts, portfolios and watchlists are not implemented anywhere in this
- * cluster: nothing here is fetched, stored or sent. It lives in one module so
- * the boundary between "real, from stock-app" and "illustration" is a single
- * import away from being obvious.
- */
+/** Demo data for the parts with no backend (account, portfolio, watchlist). Nothing is fetched or stored. */
 
 /** The signed-in identity the account chip shows. */
 export const DEMO_ACCOUNT = {

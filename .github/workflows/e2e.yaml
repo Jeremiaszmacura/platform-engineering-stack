@@ -32,15 +32,11 @@ jobs:
       - name: Install Ansible
         run: pip install ansible-core
 
-      # Yahoo Finance rate-limits datacenter IPs, so stock-app is deployed with
-      # the provider that replays the recording baked into its image. That is
-      # what lets the endpoint tests cover the path that actually returns bars
-      # here, rather than only the paths that reject a request.
+      # Yahoo rate-limits CI runners, so stock-app replays its recorded prices.
       - name: Create cluster and deploy all components
         run: STOCK_PROVIDER=fixture ./recreate-cluster.sh
 
-      # The remaining `external` tests drive the cache-aside pipeline against a
-      # live provider by design, so they stay a local-only concern.
+      # `external` tests need live Yahoo data.
       - name: Run e2e tests
         run: make test-e2e E2E_PYTEST_ARGS='-m "not external"'
 

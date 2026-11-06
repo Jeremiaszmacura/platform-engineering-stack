@@ -19,16 +19,13 @@ spec:
       containers:
         - name: vault
           image: hashicorp/vault:1.20.4
-          # Dev mode: in-memory storage, auto-unsealed — never for production.
-          # No livenessProbe on purpose: a restart wipes all secrets.
+          # Dev mode: in memory, auto-unsealed. No livenessProbe: a restart wipes all secrets.
           args: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
           env:
             - name: VAULT_DEV_ROOT_TOKEN_ID
               valueFrom:
                 secretKeyRef: {name: vault-dev-token, key: token}
-            # The image entrypoint runs setcap on the ~475 MiB vault binary, which
-            # copies it into the container layer and OOMs the memory limit.
-            # Dev mode never mlocks, so the file capability isn't needed.
+            # Skip the entrypoint's setcap: it copies the ~475 MiB binary and OOMs the limit (dev mode doesn't mlock).
             - name: SKIP_SETCAP
               value: "true"
           ports:

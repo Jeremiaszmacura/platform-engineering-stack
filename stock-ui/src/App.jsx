@@ -1,11 +1,4 @@
-/**
- * The application shell: navigation bar, the section on screen, and the state
- * the sections share.
- *
- * Sections are switched in place rather than routed. There is one page here,
- * no deep links to keep, and a router would be a dependency and a rewrite rule
- * in the serving NGINX for no gain.
- */
+/** App shell. Sections switch in place; there is no router. */
 
 import React, { useCallback, useState } from 'react';
 
@@ -24,26 +17,20 @@ const SECTIONS = [
   { id: 'watchlist', label: 'Watchlist' },
 ];
 
-/**
- * Render the application.
- *
- * @returns {JSX.Element} The app.
- */
+/** Render the app. */
 export default function App() {
   const [theme, toggleTheme] = useTheme();
   const [activeSection, setActiveSection] = useState('markets');
   const [symbol, setSymbol] = useState(null);
   const { instruments, reload } = useInstruments();
 
-  // Charting a ticker is the point of every list in this app, so choosing one
-  // anywhere also brings the view that can show it.
+  // Choosing a ticker anywhere opens the Markets view.
   const selectSymbol = useCallback((chosen) => {
     setSymbol(chosen);
     setActiveSection('markets');
   }, []);
 
-  // A symbol nobody had loaded before is in stock-app's store once its bars
-  // arrive, so the suggestions are refreshed to include it.
+  // A newly loaded symbol is now stored, so refresh the suggestions.
   const handleHistoryLoaded = useCallback(
     (history) => {
       if (history.source === 'provider') {

@@ -1,10 +1,4 @@
-/**
- * The only place this app talks to a backend.
- *
- * Everything else in the UI — portfolio, watchlist, the account menu — is
- * demonstration state held in the browser. Requests go to stock-app on its own
- * ingress host, cross-origin from app pages, which its Ingress allows.
- */
+/** The only module that calls a backend (stock-app); everything else is browser-side demo data. */
 
 import axios from 'axios';
 
@@ -21,15 +15,9 @@ const FAILURE_MESSAGES = {
   503: () => 'The market data store is unreachable. Try again in a moment.',
 };
 
-/**
- * A request to stock-app that did not succeed, carrying a message meant for
- * the reader rather than the console.
- */
+/** A failed stock-app request, with a message meant for the user. */
 export class StockApiError extends Error {
-  /**
-   * @param {string} message Explanation to show in the interface.
-   * @param {?number} status HTTP status stock-app answered with, when it answered.
-   */
+  /** status is stock-app's HTTP status, or null if it didn't answer. */
   constructor(message, status = null) {
     super(message);
     this.name = 'StockApiError';
@@ -37,13 +25,7 @@ export class StockApiError extends Error {
   }
 }
 
-/**
- * Translate a failed request into an error the interface can present.
- *
- * @param {Error} error Error thrown by the HTTP client.
- * @param {string} subject What was being fetched, used in the fallback message.
- * @returns {StockApiError} The error to surface.
- */
+/** Turn an HTTP client error into a StockApiError for `subject`. */
 function toStockApiError(error, subject) {
   const status = error.response?.status;
   if (!status) {
@@ -56,12 +38,7 @@ function toStockApiError(error, subject) {
   return new StockApiError(`stock-app answered ${status} for ${subject}.`, status);
 }
 
-/**
- * List the instruments stock-app already holds locally.
- *
- * @returns {Promise<Array<Object>>} Instruments with their synced window, by symbol.
- * @throws {StockApiError} If stock-app does not answer with the list.
- */
+/** Return the instruments stock-app holds; throws StockApiError. */
 export async function fetchInstruments() {
   try {
     const response = await axios.get(`${STOCK_API_URL}/api/v1/instruments`, { timeout: REQUEST_TIMEOUT_MS });
@@ -71,17 +48,7 @@ export async function fetchInstruments() {
   }
 }
 
-/**
- * Fetch daily bars for a symbol over an inclusive session-date window.
- *
- * A window stock-app has not synced yet reaches the market data provider, so
- * the first request for a symbol is markedly slower than the ones after it.
- *
- * @param {string} symbol Ticker symbol.
- * @param {{start: string, end: string}} window Inclusive `YYYY-MM-DD` window.
- * @returns {Promise<Object>} The price history, including the bars and their source.
- * @throws {StockApiError} If stock-app does not answer with the history.
- */
+/** Return the price history for symbol over {start, end}; throws StockApiError. Unsynced windows are slower (provider call). */
 export async function fetchPriceHistory(symbol, window) {
   try {
     const response = await axios.get(`${STOCK_API_URL}/api/v1/instruments/${encodeURIComponent(symbol)}/bars`, {

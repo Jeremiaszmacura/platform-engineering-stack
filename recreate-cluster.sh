@@ -1,18 +1,13 @@
 #!/bin/bash
-# Deletes and recreates the local kind cluster with every component.
-# Safe to run any number of times.
+# Deletes and recreates the kind cluster with every component. Safe to re-run.
 set -euo pipefail
 
 CLUSTER_NAME=sample-cluster
 
-# Market data provider stock-app is deployed with. `yahoo` calls the real API;
-# `fixture` replays the recording baked into the image, which is what CI uses
-# because Yahoo rate-limits datacenter IPs. See documentation/docs/testing.md.
+# `yahoo` calls the live API; `fixture` replays recorded prices (used by CI).
 STOCK_PROVIDER="${STOCK_PROVIDER:-yahoo}"
 
-# Locally built images: <image name> <build context> [Dockerfile]
-# The documentation image builds from the repository root because the site
-# renders stock-app's OpenAPI contract from stock-app/openapi.yaml.
+# <image> <build context> [Dockerfile]. Docs build from the repo root to include stock-app/openapi.yaml.
 IMAGES=(
     "stock-app:dev stock-app"
     "go-app:dev go-app"
@@ -21,8 +16,7 @@ IMAGES=(
     "documentation:dev . documentation/Dockerfile"
 )
 
-# Manifest directories, applied in this order (Vault and TimescaleDB before
-# their clients). Namespaces and RBAC in platform/ are applied before all of them.
+# Applied in order, after platform/ (Vault and TimescaleDB before their clients).
 COMPONENTS=(
     monitoring/prometheus/k8s
     monitoring/grafana/k8s
@@ -52,8 +46,7 @@ URLS=(
     "Documentation http://docs.localhost"
 )
 
-# Poll a URL every 2s until it answers with a non-error status (curl -f) or
-# the timeout (seconds) elapses. Prints a warning on timeout; never fails.
+# Poll url every 2s until curl -f succeeds; warn (never fail) after timeout seconds.
 wait_for_url() {
     local name=$1 url=$2 timeout=$3
     until curl -sf -o /dev/null "$url"; do

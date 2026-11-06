@@ -1,9 +1,4 @@
-/**
- * A followed-instruments list, entirely from fixed demonstration data.
- *
- * Selecting a row is the one thing here that is real: it hands the ticker to
- * the Markets view, which does fetch it from stock-app.
- */
+/** Watchlist built from demo data; choosing a row opens it in Markets. */
 
 import React from 'react';
 
@@ -12,13 +7,7 @@ import { Sparkline } from '../components/Sparkline';
 import { formatPercent, formatPrice } from '../lib/format';
 import { directionOf } from '../lib/series';
 
-/**
- * Render the watchlist view.
- *
- * @param {Object} props Component props.
- * @param {function(string): void} props.onSelectSymbol Called with the ticker of a chosen row.
- * @returns {JSX.Element} The view.
- */
+/** Render the watchlist; onSelectSymbol receives the chosen ticker. */
 export function WatchlistView({ onSelectSymbol }) {
   return (
     <main className="page">

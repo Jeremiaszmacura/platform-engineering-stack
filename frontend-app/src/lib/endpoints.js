@@ -1,23 +1,9 @@
-/**
- * The backends this tool can drive, and the endpoints it offers for each.
- *
- * stock-app is a real data service, so its endpoints are the ones worth
- * driving: repeating a window shows the cache-aside path in Grafana, and a
- * window it has never synced shows the provider path.
- */
+/** Backends and their endpoints. */
 
-/**
- * Format the date a given number of days before now as YYYY-MM-DD.
- *
- * @param {number} days How far back to go.
- * @returns {string} An ISO session date.
- */
+/** Return the date `days` ago as YYYY-MM-DD. */
 const isoDaysAgo = (days) => new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
-/**
- * A closed window a week in the past: never future-dated, so stock-app accepts
- * it, and long enough to hold trading sessions on any exchange calendar.
- */
+/** A past 30-day window: never in the future and always holds trading sessions. */
 export const DEFAULT_RANGE = { start: isoDaysAgo(37), end: isoDaysAgo(7) };
 
 /** Backends the tool can target, in the order the navigation offers them. */
@@ -64,25 +50,12 @@ export const ENDPOINTS = {
   ],
 };
 
-/**
- * Find a backend by id.
- *
- * @param {string} appId Id of the backend.
- * @returns {Object} The backend.
- */
+/** Return the backend with this id. */
 export function appById(appId) {
   return APPS.find((app) => app.id === appId);
 }
 
-/**
- * Fill in the symbol and the session-date window the endpoint asks for.
- *
- * Endpoints that need neither are returned unchanged.
- *
- * @param {Object} endpoint The chosen endpoint.
- * @param {{symbol: string, start: string, end: string}} params Values for its placeholders.
- * @returns {string} The path to request.
- */
+/** Return the endpoint path with its symbol and start/end filled in, if it needs them. */
 export function resolvePath(endpoint, params) {
   const path = endpoint.needsSymbol
     ? endpoint.path.replace(':symbol', encodeURIComponent(params.symbol))
@@ -94,14 +67,7 @@ export function resolvePath(endpoint, params) {
   return `${path}?start=${encodeURIComponent(params.start)}&end=${encodeURIComponent(params.end)}`;
 }
 
-/**
- * Build the absolute URL a run will call.
- *
- * @param {Object} app The targeted backend.
- * @param {Object} endpoint The chosen endpoint.
- * @param {{symbol: string, start: string, end: string}} params Values for its placeholders.
- * @returns {string} The URL to request.
- */
+/** Return the absolute URL a run will call. */
 export function buildUrl(app, endpoint, params) {
   return `${app.baseUrl}${resolvePath(endpoint, params)}`;
 }

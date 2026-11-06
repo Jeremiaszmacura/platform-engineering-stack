@@ -1,11 +1,4 @@
-/*
- * The shell: navigation bar, page frame, and the grids the views sit in.
- *
- * The layout collapses in two steps. Below 960px the navigation tabs move out
- * of the bar into a drawer and the analysis panels stack; below 620px the
- * search box takes the full width of its own row, because searching a company
- * is the one thing the bar exists for and it must not shrink to an icon.
- */
+/* Layout: nav tabs move to a drawer below 960px; search takes its own row below 620px. */
 
 .shell {
   min-height: 100vh;
@@ -52,10 +45,7 @@
   margin-inline: auto;
 }
 
-/*
- * The tabs are only collapsible on narrow screens, so the `hidden` attribute
- * the drawer toggle sets must not take effect at desktop widths.
- */
+/* The drawer's `hidden` only applies on narrow screens. */
 .nav__tabs[hidden] {
   display: flex;
 }

@@ -1,9 +1,4 @@
-"""Stdout logging for stock-app.
-
-No log file is written: container logs belong to the container runtime, and
-a writable log directory would defeat the read-only root filesystem the
-Deployment asks for.
-"""
+"""Logging to stdout only (the root filesystem is read-only)."""
 
 import logging
 import sys
@@ -14,14 +9,7 @@ LOG_FORMAT = "[%(asctime)s] [%(levelname)s]: %(message)s"
 
 
 def configure_logging(level: int = logging.INFO) -> None:
-    """Attach a single stdout handler to the service logger.
-
-    Repeat calls are no-ops, so importing the composition root twice does not
-    duplicate log lines.
-
-    Args:
-        level: Minimum level the service logger emits.
-    """
+    """Attach one stdout handler to the service logger (idempotent)."""
     logger.setLevel(level)
     if logger.handlers:
         return

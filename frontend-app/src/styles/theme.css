@@ -1,19 +1,4 @@
-/*
- * Design tokens and the primitives built directly on them.
- *
- * These are stock-ui's tokens, deliberately restated here: the two frontends
- * are separate builds with no shared package between them, and they are meant
- * to read as one product. Anything changed in `stock-ui/src/styles/theme.css`
- * belongs in this file too.
- *
- * Both colour schemes are declared as the same variable names, so every
- * component is written once and re-themed by the `data-theme` attribute the
- * useTheme hook sets on the document root. Dark is the default: it is what
- * `:root` carries, and the light block only overrides it.
- *
- * The one addition over stock-ui is the status-tone block — this app colours
- * HTTP responses, which a price chart never has to.
- */
+/* Design tokens copied from stock-ui (keep in sync), plus status colours. Dark by default. */
 
 :root {
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -40,8 +25,7 @@
   --space-6: 32px;
   --space-7: 48px;
 
-  /* Native date and number inputs draw their own controls; this is what tells
-     the browser to draw them for the scheme the rest of the page is in. */
+  /* Native date/number inputs follow the active scheme. */
   color-scheme: dark;
 
   --bg: #08090b;

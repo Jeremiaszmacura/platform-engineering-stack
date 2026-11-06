@@ -18,24 +18,14 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
     """Counts requests, durations and status classes for every matched route."""
 
     async def dispatch(self, request: Request, call_next):
-        """Time the request and update the HTTP counters.
-
-        Args:
-            request: Incoming request.
-            call_next: Downstream ASGI application.
-
-        Returns:
-            The downstream response, unmodified.
-        """
+        """Time the request and update the HTTP metrics."""
         start_time = time.time()
 
         response = await call_next(request)
 
         process_time = time.time() - start_time
 
-        # Label with the matched route path; a constant for unmatched paths keeps
-        # label cardinality bounded (bot probes/404 scans must not mint new series).
-        # Route paths keep their {symbol} placeholder, so symbols never become labels.
+        # Label by route template (keeps {symbol}); unknown paths share one label to bound cardinality.
         route = request.scope.get("route")
         endpoint = route.path if route else "unmatched"
         status_code = str(response.status_code)

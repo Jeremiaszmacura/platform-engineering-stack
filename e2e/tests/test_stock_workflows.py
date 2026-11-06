@@ -1,14 +1,6 @@
-"""End-to-end tests of the stock-app cache-aside workflow.
+"""stock-app's cache-aside behaviour: what reaches the provider, what is cached, and the metrics.
 
-This module is about behaviour over time: what the sync ledger absorbs, what
-reaches the provider, and what the counters say about it. The endpoints
-themselves, and the shapes they answer in, are covered against the published
-contract in ``test_stock_api.py``.
-
-Tests marked ``external`` reach Yahoo Finance through the cluster. Yahoo
-rate-limits datacenter IPs and CI runs the whole suite on every pull request,
-so CI runs with ``-m "not external"``; everything unmarked here exercises the
-service without a provider call.
+Tests marked external call Yahoo Finance; CI skips them.
 """
 
 from dataclasses import dataclass
@@ -26,70 +18,36 @@ PROVIDER_TIMEOUT_SECONDS = 60
 
 @dataclass(frozen=True)
 class Period:
-    """An inclusive session-date window to request.
-
-    Attributes:
-        start: First session date.
-        end: Last session date.
-    """
+    """An inclusive session-date window."""
 
     start: date
     end: date
 
     @property
     def params(self):
-        """Return the window as query parameters.
-
-        Returns:
-            A ``start``/``end`` mapping in ISO format.
-        """
+        """Return the window as start/end query parameters."""
         return {"start": self.start.isoformat(), "end": self.end.isoformat()}
 
 
 def bars_url(symbol):
-    """Return the bars endpoint URL for a symbol.
-
-    Args:
-        symbol: Ticker symbol to request.
-
-    Returns:
-        The absolute URL of the symbol's bars endpoint.
-    """
+    """Return the bars URL for symbol."""
     return f"{STOCK_APP_URL}/api/v1/instruments/{symbol}/bars"
 
 
 def summary_url(symbol):
-    """Return the summary endpoint URL for a symbol.
-
-    Args:
-        symbol: Ticker symbol to request.
-
-    Returns:
-        The absolute URL of the symbol's summary endpoint.
-    """
+    """Return the summary URL for symbol."""
     return f"{STOCK_APP_URL}/api/v1/instruments/{symbol}/summary"
 
 
 def fetch_metrics():
-    """Return stock-app's /metrics payload in Prometheus text format.
-
-    Returns:
-        The raw Prometheus exposition text.
-    """
+    """Return stock-app's /metrics text."""
     response = requests.get(f"{STOCK_APP_URL}/metrics", timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     return response.text
 
 
 def fetch_ledger(symbol):
-    """Return the stored sync ledger for a symbol, or None if it has none.
-
-    Args:
-        symbol: Ticker symbol to look up.
-
-    Returns:
-        The instrument entry from `/api/v1/instruments`, or None.
-    """
+    """Return the /api/v1/instruments entry for symbol, or None."""
     response = requests.get(f"{STOCK_APP_URL}/api/v1/instruments", timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     return next((instrument for instrument in response.json() if instrument["symbol"] == symbol), None)
@@ -97,17 +55,7 @@ def fetch_ledger(symbol):
 
 @pytest.fixture(scope="module")
 def unsynced_period():
-    """Return a window the store cannot already hold.
-
-    The suite runs repeatedly against the same cluster and the TimescaleDB PVC
-    outlives a pod restart, so a fixed window would be a cache hit on the
-    second run and the cold path would silently stop being tested. Starting
-    before the earliest date already synced forces a backward extension, which
-    is a guaranteed provider call whatever ran before.
-
-    Returns:
-        A Period that the service must fetch from the provider.
-    """
+    """Return a window starting before anything synced, so the provider must be called even on a warm cluster."""
     ledger = fetch_ledger(SYMBOL)
     end = date.today() - timedelta(days=7)
     if ledger and ledger["firstSyncedDate"]:
@@ -117,14 +65,7 @@ def unsynced_period():
 
 @pytest.fixture(scope="module")
 def cold_then_cached(unsynced_period):
-    """Request an unsynced window, then immediately request it again.
-
-    Both requests are made once per module so every test observes the same
-    provider/cache pair whatever order they run in.
-
-    Returns:
-        The decoded bodies of the first and the second response.
-    """
+    """Request an unsynced window twice (once per module); return both response bodies."""
     first = requests.get(bars_url(SYMBOL), params=unsynced_period.params, timeout=PROVIDER_TIMEOUT_SECONDS)
     first.raise_for_status()
     second = requests.get(bars_url(SYMBOL), params=unsynced_period.params, timeout=PROVIDER_TIMEOUT_SECONDS)
@@ -231,11 +172,7 @@ def test_summary_agrees_with_the_bars_it_summarizes(cold_then_cached, unsynced_p
 
 @pytest.mark.external
 def test_fetched_symbol_appears_in_the_instrument_list(cold_then_cached, unsynced_period):
-    """A synced symbol is listed with a window covering what was requested.
-
-    The ledger is a union of every window ever fetched, so it may reach further
-    than this run asked for; what it may never do is claim less.
-    """
+    """The fetched symbol is listed with a synced window covering at least the request."""
     ledger = fetch_ledger(SYMBOL)
 
     assert ledger is not None

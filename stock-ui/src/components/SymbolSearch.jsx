@@ -1,24 +1,11 @@
-/**
- * The company search that sits in the navigation bar.
- *
- * Suggestions come from the instruments stock-app already holds, matched on
- * both ticker and company name. A ticker that is not in that list is still
- * offered as its own option — loading it is what puts it there.
- */
+/** Company search: suggests stored instruments by ticker or name, and offers any other valid ticker as-is. */
 
 import React, { useMemo, useRef, useState } from 'react';
 
 import { SearchIcon } from './Icons';
 import { isLoadableSymbol, matchInstruments, toSymbol } from '../lib/instruments';
 
-/**
- * Build the option list: matching instruments first, then the typed ticker
- * itself when it is not already among them.
- *
- * @param {Array<Object>} instruments Instruments stock-app holds.
- * @param {string} query Raw text typed into the box.
- * @returns {Array<{symbol: string, name: string, meta: string, isNew: boolean}>} Options to show.
- */
+/** Return matching instruments, then the typed ticker if it is new. */
 function buildOptions(instruments, query) {
   const matches = matchInstruments(instruments, query).map((instrument) => ({
     symbol: instrument.symbol,
@@ -33,14 +20,7 @@ function buildOptions(instruments, query) {
   return [...matches, { symbol: typed, name: 'Fetch from the provider', meta: 'New', isNew: true }];
 }
 
-/**
- * Render the search box and its suggestion list.
- *
- * @param {Object} props Component props.
- * @param {Array<Object>} props.instruments Instruments to suggest from.
- * @param {function(string): void} props.onSelect Called with the chosen ticker symbol.
- * @returns {JSX.Element} The search control.
- */
+/** Render the search box and suggestions; onSelect receives the ticker. */
 export function SymbolSearch({ instruments, onSelect }) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -86,8 +66,7 @@ export function SymbolSearch({ instruments, onSelect }) {
     }
   };
 
-  // Closing on blur has to ignore focus moving to an option inside the widget,
-  // which would otherwise unmount the list before the click lands on it.
+  // Ignore blur when focus moves to an option, or the list closes before the click.
   const handleBlur = (event) => {
     if (!containerRef.current?.contains(event.relatedTarget)) {
       setIsOpen(false);
@@ -128,9 +107,7 @@ export function SymbolSearch({ instruments, onSelect }) {
             </li>
           )}
           {options.map((option, index) => (
-            // Keyboard interaction belongs to the input, which points here with
-            // aria-activedescendant; the option itself must not take focus, or
-            // pressing a key would leave the box it is meant to be typing in.
+            // Focus stays in the input (aria-activedescendant points here).
             /* eslint-disable-next-line jsx-a11y/click-events-have-key-events */
             <li
               key={option.symbol}

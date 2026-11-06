@@ -1,15 +1,4 @@
-/*
- * Design tokens and the primitives built directly on them.
- *
- * Both colour schemes are declared as the same variable names, so every
- * component is written once and re-themed by the `data-theme` attribute the
- * useTheme hook sets on the document root. Dark is the default: it is what
- * `:root` carries, and the light block only overrides it.
- *
- * Prices, percentages, volumes and dates are set in the data typeface with
- * tabular figures throughout — digits that line up column to column are the
- * whole point of a market data screen.
- */
+/* Design tokens; dark by default, data-theme switches. Numbers use tabular figures. */
 
 :root {
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;

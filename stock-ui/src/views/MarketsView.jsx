@@ -1,10 +1,4 @@
-/**
- * The one view backed by a real service.
- *
- * It holds the two filters — chart shape and time range — turns the selected
- * symbol and range into a request to stock-app, and renders whichever of the
- * five states that request is in.
- */
+/** The view backed by stock-app: chart filters, the request and its loading/error/empty states. */
 
 import React, { useMemo, useState } from 'react';
 
@@ -21,17 +15,7 @@ import { summarize } from '../lib/series';
 /** Tickers offered on the empty state, as a way in for a first-time reader. */
 const STARTER_SYMBOLS = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL'];
 
-/**
- * Render the markets view.
- *
- * @param {Object} props Component props.
- * @param {?string} props.symbol Ticker to chart, or null when none is chosen.
- * @param {function(string): void} props.onSelectSymbol Called with a ticker to chart.
- * @param {Array<Object>} props.instruments Instruments stock-app holds.
- * @param {function(Object): void} props.onHistoryLoaded Called after a successful load.
- * @param {string} props.theme Active colour scheme.
- * @returns {JSX.Element} The view.
- */
+/** Render the markets view. */
 export function MarketsView({ symbol, onSelectSymbol, instruments, onHistoryLoaded, theme }) {
   const [rangeId, setRangeId] = useState(DEFAULT_RANGE_ID);
   const [chartType, setChartType] = useState(CHART_TYPES.line);
@@ -39,8 +23,7 @@ export function MarketsView({ symbol, onSelectSymbol, instruments, onHistoryLoad
 
   const { status, history, error } = usePriceHistory(symbol, rangeId, onHistoryLoaded);
   const range = findRange(rangeId);
-  // Held stable across renders: the chart takes the bars as an effect
-  // dependency, and a fresh array each render would rebuild its series.
+  // Stable array, so the chart doesn't rebuild its series every render.
   const bars = useMemo(() => history?.bars ?? [], [history]);
   const summary = useMemo(() => summarize(bars), [bars]);
   const instrument = instruments.find((candidate) => candidate.symbol === history?.symbol);
@@ -95,17 +78,7 @@ export function MarketsView({ symbol, onSelectSymbol, instruments, onHistoryLoad
   );
 }
 
-/**
- * Render whatever stands in for the chart when there is nothing to draw.
- *
- * @param {Object} props Component props.
- * @param {string} props.status Current load status.
- * @param {?string} props.symbol Ticker being loaded, when there is one.
- * @param {?Error} props.error Failure to explain, when the load failed.
- * @param {string} props.rangeId Selected range id.
- * @param {function(string): void} props.onSelectSymbol Called with a starter ticker.
- * @returns {JSX.Element} The state message.
- */
+/** Message shown instead of the chart (empty, loading, error or no sessions). */
 function ChartState({ status, symbol, error, rangeId, onSelectSymbol }) {
   if (status === LOAD_STATUS.loading) {
     const window = toDateWindow(rangeId);

@@ -4,8 +4,7 @@ PYTHON_SERVICES := $(shell find . -name 'tox.ini' -not -path '*/.venv/*' -not -p
 
 E2E_DIR := e2e
 E2E_VENV := $(E2E_DIR)/.venv
-# Extra pytest arguments, e.g. E2E_PYTEST_ARGS='-m "not external"' to skip the
-# tests that reach a third-party API (CI does exactly that).
+# Extra pytest arguments, e.g. E2E_PYTEST_ARGS='-m "not external"' (what CI uses).
 E2E_PYTEST_ARGS ?=
 
 # Frontends built with Vite (npm ci + npm run build)

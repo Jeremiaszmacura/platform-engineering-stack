@@ -1,27 +1,9 @@
-/**
- * The headline for the charted company: who it is, what it last closed at, and
- * how far it moved across the selected range.
- *
- * The range change is the number the whole filter row exists to produce, so it
- * is set at the same size as the price and carries its sign as well as its
- * colour — colour alone would not survive a monochrome screen.
- */
-
 import React from 'react';
 
 import { formatChange, formatPercent, formatPrice, formatSessionDate } from '../lib/format';
 import { directionOf } from '../lib/series';
 
-/**
- * Render the instrument headline.
- *
- * @param {Object} props Component props.
- * @param {Object} props.history Price history answered by stock-app.
- * @param {?Object} props.instrument Matching entry from the instrument list, when known.
- * @param {Object} props.summary Period statistics from {@link summarize}.
- * @param {Object} props.range Selected range.
- * @returns {JSX.Element} The headline.
- */
+/** Company name, last close and change over the selected range (sign shown, not only colour). */
 export function InstrumentHeader({ history, instrument, summary, range }) {
   const direction = directionOf(summary.change);
   return (

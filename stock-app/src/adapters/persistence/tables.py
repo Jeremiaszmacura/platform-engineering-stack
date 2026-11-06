@@ -1,8 +1,4 @@
-"""SQLAlchemy Core table definitions for the market data schema.
-
-Core rather than the ORM: the repository port returns frozen domain objects,
-so an identity map and lazy loading would buy nothing.
-"""
+"""SQLAlchemy Core table definitions."""
 
 from sqlalchemy import (
     BigInteger,
@@ -37,8 +33,7 @@ instruments = Table(
     Column("source", Text, nullable=False),
 )
 
-# Hypertable partitioned on ts; TimescaleDB requires the partitioning column
-# in every unique index, which is why it is part of the primary key.
+# Hypertable partitioned on ts, so ts is part of the primary key.
 price_bars = Table(
     "price_bars",
     metadata,

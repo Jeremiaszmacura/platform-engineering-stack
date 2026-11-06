@@ -5,8 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# The service is a package tree, so `src/` is copied as a directory (not
-# flattened) and imported as `src.main`.
+# src/ is kept as a package (imported as src.main).
 COPY alembic.ini .
 COPY migrations/ ./migrations/
 COPY src/ ./src/
@@ -15,8 +14,7 @@ COPY openapi.yaml .
 # Recorded provider response replayed when STOCK_PROVIDER=fixture.
 COPY fixtures/ ./fixtures/
 
-# Non-root runtime; HOME is writable at runtime through an emptyDir so the
-# yfinance timezone cache works with a read-only root filesystem.
+# Non-root; HOME is an emptyDir in the pod (yfinance cache, read-only root filesystem).
 RUN useradd --create-home --uid 10001 stockapp
 USER stockapp
 

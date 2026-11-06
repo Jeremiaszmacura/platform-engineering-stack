@@ -34,8 +34,7 @@ spec:
                 secretKeyRef:
                   name: timescaledb-secret
                   key: postgres-password
-            # Required: the mount point itself must not be the data directory,
-            # or initdb refuses to start on a non-empty volume.
+            # initdb needs a subdirectory, not the mount point.
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           resources:
@@ -54,9 +53,7 @@ spec:
               command: ["pg_isready", "-U", "stockapp", "-d", "stockdata"]
             initialDelaySeconds: 30
             periodSeconds: 10
-  # Generates PVC data-timescaledb-0 on kind's default local-path
-  # StorageClass. It survives pod restarts but not `kind delete cluster`, so
-  # the database is always cold after ./recreate-cluster.sh.
+  # PVC data-timescaledb-0: survives pod restarts, not ./recreate-cluster.sh.
   volumeClaimTemplates:
     - metadata:
         name: data

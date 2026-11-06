@@ -2,18 +2,7 @@
 
 import React from 'react';
 
-/**
- * Render the endpoints as a single-choice list.
- *
- * The path is not repeated on each row — the resolved URL under the form is
- * what actually gets called, and one of the two would always be the stale one.
- *
- * @param {Object} props Component props.
- * @param {Array<Object>} props.endpoints Endpoints to offer.
- * @param {string} props.selectedName Name of the chosen endpoint.
- * @param {function(string): void} props.onSelect Called with the chosen endpoint's name.
- * @returns {JSX.Element} The picker.
- */
+/** Single-choice list of the backend's endpoints. */
 export function EndpointPicker({ endpoints, selectedName, onSelect }) {
   return (
     <div className="field">

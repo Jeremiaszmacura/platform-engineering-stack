@@ -1,10 +1,4 @@
-/**
- * The price chart, and the readout that follows the crosshair.
- *
- * This is the only module that touches the charting library. It owns a canvas
- * the React tree does not manage, so every subscription and series it creates
- * is torn down again by the effect that created it.
- */
+/** Price chart and crosshair readout; the only module that uses lightweight-charts. */
 
 import {
   AreaSeries,
@@ -24,21 +18,10 @@ import { directionOf, indexBarsByDate, toCandlePoints, toLinePoints } from '../l
 /** Chart shapes the filter offers. */
 export const CHART_TYPES = { line: 'line', candles: 'candles' };
 
-/**
- * Size the readout is assumed to have while it is being positioned.
- *
- * Measuring the card would mean rendering it once to learn its size and again
- * to place it, on every pointer move. Its content is fixed, so a constant is
- * both stable and cheaper.
- */
+/** Fixed readout size used for positioning (avoids measuring on every pointer move). */
 const READOUT_SIZE = { width: 208, height: 136 };
 
-/**
- * Build the chart-wide options for a theme.
- *
- * @param {Object} palette Colours for the active theme.
- * @returns {Object} Options to apply to the chart.
- */
+/** Return chart options for a theme palette. */
 function chartOptions(palette) {
   const crosshairLine = {
     color: palette.border,
@@ -59,15 +42,7 @@ function chartOptions(palette) {
   };
 }
 
-/**
- * Add the series for the selected chart shape and fill it with the bars.
- *
- * @param {Object} chart Chart to add the series to.
- * @param {string} chartType One of {@link CHART_TYPES}.
- * @param {Array<Object>} bars Bars in ascending session-date order.
- * @param {Object} palette Colours for the active theme.
- * @returns {Object} The created series.
- */
+/** Add a line, area or candle series for chartType, filled with bars, and return it. */
 function addSeries(chart, chartType, bars, palette) {
   if (chartType === CHART_TYPES.candles) {
     const series = chart.addSeries(CandlestickSeries, {
@@ -92,17 +67,7 @@ function addSeries(chart, chartType, bars, palette) {
   return series;
 }
 
-/**
- * Render the chart and its crosshair readout.
- *
- * @param {Object} props Component props.
- * @param {Array<Object>} props.bars Bars in ascending session-date order.
- * @param {string} props.chartType One of {@link CHART_TYPES}.
- * @param {?string} props.currency Currency the prices are quoted in.
- * @param {string} props.theme Active colour scheme.
- * @param {React.Ref} ref Receives the zoom controls the toolbar drives.
- * @returns {JSX.Element} The chart.
- */
+/** Render the chart; ref receives the zoom controls used by the toolbar. */
 export const PriceChart = forwardRef(function PriceChart({ bars, chartType, currency, theme }, ref) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
@@ -143,8 +108,7 @@ export const PriceChart = forwardRef(function PriceChart({ bars, chartType, curr
 
     chart.subscribeCrosshairMove(showReadout);
     return () => {
-      // On unmount the effect above has already disposed the chart, and the
-      // series and subscription went with it; touching them would throw.
+      // Already disposed on unmount.
       if (!chartRef.current) {
         return;
       }
@@ -177,15 +141,7 @@ export const PriceChart = forwardRef(function PriceChart({ bars, chartType, curr
   );
 });
 
-/**
- * The card that reads out the hovered session.
- *
- * @param {Object} props Component props.
- * @param {Object} props.bar Bar under the crosshair.
- * @param {{left: number, top: number}} props.position Where to place the card.
- * @param {?string} props.currency Currency the prices are quoted in.
- * @returns {JSX.Element} The readout.
- */
+/** Card showing the hovered session's prices. */
 function Readout({ bar, position, currency }) {
   const cells = [
     ['Open', formatPrice(bar.open)],

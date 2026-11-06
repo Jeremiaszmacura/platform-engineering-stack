@@ -1,11 +1,4 @@
-"""Tests that the contract and the service it describes cannot drift apart.
-
-``openapi.yaml`` is the source of truth for the HTTP surface, which is only
-worth anything if publishing it and implementing it are checked against each
-other. These tests fail on a route that no operation declares, an operation
-that no route implements, and on the two constants the contract has to repeat
-in prose because JSON Schema cannot express them.
-"""
+"""Tests that openapi.yaml and the routes describe the same API, and that the service publishes it."""
 
 import unittest
 
@@ -19,14 +12,7 @@ from src.main import app
 
 
 def operations(document: dict) -> set[tuple[str, str, str]]:
-    """Return the identity of every operation in an OpenAPI document.
-
-    Args:
-        document: A parsed OpenAPI document.
-
-    Returns:
-        One ``(path, method, operationId)`` triple per operation.
-    """
+    """Return (path, method, operationId) for every operation in an OpenAPI document."""
     return {
         (path, method, operation["operationId"])
         for path, path_item in document["paths"].items()
@@ -35,34 +21,17 @@ def operations(document: dict) -> set[tuple[str, str, str]]:
 
 
 def routed_operations() -> set[tuple[str, str, str]]:
-    """Return the operations the registered routes implement.
-
-    Uses FastAPI's own code-to-document generator, so the comparison below is
-    between two OpenAPI documents rather than between a document and a private
-    routing structure.
-
-    Returns:
-        The operations of the document FastAPI derives from the code.
-    """
+    """Return the operations the routes implement, via FastAPI's own generator."""
     return operations(get_openapi(title=app.title, version=app.version, routes=app.routes))
 
 
 def declared_operations() -> set[tuple[str, str, str]]:
-    """Return the operations the authored contract declares.
-
-    Returns:
-        The operations of ``openapi.yaml``.
-    """
+    """Return the operations openapi.yaml declares."""
     return operations(load_contract())
 
 
 class TestContractIsWellFormed(unittest.TestCase):
-    """Tests that what the service publishes is a valid OpenAPI document.
-
-    Generating the models only reads ``components/schemas``, so a broken
-    ``$ref`` to a response or a parameter would otherwise ship unnoticed and
-    surface as a blank Swagger UI.
-    """
+    """Tests that openapi.yaml is a valid OpenAPI document (model generation alone wouldn't catch a bad $ref)."""
 
     def test_contract_validates_against_the_openapi_schema(self):
         validate(load_contract())
@@ -99,12 +68,7 @@ class TestContractIsPublished(unittest.TestCase):
 
 
 class TestRulesStatedInProse(unittest.TestCase):
-    """Tests the two rules the contract can only describe, not declare.
-
-    A cross-parameter rule has no JSON Schema equivalent, so the range cap is
-    enforced in code and described in the contract. These assertions stop the
-    description from quietly becoming a lie.
-    """
+    """Tests that limits enforced in code match what the contract describes in prose."""
 
     def test_symbol_pattern_matches_the_contract(self):
         declared = load_contract()["components"]["parameters"]["Symbol"]["schema"]["pattern"]

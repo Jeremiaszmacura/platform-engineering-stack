@@ -1,12 +1,4 @@
-/**
- * The two analysis panels under the chart.
- *
- * The indicators are placeholders: which ones are worth showing has not been
- * decided, and neither stock-app nor this app calculates any of them yet. They
- * are declared as data so replacing the list later is a single edit, and they
- * render as empty slots rather than as plausible-looking numbers — a made-up
- * P/E ratio on a market data screen is worse than an obvious gap.
- */
+/** Placeholder analysis panels: no indicators are calculated yet, so they render as empty slots. */
 
 import React from 'react';
 
@@ -26,13 +18,7 @@ export const INDICATOR_PANELS = [
   },
 ];
 
-/**
- * Render the placeholder analysis panels for a company.
- *
- * @param {Object} props Component props.
- * @param {string} props.symbol Ticker the panels describe.
- * @returns {JSX.Element} The panels.
- */
+/** Render the placeholder panels for symbol. */
 export function IndicatorPanels({ symbol }) {
   return (
     <div className="analysis-grid">

@@ -1,36 +1,13 @@
-/**
- * What came back: one row per request, in the order they were sent.
- *
- * The row carries the response's tone on its left edge — the same coloured
- * rail stock-ui gives its crosshair readout — so a burst can be read as a
- * column of colour before any of the numbers are.
- */
-
 import React from 'react';
 
 import { toneOf } from '../lib/run';
 
-/**
- * Render a response body as text.
- *
- * `/metrics` answers in Prometheus text format, not JSON; stringifying it
- * would turn the whole exposition into one escaped line.
- *
- * @param {*} data The parsed response body.
- * @returns {string} Text to show in the row.
- */
+/** Return the body as text; /metrics is plain text, not JSON. */
 function formatBody(data) {
   return typeof data === 'string' ? data : JSON.stringify(data, null, 2);
 }
 
-/**
- * Render the results, or the state standing in for them.
- *
- * @param {Object} props Component props.
- * @param {Array<Object>} props.results Results of the last run.
- * @param {boolean} props.isRunning Whether a run is in flight.
- * @returns {JSX.Element} The list, or an empty or loading state.
- */
+/** One row per response, in send order, or an empty/loading state. */
 export function ResultList({ results, isRunning }) {
   if (isRunning) {
     return (

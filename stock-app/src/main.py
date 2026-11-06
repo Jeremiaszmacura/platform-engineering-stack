@@ -1,8 +1,4 @@
-"""Composition root: the only module that constructs adapters.
-
-Everything else depends on ports, so swapping the provider or the store means
-editing this file alone.
-"""
+"""Composition root: the only module that constructs adapters."""
 
 from datetime import timedelta
 
@@ -24,17 +20,7 @@ from src.observability.logging import configure_logging, logger
 
 
 def build_provider(name: str) -> MarketDataProvider:
-    """Return the market data provider selected by configuration.
-
-    Args:
-        name: Provider name from STOCK_PROVIDER.
-
-    Returns:
-        The matching provider adapter.
-
-    Raises:
-        ValueError: If no provider is registered under that name.
-    """
+    """Return the provider named by STOCK_PROVIDER; raise ValueError for an unknown name."""
     if name == YAHOO:
         return YahooMarketDataProvider()
     if name == FIXTURE:
@@ -43,14 +29,7 @@ def build_provider(name: str) -> MarketDataProvider:
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
-    """Build the application with its adapters wired into the use case.
-
-    Args:
-        settings: Settings to build from; read from the environment if omitted.
-
-    Returns:
-        The configured FastAPI application.
-    """
+    """Build the FastAPI app with its adapters (settings default to the environment)."""
     settings = settings or get_settings()
     configure_logging()
 
@@ -62,9 +41,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         settings.vault_addr, settings.vault_token.get_secret_value(), settings.vault_secret_path
     )
 
-    # Title and version come from the contract so they are written down once.
-    # openapi_url=None turns off FastAPI's derived /openapi.json (and its /docs):
-    # serve_contract publishes the authored YAML instead.
+    # Title and version come from the contract. openapi_url=None: serve_contract publishes the YAML instead.
     contract = load_contract()
     app = FastAPI(title=contract["info"]["title"], version=contract["info"]["version"], openapi_url=None)
     app.state.repository = repository

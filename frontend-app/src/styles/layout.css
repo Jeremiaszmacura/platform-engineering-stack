@@ -1,11 +1,4 @@
-/*
- * The shell: navigation bar, page frame, and the grid the console sits in.
- *
- * The console is two columns — the request being built on the left, what came
- * back on the right — collapsing to one below 960px so neither gets too narrow
- * to read. The bar holds only a brand, the backend tabs and the theme switch,
- * so it needs no drawer: below 620px the tabs simply take their own row.
- */
+/* Layout: two columns, one below 960px; nav tabs wrap below 620px. */
 
 .shell {
   min-height: 100vh;

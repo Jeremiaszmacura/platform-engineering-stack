@@ -71,8 +71,7 @@ spec:
     - port: 80
       targetPort: 8080
 ---
-# Metrics only: Prometheus scrapes every endpoint of this Service, i.e. each
-# pod's exporter sidecar separately (one target per nginx pod).
+# Exporter sidecars; Prometheus scrapes each pod.
 apiVersion: v1
 kind: Service
 metadata:

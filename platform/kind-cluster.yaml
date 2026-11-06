@@ -1,5 +1,4 @@
-# All host traffic enters through the ingress-nginx controller on the
-# control-plane node; services are routed by hostname (*.localhost).
+# Host port 80 goes to ingress-nginx on the control-plane node.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:

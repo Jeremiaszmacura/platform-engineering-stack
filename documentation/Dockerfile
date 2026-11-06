@@ -1,7 +1,4 @@
-# Build context is the repository root, not documentation/: hooks/contracts.py
-# resolves a service contract relative to mkdocs.yml, so stock-app/ has to sit
-# next to documentation/ here exactly as it does in a checkout. That lets the
-# site render stock-app's OpenAPI contract without keeping a second copy of it.
+# Built from the repo root so the site can include stock-app/openapi.yaml:
 #   docker build -t documentation:dev -f documentation/Dockerfile .
 
 # Build the static site once...
