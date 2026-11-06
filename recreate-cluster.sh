@@ -7,7 +7,7 @@ CLUSTER_NAME=sample-cluster
 
 # Market data provider stock-app is deployed with. `yahoo` calls the real API;
 # `fixture` replays the recording baked into the image, which is what CI uses
-# because Yahoo rate-limits datacenter IPs. See documentation/docs/e2e-tests.md.
+# because Yahoo rate-limits datacenter IPs. See documentation/docs/testing.md.
 STOCK_PROVIDER="${STOCK_PROVIDER:-yahoo}"
 
 # Locally built images: <image name> <build context> [Dockerfile]

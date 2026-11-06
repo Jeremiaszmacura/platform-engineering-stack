@@ -20,4 +20,3 @@ and watch the traffic at http://grafana.localhost (`admin` / `admin`).
 - Docs: https://jeremiaszmacura.github.io/platform-engineering-stack/ (also at http://docs.localhost)
 - Commands: `make help`
 - Adding a component: [documentation/docs/adding-a-service.md](documentation/docs/adding-a-service.md)
-- Latest cleanup — what was found and what changed: [plans/repo-review-findings.md](plans/repo-review-findings.md)

@@ -16,7 +16,7 @@ third-party API is decided by the cluster, not by the test run: deployed with
 ``STOCK_PROVIDER=fixture`` it replays a recording baked into the image and
 reaches no network at all, which is how CI runs it. Deployed with
 ``STOCK_PROVIDER=yahoo`` the same tests exercise the real provider. See
-[End-to-End Tests](../../documentation/docs/e2e-tests.md).
+documentation/docs/testing.md.
 """
 
 from datetime import date, timedelta

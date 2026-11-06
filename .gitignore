@@ -2,6 +2,8 @@
 documentation/site/
 .cache
 .claude/settings.local.json
+# Working plans (e.g. from the plan-implementation skill) stay local
+plans/
 
 # Go
 go-app/**/*.exe

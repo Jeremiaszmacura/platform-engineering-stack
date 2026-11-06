@@ -1,43 +1,15 @@
 # Adding a Service
 
-Checklist for a new component `my-service`. Copy an existing one (e.g. `go-app/`) as a start.
+Copy an existing component (e.g. `go-app/`) and then:
 
-## 1. Code and image
-
-- [ ] Create `my-service/` with the code and a `Dockerfile` (pinned base image, non-root user).
-- [ ] Go: add `go.mod` — `make build`, `make test-unit-go` and `make lint-go` find it automatically.
-- [ ] Python: add `tox.ini` (copy `stock-app/tox.ini`), `requirements.txt`, `requirements-dev.txt`
-      and `tests/test_*.py` — `make test-unit-python` and `make lint-python` find it automatically.
-- [ ] Frontend (Vite): add it to `FRONTENDS` in the `Makefile` so `make build-frontend` and CI build it.
-
-## 2. Kubernetes
-
-- [ ] `my-service/k8s/` with a Deployment (`name` and `app` label = `my-service`), a Service
-      `my-service-service` and an Ingress `my-service-ingress` for host `my-service.localhost`.
-- [ ] Set `metadata.namespace` on every manifest (`apps` for an application; see [Platform Decisions](platform-decisions.md)).
-- [ ] Add a ServiceAccount `my-service` with `automountServiceAccountToken: false` and set `serviceAccountName`.
-- [ ] Add resource requests/limits, a readiness probe and a non-root `securityContext`.
-
-## 3. Cluster script
-
-- [ ] In `recreate-cluster.sh`, add the image to `IMAGES` (if built locally), the `k8s/` directory to
-      `COMPONENTS`, and the URL to `URLS`.
-
-## 4. Monitoring (if it exposes `/metrics`)
-
-- [ ] Annotate its Service with `prometheus.io/scrape: "true"` and `prometheus.io/job: my-service` —
-      Prometheus finds it with no config change.
-- [ ] Add a dashboard JSON in `monitoring/grafana/ansible/dashboards/` with a fixed `uid` and every query filtered by `job="my-service"`.
-
-## 5. Tests and docs
-
-- [ ] Add the URL to `SERVICE_URLS` in `e2e/cluster.py` and e2e tests for its workflows.
-- [ ] Add `documentation/docs/services/my-service.md`, link it in `mkdocs.yml` and the table in `index.md`.
-- [ ] Keep `my-service/README.md` to a one-line link to that page.
-
-## 6. Verify
-
-```sh
-make lint && make test-unit
-./recreate-cluster.sh && make test-e2e
-```
+1. **Code:** a `Dockerfile` (pinned base image, non-root). Go needs `go.mod`, Python needs `tox.ini` — the
+   Makefile finds them. A Vite frontend goes into `FRONTENDS` in the `Makefile`.
+2. **Kubernetes** (`my-service/k8s/`, namespace `apps`): Deployment `my-service`, Service `my-service-service`,
+   Ingress `my-service-ingress` for `my-service.localhost`, ServiceAccount `my-service` with
+   `automountServiceAccountToken: false`; requests/limits, readiness probe, non-root `securityContext`.
+3. **Cluster script:** add it to `IMAGES`, `COMPONENTS` and `URLS` in `recreate-cluster.sh`.
+4. **Metrics** (if any): annotate the Service with `prometheus.io/scrape: "true"` and `prometheus.io/job`;
+   add a dashboard JSON with a fixed `uid` to `monitoring/grafana/ansible/dashboards/`.
+5. **Tests and docs:** add the URL to `SERVICE_URLS` in `e2e/cluster.py`, e2e tests, a page in
+   `documentation/docs/services/` (plus `mkdocs.yml` nav and the table in `index.md`), and a one-line README.
+6. **Verify:** `make lint test-unit && ./recreate-cluster.sh && make test-e2e`.
