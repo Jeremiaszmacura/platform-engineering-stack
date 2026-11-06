@@ -26,6 +26,11 @@ spec:
             - name: VAULT_DEV_ROOT_TOKEN_ID
               valueFrom:
                 secretKeyRef: {name: vault-dev-token, key: token}
+            # The image entrypoint runs setcap on the ~475 MiB vault binary, which
+            # copies it into the container layer and OOMs the memory limit.
+            # Dev mode never mlocks, so the file capability isn't needed.
+            - name: SKIP_SETCAP
+              value: "true"
           ports:
             - containerPort: 8200
           securityContext:
