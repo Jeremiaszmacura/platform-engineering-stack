@@ -2,6 +2,21 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
+// Backends under test, called cross-origin on their ingress hosts (CORS enabled at the ingress)
+const BACKENDS = {
+  'python-app': { label: '🐍 Python App (FastAPI)', baseUrl: 'http://python.localhost' },
+  'go-app': { label: '🔧 Go App (Gin)', baseUrl: 'http://go.localhost' },
+};
+
+// Both backends share the same endpoint contract
+const ENDPOINTS = [
+  { path: '/', name: 'Home', method: 'GET', description: 'Get welcome message' },
+  { path: '/health', name: 'Health Check', method: 'GET', description: 'Check app health' },
+  { path: '/error', name: 'Error', method: 'GET', description: 'Simulate error (500)' },
+  { path: '/redirect', name: 'Redirect', method: 'GET', description: 'Redirect to health' },
+  { path: '/metrics', name: 'Metrics', method: 'GET', description: 'Prometheus metrics' },
+];
+
 function App() {
   const [selectedApp, setSelectedApp] = useState('python-app');
   const [selectedEndpoint, setSelectedEndpoint] = useState('Home');
@@ -15,35 +30,8 @@ function App() {
     avgResponseTime: 0
   });
 
-  const endpoints = {
-    'python-app': [
-      { path: '/', name: 'Home', method: 'GET', description: 'Get welcome message' },
-      { path: '/health', name: 'Health Check', method: 'GET', description: 'Check app health' },
-      { path: '/error', name: 'Error', method: 'GET', description: 'Simulate error (500)' },
-      { path: '/redirect', name: 'Redirect', method: 'GET', description: 'Redirect to health' },
-      { path: '/metrics', name: 'Metrics', method: 'GET', description: 'Prometheus metrics' }
-    ],
-    'go-app': [
-      { path: '/', name: 'Home', method: 'GET', description: 'Get welcome message' },
-      { path: '/health', name: 'Health Check', method: 'GET', description: 'Check app health' },
-      { path: '/error', name: 'Error', method: 'GET', description: 'Simulate error (500)' },
-      { path: '/redirect', name: 'Redirect', method: 'GET', description: 'Redirect to health' },
-      { path: '/metrics', name: 'Metrics', method: 'GET', description: 'Prometheus metrics' }
-    ]
-  };
-
-  const getBaseUrl = (app) => {
-    // Backends are called cross-origin via their ingress hosts (CORS enabled at the ingress)
-    if (app === 'python-app') {
-      return 'http://python.localhost';
-    } else if (app === 'go-app') {
-      return 'http://go.localhost';
-    }
-    return '';
-  };
-
   const getSelectedEndpointMeta = () => {
-    return endpoints[selectedApp].find((e) => e.name === selectedEndpoint);
+    return ENDPOINTS.find((e) => e.name === selectedEndpoint);
   };
 
   const makeRequest = async (url) => {
@@ -79,35 +67,35 @@ function App() {
     e.preventDefault();
     setIsLoading(true);
     setResults([]);
-    
+
     const meta = getSelectedEndpointMeta();
-    const baseUrl = getBaseUrl(selectedApp);
+    const baseUrl = BACKENDS[selectedApp].baseUrl;
     const fullUrl = `${baseUrl}${meta ? meta.path : '/'}`;
-    
+
     const requests = [];
     const newResults = [];
-    
+
     // Make all requests concurrently for better performance
     for (let i = 0; i < requestCount; i++) {
       requests.push(makeRequest(fullUrl));
     }
-    
+
     try {
       const responses = await Promise.all(requests);
       newResults.push(...responses);
-      
+
       // Calculate statistics
       const successful = responses.filter(r => r.success && r.status >= 200 && r.status < 400).length;
       const failed = responses.length - successful;
       const avgResponseTime = responses.reduce((sum, r) => sum + r.responseTime, 0) / responses.length;
-      
+
       setStats({
         total: responses.length,
         successful,
         failed,
         avgResponseTime: Math.round(avgResponseTime)
       });
-      
+
       setResults(newResults);
     } catch (error) {
       console.error('Error making requests:', error);
@@ -147,12 +135,12 @@ function App() {
               value={selectedApp}
               onChange={(e) => {
                 setSelectedApp(e.target.value);
-                setSelectedEndpoint('Home'); // Reset endpoint when app changes
               }}
               className="form-control"
             >
-              <option value="python-app">🐍 Python App (FastAPI)</option>
-              <option value="go-app">🔧 Go App (Gin)</option>
+              {Object.entries(BACKENDS).map(([name, backend]) => (
+                <option key={name} value={name}>{backend.label}</option>
+              ))}
             </select>
           </div>
 
@@ -164,7 +152,7 @@ function App() {
               onChange={(e) => setSelectedEndpoint(e.target.value)}
               className="form-control"
             >
-              {endpoints[selectedApp].map((endpoint) => (
+              {ENDPOINTS.map((endpoint) => (
                 <option key={endpoint.name} value={endpoint.name}>
                   [{endpoint.method}] {endpoint.name} ({endpoint.path}) - {endpoint.description}
                 </option>
@@ -194,7 +182,7 @@ function App() {
             >
               {isLoading ? '🔄 Sending Requests...' : `🚀 Send ${requestCount} Request${requestCount > 1 ? 's' : ''}`}
             </button>
-            
+
             {results.length > 0 && (
               <button
                 type="button"

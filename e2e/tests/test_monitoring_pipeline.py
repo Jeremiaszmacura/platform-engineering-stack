@@ -16,6 +16,10 @@ from cluster import (
 EXPECTED_PROMETHEUS_JOBS = {"self", "nginx-metrics", "node-exporter", "python-app", "go-app"}
 EXPECTED_DASHBOARD_TITLES = {"Go App Metrics", "Infrastructure Overview", "NGINX Monitoring", "Python App Metrics"}
 
+# Jobs that must scrape every instance separately: one node-exporter per kind
+# node (kind-cluster.yaml) and one nginx-exporter sidecar per nginx replica.
+EXPECTED_TARGETS_PER_JOB = {"node-exporter": 3, "nginx-metrics": 2}
+
 
 def fetch_up_jobs():
     """Return the set of Prometheus scrape job names whose targets are all healthy.
@@ -29,6 +33,31 @@ def fetch_up_jobs():
     all_jobs = {target["labels"]["job"] for target in targets}
     down_jobs = {target["labels"]["job"] for target in targets if target["health"] != "up"}
     return all_jobs - down_jobs
+
+
+def count_up_targets(job):
+    """Return how many targets of a Prometheus scrape job are healthy.
+
+    Args:
+        job: Scrape job name.
+
+    Returns:
+        Number of the job's active targets reporting health "up".
+    """
+    response = requests.get(f"{PROMETHEUS_URL}/api/v1/targets", timeout=REQUEST_TIMEOUT_SECONDS)
+    response.raise_for_status()
+    targets = response.json()["data"]["activeTargets"]
+    return sum(1 for target in targets if target["labels"]["job"] == job and target["health"] == "up")
+
+
+def test_multi_instance_jobs_scrape_every_instance():
+    """Every node and every nginx pod is scraped as its own target."""
+    for job, expected in EXPECTED_TARGETS_PER_JOB.items():
+        wait_until(
+            lambda job=job, expected=expected: count_up_targets(job) == expected,
+            TARGETS_UP_TIMEOUT_SECONDS,
+            description=f"{expected} up targets for job {job}",
+        )
 
 
 def test_all_scrape_targets_are_up():

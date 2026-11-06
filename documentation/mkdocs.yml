@@ -1,13 +1,19 @@
-site_name: DevOps Project Documentation
-site_url: https://jeremiaszmacura.github.io/devops-stack/
+site_name: Platform Engineering Stack
+site_url: https://jeremiaszmacura.github.io/platform-engineering-stack/
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
-  - Adding a Service: adding-a-service.md
   - Design: design.md
   - Platform Decisions: platform-decisions.md
-  - Monitoring: monitoring.md
-  - Vault: vault.md
+  - Adding a Service: adding-a-service.md
+  - Services:
+      - python-app: services/python-app.md
+      - go-app: services/go-app.md
+      - frontend-app: services/frontend-app.md
+      - nginx: services/nginx.md
+      - Vault: services/vault.md
+      - Monitoring: services/monitoring.md
+      - Documentation: services/documentation.md
   - End-to-End Tests: e2e-tests.md
 theme:
   name: material

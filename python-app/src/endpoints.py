@@ -1,7 +1,9 @@
+"""HTTP routes of the sample backend (shared contract with go-app, see docs)."""
+
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from logger import logger
 from vault_client import SecretNotFoundError, VaultClient, VaultClientError, get_vault_client
@@ -13,12 +15,12 @@ class SecretPayload(BaseModel):
     """Request body for storing a secret.
 
     Attributes:
-        key: Secret path within Vault's KV v2 mount.
-        value: Secret value to store.
+        key: Secret name; letters, digits, '_', '.', '-' only (same rule as go-app).
+        value: Secret value to store; must not be empty.
     """
 
-    key: str
-    value: str
+    key: str = Field(pattern=r"^[A-Za-z0-9_.-]+$")
+    value: str = Field(min_length=1)
 
 
 @router.get("/")
@@ -52,7 +54,7 @@ def redirect():
 @router.post("/secret", status_code=201)
 def write_secret(payload: SecretPayload, vault: VaultClient = Depends(get_vault_client)):
     """Store a secret in Vault under the given key."""
-    logger.info(f"Write secret endpoint called for key: {payload.key}")
+    logger.info("Write secret endpoint called for key: %s", payload.key)
     try:
         vault.write_secret(payload.key, payload.value)
     except VaultClientError:
@@ -63,7 +65,7 @@ def write_secret(payload: SecretPayload, vault: VaultClient = Depends(get_vault_
 @router.get("/secret/{key}")
 def read_secret(key: str, vault: VaultClient = Depends(get_vault_client)):
     """Read a secret from Vault by key."""
-    logger.info(f"Read secret endpoint called for key: {key}")
+    logger.info("Read secret endpoint called for key: %r", key)
     try:
         value = vault.read_secret(key)
     except SecretNotFoundError:

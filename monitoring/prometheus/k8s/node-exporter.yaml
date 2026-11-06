@@ -13,17 +13,29 @@ spec:
       labels:
         app: node-exporter
     spec:
+      # Host network/PID: node-exporter reports the node itself, not the pod
+      hostNetwork: true
       hostPID: true
+      tolerations:
+        # Also run on the control-plane node, so every node is monitored
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
       containers:
         - name: node-exporter
-          image: prom/node-exporter:latest
+          image: prom/node-exporter:v1.12.1
+          args:
+            - '--path.procfs=/host/proc'
+            - '--path.sysfs=/host/sys'
+            - '--path.rootfs=/rootfs'
           ports:
             - containerPort: 9100
-              hostPort: 9100
           resources:
-            limits:
-              memory: 200Mi
-              cpu: 200m
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 200Mi}
+          readinessProbe:
+            httpGet: {path: /, port: 9100}
+            periodSeconds: 10
           volumeMounts:
             - name: proc
               mountPath: /host/proc
@@ -34,12 +46,6 @@ spec:
             - name: root
               mountPath: /rootfs
               readOnly: true
-          args:
-            - '--path.procfs=/host/proc'
-            - '--path.sysfs=/host/sys'
-            - '--path.rootfs=/rootfs'
-      hostNetwork: true
-      hostPID: true
       volumes:
         - name: proc
           hostPath:
@@ -51,13 +57,15 @@ spec:
           hostPath:
             path: /
 ---
+# Headless: DNS returns every node's IP, so Prometheus scrapes each node separately
 apiVersion: v1
 kind: Service
 metadata:
-  name: node-exporter
+  name: node-exporter-service
   labels:
     app: node-exporter
 spec:
+  clusterIP: None
   selector:
     app: node-exporter
   ports:

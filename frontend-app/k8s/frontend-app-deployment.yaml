@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend-deployment
+  name: frontend-app
   labels:
     app: frontend-app
 spec:
@@ -14,28 +14,38 @@ spec:
       labels:
         app: frontend-app
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101  # nginx-unprivileged's default user
       containers:
         - name: frontend-app
-          image: frontend-app:dev
+          image: frontend-app:dev  # built locally and loaded into kind
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 80
+            - containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+          resources:
+            requests: {cpu: 25m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
           readinessProbe:
-            httpGet:
-              path: /
-              port: 80
+            httpGet: {path: /, port: 8080}
             initialDelaySeconds: 3
             periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /, port: 8080}
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend-app-service
+  labels:
+    app: frontend-app
 spec:
   type: ClusterIP
   selector:
     app: frontend-app
   ports:
     - port: 80
-      targetPort: 80
-      protocol: TCP
+      targetPort: 8080

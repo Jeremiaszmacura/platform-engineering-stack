@@ -46,8 +46,7 @@ BACKENDS = (
 )
 
 SERVICE_URLS = {
-    "python-app": "http://python.localhost",
-    "go-app": "http://go.localhost",
+    **{backend.name: backend.base_url for backend in BACKENDS},
     "frontend-app": FRONTEND_URL,
     "prometheus": PROMETHEUS_URL,
     "grafana": GRAFANA_URL,

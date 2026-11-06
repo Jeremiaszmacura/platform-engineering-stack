@@ -1,48 +1,60 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: python-app-deployment
+  name: python-app
   labels:
-    app: python-app-deployment
+    app: python-app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: python-app-pod
+      app: python-app
   template:
     metadata:
       labels:
-        app: python-app-pod
+        app: python-app
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
         - name: python-app
+          image: python-app:dev  # built locally and loaded into kind
           imagePullPolicy: IfNotPresent
-          image: python-app:dev  # LOCAL image name
           ports:
             - containerPort: 8000
           env:
             - name: VAULT_ADDR
               value: http://vault-service:8200
             - name: VAULT_TOKEN
-              value: root  # Dev-mode root token, see vault/README.md
+              valueFrom:
+                secretKeyRef: {name: vault-dev-token, key: token}
             - name: VAULT_SECRET_PATH
-              value: python-app  # Own path under services/ so Vault roles can scope per service
+              value: python-app  # own path under services/, so Vault policies can scope per service
+          securityContext:
+            allowPrivilegeEscalation: false
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 256Mi}
           readinessProbe:
-            httpGet:
-              path: /health
-              port: 8000
+            httpGet: {path: /health, port: 8000}
             initialDelaySeconds: 3
             periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /health, port: 8000}
+            initialDelaySeconds: 10
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: python-app-service
+  labels:
+    app: python-app
 spec:
   type: ClusterIP
   selector:
-    app: python-app-pod
+    app: python-app
   ports:
     - port: 8000
-      targetPort: 8000  # Container port where your Python app runs
-      protocol: TCP
+      targetPort: 8000

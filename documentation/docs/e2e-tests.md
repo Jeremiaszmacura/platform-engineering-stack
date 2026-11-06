@@ -1,38 +1,29 @@
 # End-to-End Tests
 
-The `e2e/` directory contains a black-box pytest suite that verifies the
-deployed cluster's workflows over HTTP — the same paths a user or Prometheus
-would take. It never talks to pods or kubectl directly: every request goes
-through the ingress on port 80, routed by `*.localhost` hostname, so the suite
-runs identically on a developer machine and in CI.
+`e2e/` holds pytest tests that check the running cluster from the outside, only over HTTP
+through the ingress (like a user or Prometheus would). They never use kubectl.
 
-## What is covered
-
-| Suite | Workflow |
+| File | Checks |
 |---|---|
-| `test_cluster_health.py` | Every component answers HTTP 200 on its ingress host |
-| `test_backend_workflows.py` | Shared backend contract (`/`, `/health`, `/error`, `/redirect`, `/metrics`) on python-app and go-app, and traffic being counted in each app's metrics |
-| `test_frontend.py` | Frontend serves the UI, and the backend ingresses answer its cross-origin calls with CORS headers |
-| `test_monitoring_pipeline.py` | Prometheus targets up, generated traffic queryable in Prometheus, Grafana datasource and dashboards provisioned |
+| `test_cluster_health.py` | Every component answers 200 on its URL |
+| `test_backend_workflows.py` | The shared backend contract on both backends; requests show up in each app's metrics |
+| `test_vault_workflows.py` | Vault is up, mounts exist, secret write/read/404/422, backends can't read each other's secrets |
+| `test_frontend.py` | The UI is served; backends answer the frontend's cross-origin calls (CORS) |
+| `test_monitoring_pipeline.py` | All scrape jobs up, every node and nginx pod scraped separately, traffic reaches Prometheus, Grafana datasource and dashboards exist |
 
-Tests that apply to both backends run twice via the parametrized `backend`
-fixture. Eventual consistency (scrape intervals, target discovery) is handled
-by polling with timeouts, not sleeps.
+Tests for "both backends" run twice through the `backend` fixture.
+Slow things (scrapes, target discovery) are polled with a timeout, never with fixed sleeps.
 
-## Running locally
+## Run
 
 ```sh
-./recreate-cluster.sh   # deploy the cluster first
-make test-e2e
+./recreate-cluster.sh
+make test-e2e      # creates e2e/.venv, installs pinned deps, runs pytest
 ```
 
-`make test-e2e` creates a virtualenv in `e2e/.venv`, installs pinned
-dependencies, and runs pytest.
+## CI
 
-## Continuous integration
+`.github/workflows/e2e.yaml` runs on every pull request and push to `main`: it creates a real kind
+cluster with `./recreate-cluster.sh`, runs `make test-e2e`, and prints pod status and logs on failure.
 
-`.github/workflows/e2e.yaml` runs on pull requests, pushes to `main`, and
-manual dispatch. The job installs kind and Ansible on the runner, executes
-`./recreate-cluster.sh` to build images and deploy everything into a real kind
-cluster, then runs `make test-e2e` as the pass/fail gate. On failure it dumps
-pod status, recent events, and deployment logs.
+There is no `tox.ini` in `e2e/` on purpose: these tests need a live cluster, so `make test-unit` must not pick them up.

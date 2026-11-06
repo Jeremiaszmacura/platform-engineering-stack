@@ -1,48 +1,45 @@
 ---
-- name: Configure Prometheus Datasource in Grafana
+- name: Configure Prometheus datasource in Grafana
   hosts: localhost
   connection: local
+  gather_facts: false
+  vars_files:
+    - vars.yaml
   vars:
-    grafana_url: "http://grafana.localhost"
-    grafana_user: "admin"
-    grafana_password: "admin"
-    prometheus_url: "http://prometheus:9090"
-  
+    # Fixed uid: dashboards reference the datasource by it
+    datasource:
+      uid: "prometheus"
+      name: "Prometheus"
+      type: "prometheus"
+      url: "{{ prometheus_url }}"
+      access: "proxy"
+      isDefault: true
+      jsonData:
+        timeInterval: "5s"
+        queryTimeout: "60s"
+        httpMethod: "POST"
+
   tasks:
-    - name: Display environment information
-      debug:
-        msg: "Configuring Grafana: {{ grafana_url }}, Prometheus: {{ prometheus_url }}"
-        
-    - name: Configure Prometheus datasource in Grafana
-      uri:
+    - name: Create the datasource (409 means it already exists)
+      ansible.builtin.uri:
         url: "{{ grafana_url }}/api/datasources"
         method: POST
         user: "{{ grafana_user }}"
         password: "{{ grafana_password }}"
-        force_basic_auth: yes
+        force_basic_auth: true
         body_format: json
-        body:
-          name: "Prometheus"
-          type: "prometheus"
-          url: "{{ prometheus_url }}"
-          access: "proxy"
-          isDefault: true
-          basicAuth: false
-          jsonData:
-            timeInterval: "5s"
-            queryTimeout: "60s"
-            httpMethod: "POST"
-        headers:
-          Content-Type: "application/json"
-        status_code: [200, 409]  # 409 if datasource already exists
-      register: datasource_result
-      
-    - name: Display datasource creation result
-      debug:
-        msg: "Datasource configured successfully: {{ datasource_result.status }}"
-      when: datasource_result.status == 200
-      
-    - name: Display datasource already exists message
-      debug:
-        msg: "Prometheus datasource already exists"
-      when: datasource_result.status == 409
+        body: "{{ datasource }}"
+        status_code: [200, 409]
+      register: create_result
+
+    - name: Update the existing datasource so config changes are applied
+      ansible.builtin.uri:
+        url: "{{ grafana_url }}/api/datasources/uid/{{ datasource.uid }}"
+        method: PUT
+        user: "{{ grafana_user }}"
+        password: "{{ grafana_password }}"
+        force_basic_auth: true
+        body_format: json
+        body: "{{ datasource }}"
+        status_code: 200
+      when: create_result.status == 409

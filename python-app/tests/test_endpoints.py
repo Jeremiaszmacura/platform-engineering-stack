@@ -1,3 +1,5 @@
+"""Tests for the FastAPI routes, with Vault replaced by in-memory fakes."""
+
 import unittest
 
 from fastapi.testclient import TestClient
@@ -90,6 +92,14 @@ class TestSecretEndpoints(unittest.TestCase):
 
     def test_write_secret_without_value_returns_422(self):
         response = self.client.post("/secret", json={"key": "api-key"})
+        self.assertEqual(response.status_code, 422)
+
+    def test_write_secret_with_empty_value_returns_422(self):
+        response = self.client.post("/secret", json={"key": "api-key", "value": ""})
+        self.assertEqual(response.status_code, 422)
+
+    def test_write_secret_with_slash_in_key_returns_422(self):
+        response = self.client.post("/secret", json={"key": "a/b", "value": "hunter2"})
         self.assertEqual(response.status_code, 422)
 
     def test_vault_failure_returns_502(self):

@@ -1,6 +1,6 @@
 ---
 name: go-concurrency
-description: Concurrency-specialist voice in the go-quorum-review debate. Reviews Go service code with a bias toward data races, goroutine leaks, channel misuse, context propagation, and correct use of sync/atomic. Returns a structured JSON verdict. Only invoke from the go-quorum-review orchestrator - not standalone.
+description: Concurrency-specialist voice in the deep-code-review debate. Reviews Go service code with a bias toward data races, goroutine leaks, channel misuse, context propagation, and correct use of sync/atomic. Returns a structured JSON verdict. Only invoke from the deep-code-review orchestrator - not standalone.
 model: sonnet
 tools: Read, Grep, Glob
 ---

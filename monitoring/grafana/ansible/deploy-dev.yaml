@@ -1,8 +1,0 @@
----
-- import_playbook: setup-datasource.yaml
-  vars:
-    env: "dev"
-    
-- import_playbook: deploy-dashboards.yaml
-  vars:
-    env: "dev"

@@ -1,20 +1,7 @@
 # End-to-End Tests
 
 Black-box tests that exercise the running cluster over HTTP, the same way a
-user (or Prometheus) would. They cover the workflows described in
-`documentation/docs/design.md`:
-
-- **Cluster smoke** (`test_cluster_health.py`) — every component answers on its
-  ingress host.
-- **Backend contract** (`test_backend_workflows.py`) — the shared endpoint
-  contract (`/`, `/health`, `/error`, `/redirect`, `/metrics`) on both
-  python-app and go-app, including traffic being counted in each app's own
-  metrics.
-- **Frontend** (`test_frontend.py`) — the React UI is served, and the backend
-  ingresses answer the frontend's cross-origin calls with CORS headers.
-- **Monitoring pipeline** (`test_monitoring_pipeline.py`) — Prometheus scrape
-  targets are up, generated traffic becomes queryable in Prometheus, and
-  Grafana has its datasource and all dashboards provisioned.
+user (or Prometheus) would. See [`documentation/docs/e2e-tests.md`](../documentation/docs/e2e-tests.md) for what each test file covers.
 
 ## Running
 

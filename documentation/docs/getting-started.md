@@ -1,29 +1,36 @@
 # Getting Started
 
-This guide helps you deploy the local Kubernetes cluster with all its
-applications.
-
-## Prerequisites
-
-Before you begin, ensure you have the following installed:
+## You need
 
 - Docker (kind runs the cluster nodes as containers)
-- kind (local Kubernetes cluster)
-- kubectl (for interacting with the cluster)
-- Ansible (`ansible-playbook` provisions the Grafana datasource and dashboards during deployment)
-- Python 3.13 or higher and pip (for running the end-to-end test suite)
+- kind and kubectl
+- Ansible (`ansible-playbook` sets up Grafana)
+- Python 3.14 (e2e tests and python-app development)
+- Optional for development: Go 1.26, Node.js 24
 
-## Run local Kubernetes cluster with all applications
+## Start the cluster
 
 ```sh
 ./recreate-cluster.sh
 ```
 
-When the script finishes, every service is reachable through the ingress on
-`*.localhost` hostnames — see the routing map in [Design](design.md). Key entry
-points:
+It deletes any old `sample-cluster`, creates a new one, builds and loads the images,
+deploys every component and sets up Grafana. Run it as often as you like.
 
-- Frontend UI: http://app.localhost
-- Grafana: http://grafana.localhost
-- Vault UI: http://vault.localhost (token `root`)
-- Documentation: http://docs.localhost
+When it finishes, open:
+
+- Frontend: http://app.localhost
+- Grafana: http://grafana.localhost (login `admin` / `admin`)
+- Vault: http://vault.localhost (token `root`)
+- Docs: http://docs.localhost
+
+`*.localhost` always points to your own machine, so no DNS or `/etc/hosts` setup is needed.
+
+## Check that everything works
+
+```sh
+make help        # list all targets
+make test-unit   # Go and Python unit tests
+make lint        # linters and repo-wide checks
+make test-e2e    # end-to-end tests against the running cluster
+```

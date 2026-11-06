@@ -1,19 +1,22 @@
-# Platform Engineering Cluster Sample
+# Platform Engineering Stack
 
-This project contains Kubernetes cluster for Platform Engineering learning purposes. Kubernetes cluster is deployed with `kind` tool and contains multiple components that are commonly used in production environments. The cluster is designed to be a playground for learning and experimenting with Kubernetes and its ecosystem.
+A small Kubernetes cluster that runs on your laptop, for learning platform engineering.
+It has two sample backends (Python, Go), a test web page, nginx, Vault for secrets,
+and Prometheus + Grafana to watch the traffic.
 
-## Documentation
+## Start
 
-https://jeremiaszmacura.github.io/devops-stack/
-
-## Deploy
-
-Create Kubernetes Cluster with all the components:
+You need Docker, kind, kubectl and Ansible. Then:
 
 ```sh
 ./recreate-cluster.sh
 ```
 
-All services are then reachable through ingress hostnames — the frontend at
-http://app.localhost, Grafana at http://grafana.localhost, and the full
-documentation at http://docs.localhost.
+Open http://app.localhost, send some requests, and watch them at http://grafana.localhost (`admin` / `admin`).
+
+## Learn more
+
+- Docs: https://jeremiaszmacura.github.io/platform-engineering-stack/ (also at http://docs.localhost)
+- Commands: `make help`
+- Adding a component: [documentation/docs/adding-a-service.md](documentation/docs/adding-a-service.md)
+- Latest cleanup — what was found and what changed: [plans/repo-review-findings.md](plans/repo-review-findings.md)

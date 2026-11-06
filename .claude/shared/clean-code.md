@@ -7,4 +7,4 @@
 * Write code that is easy to test. This includes writing functions that are pure (i.e., they do not have side effects) and can be easily mocked or stubbed in tests. Avoid writing code that is tightly coupled to specific implementations or external dependencies, as this can make testing more difficult.
 * Catch errors immediately and handle exceptions properly.
 * Add docstrings to all functions and classes to explain their purpose, parameters, and return values. Docstrings should be clear and concise.
-* Implementation should be data oriented, meaning that the code should be designed to work with data structures and objects (Object-Oriented Programming).
+* Model the domain with clear data structures and classes; keep behavior close to the data it works on.

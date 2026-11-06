@@ -1,114 +1,159 @@
 {
-    "dashboard": {
-      "id": null,
-      "title": "NGINX Monitoring",
-      "tags": ["nginx", "monitoring"],
-      "timezone": "browser",
-      "panels": [
-        {
-          "id": 1,
-          "title": "NGINX Status",
-          "type": "stat",
-          "targets": [
-            {
-              "expr": "nginx_up",
-              "legendFormat": "Status"
+  "dashboard": {
+    "id": null,
+    "title": "NGINX Monitoring",
+    "tags": [
+      "nginx",
+      "monitoring"
+    ],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "NGINX Pods Up",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(nginx_up)",
+            "legendFormat": "Pods up",
+            "refId": "A",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
             }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "mappings": [
-                {"options": {"0": {"text": "Down"}}, "type": "value"},
-                {"options": {"1": {"text": "Up"}}, "type": "value"}
-              ],
-              "thresholds": {
-                "steps": [
-                  {"color": "red", "value": 0},
-                  {"color": "green", "value": 1}
-                ]
-              }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Active Connections",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(nginx_connections_active)",
+            "legendFormat": "Active",
+            "refId": "A",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            }
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        }
+      },
+      {
+        "id": 3,
+        "title": "Request Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (instance) (rate(nginx_http_requests_total[5m]))",
+            "legendFormat": "{{instance}}",
+            "refId": "A",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            }
+          }
+        ],
+        "gridPos": {
+          "h": 9,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        }
+      },
+      {
+        "id": 5,
+        "title": "Connection States",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(nginx_connections_reading)",
+            "legendFormat": "Reading",
+            "refId": "A",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
             }
           },
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
-        },
-        {
-          "id": 2,
-          "title": "Active Connections",
-          "type": "stat",
-          "targets": [
-            {
-              "expr": "nginx_connections_active",
-              "legendFormat": "Active Connections"
+          {
+            "expr": "sum(nginx_connections_writing)",
+            "legendFormat": "Writing",
+            "refId": "B",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
             }
-          ],
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
-        },
-        {
-          "id": 3,
-          "title": "Request Rate",
-          "type": "graph",
-          "targets": [
-            {
-              "expr": "rate(nginx_http_requests_total[5m])",
-              "legendFormat": "Requests/sec"
+          },
+          {
+            "expr": "sum(nginx_connections_waiting)",
+            "legendFormat": "Waiting",
+            "refId": "C",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
             }
-          ],
-          "gridPos": {"h": 9, "w": 24, "x": 0, "y": 8}
+          }
+        ],
+        "gridPos": {
+          "h": 9,
+          "w": 24,
+          "x": 0,
+          "y": 17
         },
-        {
-          "id": 4,
-          "title": "HTTP Response Codes",
-          "type": "graph",
-          "targets": [
-            {
-              "expr": "rate(nginx_http_requests_total{status=~\"2..\"}[5m])",
-              "legendFormat": "2xx"
-            },
-            {
-              "expr": "rate(nginx_http_requests_total{status=~\"4..\"}[5m])",
-              "legendFormat": "4xx"
-            },
-            {
-              "expr": "rate(nginx_http_requests_total{status=~\"5..\"}[5m])",
-              "legendFormat": "5xx"
-            }
-          ],
-          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 17}
-        },
-        {
-          "id": 5,
-          "title": "Connection States",
-          "type": "graph",
-          "targets": [
-            {
-              "expr": "nginx_connections_accepted",
-              "legendFormat": "Accepted"
-            },
-            {
-              "expr": "nginx_connections_handled",
-              "legendFormat": "Handled"
-            },
-            {
-              "expr": "nginx_connections_reading",
-              "legendFormat": "Reading"
-            },
-            {
-              "expr": "nginx_connections_writing",
-              "legendFormat": "Writing"
-            },
-            {
-              "expr": "nginx_connections_waiting",
-              "legendFormat": "Waiting"
-            }
-          ],
-          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 17}
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
         }
-      ],
-      "time": {
-        "from": "now-1h",
-        "to": "now"
-      },
-      "refresh": "30s"
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
     },
-    "overwrite": true
-  }
+    "refresh": "30s",
+    "uid": "nginx"
+  },
+  "overwrite": true
+}

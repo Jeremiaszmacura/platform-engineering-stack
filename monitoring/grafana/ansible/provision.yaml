@@ -1,0 +1,5 @@
+---
+# Provisions Grafana as code: Prometheus datasource, then all dashboards.
+# Run from the repo root: ansible-playbook monitoring/grafana/ansible/provision.yaml
+- import_playbook: setup-datasource.yaml
+- import_playbook: deploy-dashboards.yaml

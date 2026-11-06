@@ -1,47 +1,29 @@
 ---
-- name: Deploy Grafana Dashboards
+- name: Deploy Grafana dashboards
   hosts: localhost
   connection: local
-  vars:
-    grafana_url: "http://grafana.localhost"
-    grafana_user: "admin"
-    grafana_password: "admin"
-    dashboards_dir: "{{ playbook_dir }}/dashboards"
-  
+  gather_facts: false
+  vars_files:
+    - vars.yaml
+
   tasks:
-    - name: Display environment information
-      debug:
-        msg: "Deploying dashboards - Grafana URL: {{ grafana_url }}"
-    
     - name: Find all dashboard JSON files
-      find:
-        paths: "{{ dashboards_dir }}"
+      ansible.builtin.find:
+        paths: "{{ playbook_dir }}/dashboards"
         patterns: "*.json"
       register: dashboard_files
-      
-    - name: Display found dashboard files
-      debug:
-        msg: "Found {{ dashboard_files.files | length }} dashboard(s) to deploy/update"
-    
-    - name: Deploy/Update each dashboard to Grafana
-      uri:
+
+    # Each file sets a fixed dashboard uid and "overwrite": true, so re-runs update in place
+    - name: Create or update each dashboard
+      ansible.builtin.uri:
         url: "{{ grafana_url }}/api/dashboards/db"
         method: POST
         user: "{{ grafana_user }}"
         password: "{{ grafana_password }}"
-        force_basic_auth: yes
+        force_basic_auth: true
         body_format: json
         body: "{{ lookup('file', item.path) | from_json }}"
-        headers:
-          Content-Type: "application/json"
         status_code: 200
-      register: dashboard_result
       loop: "{{ dashboard_files.files }}"
       loop_control:
         label: "{{ item.path | basename }}"
-      
-    - name: Display dashboard deployment results
-      debug:
-        msg: "✅ {{ (lookup('file', item.item.path) | from_json).dashboard.title }} - Status: {% if item.json.version == 1 %}New Dashboard Created{% else %}Existing Dashboard Updated{% endif %} (ID: {{ item.json.id }}, Version: {{ item.json.version }})"
-      loop: "{{ dashboard_result.results }}"
-      when: dashboard_result is defined

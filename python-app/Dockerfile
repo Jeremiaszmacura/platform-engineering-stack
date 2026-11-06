@@ -5,7 +5,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY src/* .
+COPY src/ .
+
+# Run as an unprivileged user
+USER 1000
 
 EXPOSE 8000
 

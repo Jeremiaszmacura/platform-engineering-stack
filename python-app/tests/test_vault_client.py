@@ -1,9 +1,11 @@
+"""Tests for VaultClient path handling, with hvac mocked out."""
+
 import unittest
 from unittest.mock import MagicMock
 
 from hvac.exceptions import InvalidPath
 
-from vault_client import MOUNT_POINT, SecretNotFoundError, VaultClient
+from vault_client import MOUNT_POINT, SecretNotFoundError, VaultClient, VaultClientError
 
 
 class TestVaultClient(unittest.TestCase):
@@ -32,6 +34,11 @@ class TestVaultClient(unittest.TestCase):
         self.kv.read_secret_version.side_effect = InvalidPath()
         with self.assertRaises(SecretNotFoundError):
             self.client.read_secret("missing")
+
+    def test_read_secret_without_value_field_raises_client_error(self):
+        self.kv.read_secret_version.return_value = {"data": {"data": {"other": "x"}}}
+        with self.assertRaises(VaultClientError):
+            self.client.read_secret("api-key")
 
 
 if __name__ == "__main__":

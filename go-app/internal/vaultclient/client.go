@@ -17,8 +17,7 @@ import (
 )
 
 const (
-	defaultAddr  = "http://vault-service:8200"
-	defaultToken = "root"
+	defaultAddr = "http://vault-service:8200"
 
 	// defaultSecretPath namespaces this service's secrets within the KV
 	// mount, so Vault policies can scope each service to its own path.
@@ -55,17 +54,14 @@ func New(addr, token, secretPath string) *Client {
 }
 
 // NewFromEnv returns a Client configured from VAULT_ADDR, VAULT_TOKEN and
-// VAULT_SECRET_PATH, falling back to the in-cluster service address, the
-// dev-mode root token, and this service's own path.
+// VAULT_SECRET_PATH. Address and path fall back to the in-cluster service and
+// this service's own path; the token has no default and must be set.
 func NewFromEnv() *Client {
 	addr := os.Getenv("VAULT_ADDR")
 	if addr == "" {
 		addr = defaultAddr
 	}
 	token := os.Getenv("VAULT_TOKEN")
-	if token == "" {
-		token = defaultToken
-	}
 	secretPath := os.Getenv("VAULT_SECRET_PATH")
 	if secretPath == "" {
 		secretPath = defaultSecretPath

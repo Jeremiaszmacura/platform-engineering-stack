@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: prometheus-config
   labels:
-    name: prometheus-config
+    app: prometheus
 data:
   prometheus.yml: |
     global:
@@ -14,22 +14,28 @@ data:
         static_configs:
           - targets: ['localhost:9090']
 
-      - job_name: 'nginx-metrics'
-        static_configs:
-          - targets: ['nginx-exporter:9113']
-      
+      # Multi-pod targets use DNS discovery on a headless Service, so every
+      # pod/node is scraped as its own target (a normal Service would hit a
+      # random one per scrape and mix their numbers).
       - job_name: 'node-exporter'
-        static_configs:
-          - targets: ['node-exporter:9100']
-      
+        dns_sd_configs:
+          - names: ['node-exporter-service.default.svc.cluster.local']
+            type: A
+            port: 9100
+
+      - job_name: 'nginx-metrics'
+        dns_sd_configs:
+          - names: ['nginx-metrics-service.default.svc.cluster.local']
+            type: A
+            port: 9113
+
+      # Sample apps run one replica; scraped every 5s so dashboards react fast
       - job_name: 'python-app'
+        scrape_interval: 5s
         static_configs:
           - targets: ['python-app-service:8000']
-        metrics_path: '/metrics'
-        scrape_interval: 5s
-      
+
       - job_name: 'go-app'
+        scrape_interval: 5s
         static_configs:
           - targets: ['go-app-service:8080']
-        metrics_path: '/metrics'
-        scrape_interval: 5s

@@ -1,61 +1,40 @@
-# Adding a New Service
+# Adding a Service
 
-This project auto-discovers Go and Python services from the repo root `Makefile` —
-no Makefile changes are needed when you add a new one. Follow the conventions
-below so `make test`, `make lint`, and the Claude Code hooks pick it up correctly.
+Checklist for a new component `my-service`. Copy an existing one (e.g. `go-app/`) as a start.
 
-## Go services
+## 1. Code and image
 
-A directory is discovered as a Go service if it contains a `go.mod`.
+- [ ] Create `my-service/` with the code and a `Dockerfile` (pinned base image, non-root user).
+- [ ] Go: add `go.mod` — `make build`, `make test-unit-go` and `make lint-go` find it automatically.
+- [ ] Python: add `tox.ini` (copy `python-app/tox.ini`), `requirements.txt`, `requirements-dev.txt`
+      (`-r requirements.txt` + `-r ../requirements-dev.txt`) and `tests/test_*.py` —
+      `make test-unit-python` and `make lint-python` find it automatically.
 
-1. Create the service directory with its own `go.mod`.
-2. That's it — `make build`, `make test-unit-go`, and `make lint-go` will find it
-   automatically via `GO_SERVICES` in the root `Makefile`.
+## 2. Kubernetes
 
-`make lint-go` runs `golangci-lint run --fix` inside each service directory;
-`make test-unit-go` runs `go test ./...` inside each. No shared config to copy.
+- [ ] `my-service/k8s/` with a Deployment (`name` and `app` label = `my-service`), a Service
+      `my-service-service` and an Ingress `my-service-ingress` for host `my-service.localhost`.
+- [ ] Add resource requests/limits, a readiness probe and a non-root `securityContext`.
 
-## Python services
+## 3. Cluster script
 
-A directory is discovered as a Python service if it contains a `tox.ini`.
+- [ ] In `recreate-cluster.sh`, add the image to `IMAGES` (if built locally), the `k8s/` directory to
+      `COMPONENTS`, and the URL to `URLS`.
 
-Lint rules and dev-tool versions are centralized at the repo root so they don't
-get duplicated or drift per service:
+## 4. Monitoring (if it exposes `/metrics`)
 
-- `/.pre-commit-config.yaml` — shared black/bandit/hygiene hooks
-- `/requirements-dev.txt` — pinned `coverage`, `pre_commit`, `tox` versions
+- [ ] Add a scrape job in `monitoring/prometheus/k8s/prometheus-config.yaml`.
+- [ ] Add a dashboard JSON in `monitoring/grafana/ansible/dashboards/` with a fixed `uid` and every query filtered by `job="my-service"`.
 
-To add a new Python service:
+## 5. Tests and docs
 
-1. Create the service directory with:
-   - `requirements.txt` — the service's own runtime dependencies
-   - `requirements-dev.txt` containing exactly:
-     ```
-     -r requirements.txt
-     -r ../requirements-dev.txt
-     ```
-   - `tox.ini` — copy an existing service's `tox.ini` (e.g. `python-app/tox.ini`)
-     unchanged; it already points at `../.pre-commit-config.yaml`
-   - `tests/` with an `__init__.py` and `test_*.py` files (unittest discovery
-     requires the `__init__.py` or tests silently won't be found)
-   - `.coveragerc` if you need custom coverage `omit` paths — this one stays
-     per-service since it's path-specific
-2. Add the new directory name to the `files:` regex at the top of the root
-   `.pre-commit-config.yaml`, e.g. `files: ^(python-app|your-new-service)/`.
-   This is the **only** shared-config edit required.
+- [ ] Add the URL to `SERVICE_URLS` in `e2e/cluster.py` and e2e tests for its workflows.
+- [ ] Add `documentation/docs/services/my-service.md`, link it in `mkdocs.yml` and the table in `index.md`.
+- [ ] Keep `my-service/README.md` to a one-line link to that page.
 
-Do not create a per-service `.pre-commit-config.yaml` — it would run
-`pre-commit run --all-files` scoped to the whole repo by default, since
-pre-commit always resolves paths from the git root regardless of cwd. Scoping
-must happen via the `files:` regex in the shared root config.
-
-## Verifying
+## 6. Verify
 
 ```sh
-make lint          # lint-go + lint-python across all discovered services
-make test-unit      # test-unit-go + test-unit-python across all discovered services
+make lint && make test-unit
+./recreate-cluster.sh && make test-e2e
 ```
-
-Both commands stop at the first failing service (`||` chained), so during
-local development it can help to run the language-specific target for just
-the service you're working on, e.g. `cd your-service && tox -e tests`.

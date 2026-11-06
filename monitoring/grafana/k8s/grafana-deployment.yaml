@@ -1,22 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: grafana-deployment
+  name: grafana
   labels:
-    app: grafana-deployment
+    app: grafana
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: grafana-pod
+      app: grafana
   template:
     metadata:
       labels:
-        app: grafana-pod
+        app: grafana
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472  # the image's default "grafana" user
       containers:
-        - name: grafana-container  # default login: admin / admin
-          image: grafana/grafana:latest
+        - name: grafana
+          image: grafana/grafana:13.2.5
           ports:
             - containerPort: 3000
           env:
@@ -30,16 +33,29 @@ spec:
                 secretKeyRef:
                   name: grafana-admin-secret
                   key: admin-password
-
+          securityContext:
+            allowPrivilegeEscalation: false
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /api/health, port: 3000}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /api/health, port: 3000}
+            initialDelaySeconds: 30
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: grafana-service
+  labels:
+    app: grafana
 spec:
   type: ClusterIP
   selector:
-    app: grafana-pod
+    app: grafana
   ports:
     - port: 3000
       targetPort: 3000
