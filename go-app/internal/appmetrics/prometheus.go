@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	// Main application metrics
-	RequestCount = promauto.NewCounterVec(
+	// Application metrics; /metrics and /health are excluded.
+	requestCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "http_requests_total",
 			Help: "Total number of HTTP requests",
@@ -20,7 +20,7 @@ var (
 		[]string{"method", "endpoint", "status_code"},
 	)
 
-	RequestDuration = promauto.NewHistogramVec(
+	requestDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "http_request_duration_seconds",
 			Help:    "HTTP request duration in seconds",
@@ -29,7 +29,7 @@ var (
 		[]string{"method", "endpoint"},
 	)
 
-	ResponseStatus = promauto.NewCounterVec(
+	responseStatus = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "http_responses_by_status_total",
 			Help: "HTTP responses by status code",
@@ -38,7 +38,7 @@ var (
 	)
 
 	// Separate metric for monitoring requests
-	MonitoringRequests = promauto.NewCounterVec(
+	monitoringRequests = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "monitoring_requests_total",
 			Help: "Total number of monitoring/metrics requests",
@@ -47,7 +47,8 @@ var (
 	)
 )
 
-// PrometheusMiddleware tracks HTTP metrics
+// PrometheusMiddleware records request metrics. /metrics and /health hits go
+// to monitoring_requests_total only, so probes don't skew app metrics.
 func PrometheusMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -79,15 +80,15 @@ func PrometheusMiddleware() gin.HandlerFunc {
 			if simplifiedUA == "" {
 				simplifiedUA = "unknown"
 			}
-			MonitoringRequests.WithLabelValues(endpoint, simplifiedUA).Inc()
+			monitoringRequests.WithLabelValues(endpoint, simplifiedUA).Inc()
 		} else {
 			// Application metrics
-			RequestCount.WithLabelValues(method, endpoint, statusCode).Inc()
-			RequestDuration.WithLabelValues(method, endpoint).Observe(duration)
+			requestCount.WithLabelValues(method, endpoint, statusCode).Inc()
+			requestDuration.WithLabelValues(method, endpoint).Observe(duration)
 
 			// Status class (2XX, 3XX, 4XX, 5XX)
 			statusClass := string(statusCode[0]) + "XX"
-			ResponseStatus.WithLabelValues(statusClass).Inc()
+			responseStatus.WithLabelValues(statusClass).Inc()
 		}
 	}
 }

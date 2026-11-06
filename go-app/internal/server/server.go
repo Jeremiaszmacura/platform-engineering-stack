@@ -25,7 +25,7 @@ const (
 	shutdownTimeout = 10 * time.Second
 )
 
-// StartServer runs the HTTP server on :8080 and shuts it down gracefully
+// StartServer runs the HTTP server on listenAddr and shuts it down gracefully
 // when SIGINT or SIGTERM is received.
 func StartServer() error {
 	srv := &http.Server{
@@ -39,7 +39,7 @@ func StartServer() error {
 	go func() {
 		serveErr <- srv.ListenAndServe()
 	}()
-	log.Println("Starting Go server on :8080")
+	log.Printf("Starting Go server on %s", listenAddr)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

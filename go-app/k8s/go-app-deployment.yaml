@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: go-app-deployment
+  name: go-app
   labels:
     app: go-app
 spec:
@@ -14,9 +14,12 @@ spec:
       labels:
         app: go-app
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
       containers:
         - name: go-app
-          image: go-app:dev
+          image: go-app:dev  # built locally and loaded into kind
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
@@ -24,20 +27,30 @@ spec:
             - name: VAULT_ADDR
               value: http://vault-service:8200
             - name: VAULT_TOKEN
-              value: root  # Dev-mode root token, see vault/README.md
+              valueFrom:
+                secretKeyRef: {name: vault-dev-token, key: token}
             - name: VAULT_SECRET_PATH
-              value: go-app  # Own path under services/ so Vault roles can scope per service
+              value: go-app  # own path under services/, so Vault policies can scope per service
+          securityContext:
+            allowPrivilegeEscalation: false
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 256Mi}
           readinessProbe:
-            httpGet:
-              path: /health
-              port: 8080
+            httpGet: {path: /health, port: 8080}
             initialDelaySeconds: 3
             periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /health, port: 8080}
+            initialDelaySeconds: 10
+            periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: go-app-service
+  labels:
+    app: go-app
 spec:
   type: ClusterIP
   selector:

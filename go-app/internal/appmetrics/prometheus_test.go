@@ -17,7 +17,7 @@ func TestMiddlewareLabelsUnmatchedRoutesWithConstant(t *testing.T) {
 	router := gin.New()
 	router.Use(PrometheusMiddleware())
 
-	counter := RequestCount.WithLabelValues(http.MethodGet, "unmatched", "404")
+	counter := requestCount.WithLabelValues(http.MethodGet, "unmatched", "404")
 	before := testutil.ToFloat64(counter)
 
 	recorder := httptest.NewRecorder()
