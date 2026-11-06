@@ -1,32 +1,33 @@
-name: python-app quality-assurance
+name: python quality-assurance
 
 on:
   pull_request:
   push:
-    tags-ignore:
-      - '**'
     branches:
-      - '**'
+      - main
+
+permissions:
+  contents: read
 
 jobs:
   qa:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout python-app
+      - name: Checkout
         uses: actions/checkout@v6
 
-# Instead of setup Python and pip install there should be Docker container pulled with preinstalled deps
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.14'
 
-      - name: Install qa deps
+      - name: Install QA tools
         run: pip install -r requirements-dev.txt
 
+      # pre-commit hooks run over the whole repository (YAML, JSON, Python, ...)
       - name: Run linters
         run: make lint-python
 
-      - name: Run app tests
+      - name: Run unit tests
         run: make test-unit-python

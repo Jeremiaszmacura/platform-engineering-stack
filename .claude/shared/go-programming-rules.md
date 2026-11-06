@@ -8,4 +8,4 @@
 * Pass context.Context explicitly. For request-scoped work, accept ctx context.Context as the first parameter. Do not store contexts in structs. Respect cancellation, deadlines, and timeouts.
 * Make goroutine lifetimes obvious. Every goroutine should have a clear exit path. Avoid goroutine leaks, blocked sends/receives, unbounded concurrency, and races.
 * Use interfaces only where consumed. Return concrete types from producers. Define small interfaces in the consuming package only when they are needed. Avoid "interface pollution" and mock-driven interfaces.
-* Use Go naming conventions consistently. Use camelCase for unexported names and PascalCase for [linia ucięta na dole zdjęcia]
+* Use Go naming conventions consistently. Use camelCase for unexported names and PascalCase for exported names. Keep names short and clear; avoid stutter (`vaultclient.Client`, not `vaultclient.VaultClient`).
