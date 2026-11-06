@@ -1,0 +1,272 @@
+/*
+ * Design tokens and the primitives built directly on them.
+ *
+ * These are stock-ui's tokens, deliberately restated here: the two frontends
+ * are separate builds with no shared package between them, and they are meant
+ * to read as one product. Anything changed in `stock-ui/src/styles/theme.css`
+ * belongs in this file too.
+ *
+ * Both colour schemes are declared as the same variable names, so every
+ * component is written once and re-themed by the `data-theme` attribute the
+ * useTheme hook sets on the document root. Dark is the default: it is what
+ * `:root` carries, and the light block only overrides it.
+ *
+ * The one addition over stock-ui is the status-tone block — this app colours
+ * HTTP responses, which a price chart never has to.
+ */
+
+:root {
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-data: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --step-display: clamp(2rem, 1.2rem + 2.6vw, 3.1rem);
+  --step-figure: clamp(1.5rem, 1.1rem + 1.4vw, 2.1rem);
+  --step-heading: 1.0625rem;
+  --step-body: 0.9375rem;
+  --step-small: 0.8125rem;
+  --step-label: 0.6875rem;
+
+  --radius-xl: 24px;
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Native date and number inputs draw their own controls; this is what tells
+     the browser to draw them for the scheme the rest of the page is in. */
+  color-scheme: dark;
+
+  --bg: #08090b;
+  --surface: #101215;
+  --surface-raised: #171a1e;
+  --surface-hover: #1f2328;
+  --border: #22262c;
+  --border-strong: #2f343b;
+  --text: #f3f5f6;
+  --text-muted: #8c949c;
+  --text-dim: #5c646c;
+  --accent: #4ade80;
+  --accent-hover: #6ee79b;
+  --accent-ink: #05130a;
+  --accent-wash: rgba(74, 222, 128, 0.12);
+  --up: #4ade80;
+  --down: #f4585f;
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  --shadow-float: 0 24px 48px -24px rgba(0, 0, 0, 0.9);
+
+  /* Status tones: 2xx, 3xx, 4xx, and everything that failed outright. */
+  --info: #60a5fa;
+  --warn: #fbbf24;
+  --up-wash: rgba(74, 222, 128, 0.14);
+  --info-wash: rgba(96, 165, 250, 0.14);
+  --warn-wash: rgba(251, 191, 36, 0.14);
+  --down-wash: rgba(244, 88, 95, 0.14);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f2f4f6;
+  --surface: #ffffff;
+  --surface-raised: #f4f6f8;
+  --surface-hover: #e8ecf0;
+  --border: #e2e7eb;
+  --border-strong: #ccd4db;
+  --text: #0c0e11;
+  --text-muted: #5c666f;
+  --text-dim: #89939c;
+  --accent: #12a150;
+  --accent-hover: #0e8443;
+  --accent-ink: #ffffff;
+  --accent-wash: rgba(18, 161, 80, 0.1);
+  --up: #12a150;
+  --down: #d92d3a;
+  --shadow-card: 0 1px 2px rgba(15, 23, 32, 0.04);
+  --shadow-float: 0 20px 40px -24px rgba(15, 23, 32, 0.35);
+
+  --info: #1d4ed8;
+  --warn: #b45309;
+  --up-wash: rgba(18, 161, 80, 0.1);
+  --info-wash: rgba(29, 78, 216, 0.1);
+  --warn-wash: rgba(180, 83, 9, 0.12);
+  --down-wash: rgba(217, 45, 58, 0.1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--step-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+input {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Primitives ------------------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) 0;
+}
+
+.card__title {
+  font-size: var(--step-heading);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+
+.label {
+  font-size: var(--step-label);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.data {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.badge {
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  font-size: var(--step-label);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pill-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+}
+
+.pill {
+  padding: 7px 15px;
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: var(--step-small);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pill:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.pill[aria-pressed='true'] {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.icon-button:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.up {
+  color: var(--up);
+}
+
+.down {
+  color: var(--down);
+}
+
+.info {
+  color: var(--info);
+}
+
+.warn {
+  color: var(--warn);
+}

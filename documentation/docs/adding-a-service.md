@@ -6,14 +6,16 @@ Checklist for a new component `my-service`. Copy an existing one (e.g. `go-app/`
 
 - [ ] Create `my-service/` with the code and a `Dockerfile` (pinned base image, non-root user).
 - [ ] Go: add `go.mod` — `make build`, `make test-unit-go` and `make lint-go` find it automatically.
-- [ ] Python: add `tox.ini` (copy `python-app/tox.ini`), `requirements.txt`, `requirements-dev.txt`
-      (`-r requirements.txt` + `-r ../requirements-dev.txt`) and `tests/test_*.py` —
-      `make test-unit-python` and `make lint-python` find it automatically.
+- [ ] Python: add `tox.ini` (copy `stock-app/tox.ini`), `requirements.txt`, `requirements-dev.txt`
+      and `tests/test_*.py` — `make test-unit-python` and `make lint-python` find it automatically.
+- [ ] Frontend (Vite): add it to `FRONTENDS` in the `Makefile` so `make build-frontend` and CI build it.
 
 ## 2. Kubernetes
 
 - [ ] `my-service/k8s/` with a Deployment (`name` and `app` label = `my-service`), a Service
       `my-service-service` and an Ingress `my-service-ingress` for host `my-service.localhost`.
+- [ ] Set `metadata.namespace` on every manifest (`apps` for an application; see [Platform Decisions](platform-decisions.md)).
+- [ ] Add a ServiceAccount `my-service` with `automountServiceAccountToken: false` and set `serviceAccountName`.
 - [ ] Add resource requests/limits, a readiness probe and a non-root `securityContext`.
 
 ## 3. Cluster script
@@ -23,7 +25,8 @@ Checklist for a new component `my-service`. Copy an existing one (e.g. `go-app/`
 
 ## 4. Monitoring (if it exposes `/metrics`)
 
-- [ ] Add a scrape job in `monitoring/prometheus/k8s/prometheus-config.yaml`.
+- [ ] Annotate its Service with `prometheus.io/scrape: "true"` and `prometheus.io/job: my-service` —
+      Prometheus finds it with no config change.
 - [ ] Add a dashboard JSON in `monitoring/grafana/ansible/dashboards/` with a fixed `uid` and every query filtered by `job="my-service"`.
 
 ## 5. Tests and docs

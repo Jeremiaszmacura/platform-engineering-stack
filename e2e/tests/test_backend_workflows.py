@@ -1,8 +1,8 @@
-"""End-to-end tests of the HTTP contract shared by both sample backends.
+"""End-to-end tests of the HTTP contract shared by sample backends.
 
-Both backends implement the same endpoints (see design.md), so every test in
-this module runs once against python-app and once against go-app through the
-``backend`` fixture.
+Every test in this module runs once per entry in BACKENDS (currently just
+go-app) through the ``backend`` fixture, so a new sample backend implementing
+the same endpoints (see design.md) is covered automatically.
 """
 
 import requests

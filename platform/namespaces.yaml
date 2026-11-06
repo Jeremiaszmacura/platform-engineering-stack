@@ -1,0 +1,36 @@
+# One namespace per concern; every component manifest declares its namespace
+# explicitly. See platform/README.md for the ownership rule.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apps
+  labels:
+    name: apps
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vault
+  labels:
+    name: vault
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: docs
+  labels:
+    name: docs
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+  labels:
+    name: data

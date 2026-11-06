@@ -1,9 +1,23 @@
 # Dev-mode root token, the single source for Vault and every client of it.
+# Secrets cannot be read across namespaces, so the same value is declared once
+# for Vault itself (namespace vault) and once for its clients (namespace apps).
 # Fine for this local playground only.
 apiVersion: v1
 kind: Secret
 metadata:
   name: vault-dev-token
+  namespace: vault
+  labels:
+    app: vault
+type: Opaque
+stringData:
+  token: root
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-dev-token
+  namespace: apps
   labels:
     app: vault
 type: Opaque

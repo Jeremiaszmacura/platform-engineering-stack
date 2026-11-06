@@ -1,10 +1,14 @@
+/** Entry point: mounts the app and loads the stylesheets in cascade order. */
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
+import App from './App';
+import './styles/theme.css';
+import './styles/layout.css';
+import './styles/components.css';
+
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>

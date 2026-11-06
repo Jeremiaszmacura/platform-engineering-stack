@@ -13,11 +13,16 @@ from cluster import (
     wait_until,
 )
 
-EXPECTED_PROMETHEUS_JOBS = {"self", "nginx-metrics", "node-exporter", "python-app", "go-app"}
-EXPECTED_DASHBOARD_TITLES = {"Go App Metrics", "Infrastructure Overview", "NGINX Monitoring", "Python App Metrics"}
+EXPECTED_PROMETHEUS_JOBS = {"self", "nginx-metrics", "node-exporter", "go-app", "stock-app"}
+EXPECTED_DASHBOARD_TITLES = {
+    "Go App Metrics",
+    "Infrastructure Overview",
+    "NGINX Monitoring",
+    "Stock App Metrics",
+}
 
 # Jobs that must scrape every instance separately: one node-exporter per kind
-# node (kind-cluster.yaml) and one nginx-exporter sidecar per nginx replica.
+# node (platform/kind-cluster.yaml) and one nginx-exporter sidecar per nginx replica.
 EXPECTED_TARGETS_PER_JOB = {"node-exporter": 3, "nginx-metrics": 2}
 
 

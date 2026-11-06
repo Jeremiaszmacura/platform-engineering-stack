@@ -1,12 +1,15 @@
 # frontend-app
 
-A small React page (built with Vite) to send test traffic. URL: http://app.localhost
+"API Tester": a small React page (built with Vite) to send test traffic. URL: http://app.localhost
 
-Pick a backend (python-app or go-app), an endpoint and how many requests (1–100), then send.
-It shows each answer plus success/failure counts and average time. The traffic then shows up in Grafana.
+Pick a backend (stock-app or go-app) and one of its endpoints, set how many requests to send at once (1–100),
+then send. It shows every answer plus success/failure counts and timings. The traffic then shows up in Grafana.
 
+- stock-app endpoints that need a ticker and a date window (`/bars`, `/summary`) get a symbol and a default
+  past window, so repeating a request shows the cache path and a new window shows the provider path.
 - Calls the backends directly on their own hosts; their Ingresses allow it with CORS.
-- Code: `frontend-app/src/App.jsx`. Image: static build served by non-root nginx on port 8080.
+- Code: `src/App.jsx` (state), `src/lib/endpoints.js` (backends and endpoints), `src/api/backends.js` (the only
+  module that sends requests), `src/components/`. Image: static build served by non-root nginx on port 8080.
 
 ## Develop
 
@@ -22,5 +25,5 @@ npm run build      # production build into dist/
 ```sh
 docker build -t frontend-app:dev ./frontend-app
 kind load docker-image frontend-app:dev --name sample-cluster
-kubectl rollout restart deployment frontend-app
+kubectl rollout restart deployment frontend-app -n apps
 ```

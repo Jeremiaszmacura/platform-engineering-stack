@@ -26,7 +26,7 @@ cd e2e && .venv/bin/pytest tests/test_frontend.py
   never to pods or kubectl.
 - Eventual consistency (Prometheus scrapes, target discovery) is handled by
   polling with `cluster.wait_until`, never with bare sleeps.
-- Tests that apply to both backends are parametrized via the `backend` fixture
+- Tests that apply to several backends are parametrized via the `backend` and `secret_backend` fixtures
   in `conftest.py` instead of being duplicated.
 - There is intentionally no `tox.ini` here: the root Makefile discovers unit-test
   suites by `tox.ini`, and this suite must not run as part of `make test-unit`

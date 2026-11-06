@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: node-exporter
+  namespace: monitoring
   labels:
     app: node-exporter
 spec:
@@ -13,6 +14,7 @@ spec:
       labels:
         app: node-exporter
     spec:
+      serviceAccountName: node-exporter
       # Host network/PID: node-exporter reports the node itself, not the pod
       hostNetwork: true
       hostPID: true
@@ -57,15 +59,18 @@ spec:
           hostPath:
             path: /
 ---
-# Headless: DNS returns every node's IP, so Prometheus scrapes each node separately
+# Prometheus scrapes every endpoint of this Service, i.e. each node separately
 apiVersion: v1
 kind: Service
 metadata:
   name: node-exporter-service
+  namespace: monitoring
   labels:
     app: node-exporter
+  annotations:
+    prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
+    prometheus.io/job: node-exporter  # Keeps the historic job label for dashboards
 spec:
-  clusterIP: None
   selector:
     app: node-exporter
   ports:
