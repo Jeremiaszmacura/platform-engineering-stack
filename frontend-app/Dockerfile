@@ -1,24 +1,16 @@
-FROM node:18-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
-
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
 COPY . .
-
 RUN npm run build
 
-# Production stage with nginx
-FROM nginx:alpine
+# Non-root nginx serving the static build on port 8080
+FROM nginxinc/nginx-unprivileged:1.30-alpine
 
-# Copy built React app
-COPY --from=builder /app/build /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy custom nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 8080
