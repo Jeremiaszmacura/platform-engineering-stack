@@ -25,7 +25,7 @@ SYMBOL_PATTERN = r"^[A-Za-z0-9.\-]{1,16}$"
 
 # Same alphabet as the contract's `SecretKey` parameter. The key becomes part
 # of a Vault path, so nothing outside it may pass.
-SECRET_KEY_PATTERN = r"^[A-Za-z0-9._\-]{1,64}$"
+SECRET_KEY_PATTERN = r"^[A-Za-z0-9._\-]{1,64}$"  # nosec B105 - validation regex for key names, not a secret
 
 SymbolPath = Annotated[str, Path(pattern=SYMBOL_PATTERN)]
 SecretKeyPath = Annotated[str, Path(pattern=SECRET_KEY_PATTERN)]

@@ -15,7 +15,7 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from src.adapters.secrets.vault import MOUNT_POINT, VaultSecretStore
 from src.domain.errors import SecretNotFoundError, SecretStoreError
 
-SECRET_PATH = "stock-app"
+SECRET_PATH = "stock-app"  # nosec B105 - Vault path name, not a secret
 
 
 class FakeKeyValueEngine:
