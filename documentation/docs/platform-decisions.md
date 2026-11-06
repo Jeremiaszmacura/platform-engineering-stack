@@ -21,6 +21,18 @@ Short records of how the cluster is organized and why.
 - Third-party images are pinned to an exact version; base images to a minor line (e.g. `golang:1.26-alpine`) so they get security patches.
 - Our own images run as a non-root user.
 
+## Dependency updates
+
+- [Renovate](https://docs.renovatebot.com/) (Mend GitHub App, config in `renovate.json`) opens update PRs once a day
+  (before 6am UTC) for Go modules, npm, pip, Dockerfiles, Kubernetes images, GitHub Actions, pre-commit hooks,
+  the ingress-nginx manifest in `recreate-cluster.sh` and the golangci-lint version in CI.
+- Minor, patch and digest updates merge automatically when CI is green; majors wait for a human.
+  **Why:** the e2e test deploys the whole cluster, so a green pipeline is real proof an update works.
+- Language runtimes (Python, Go, Node) never auto-merge. **Why:** the Dockerfile and the CI workflow
+  versions must move together.
+- A release must be 3 days old before Renovate proposes it. **Why:** broken or malicious releases are usually pulled within that time.
+- Our own `<component>:dev` images are built locally, so Renovate ignores them.
+
 ## Secrets
 
 - Dev credentials are kept in one Kubernetes Secret per tool and referenced from everywhere else.
