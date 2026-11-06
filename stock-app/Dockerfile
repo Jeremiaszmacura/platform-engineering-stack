@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY alembic.ini .
 COPY migrations/ ./migrations/
 COPY src/ ./src/
-# The contract is served as-is at /openapi.json, so it ships with the image.
+# The contract is served as-is at /openapi.yaml, so it ships with the image.
 COPY openapi.yaml .
 # Recorded provider response replayed when STOCK_PROVIDER=fixture.
 COPY fixtures/ ./fixtures/

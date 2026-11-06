@@ -13,7 +13,7 @@ its own Vault path `services/stock-app/` (see [Vault](vault.md)).
 | | |
 |---|---|
 | Directory | `stock-app/` |
-| Contract | `stock-app/openapi.yaml` (OpenAPI 3.1), served at `/openapi.json`, [rendered here](stock-app-api.md) |
+| Contract | `stock-app/openapi.yaml` (OpenAPI 3.1), served unchanged at `/openapi.yaml`, [rendered here](stock-app-api.md) |
 | Image | `stock-app:dev` (~590 MB; yfinance pulls pandas, numpy and curl_cffi) |
 | Namespace | `apps` |
 | Host | http://stock.localhost |
@@ -246,7 +246,7 @@ generated from it, so no module restates the wire format.
 |---|---|
 | Source of truth | `stock-app/openapi.yaml` — OpenAPI 3.1 |
 | Generated from it | `src/adapters/inbound/http/models.py` — every response model, by [datamodel-code-generator](https://koxudaxi.github.io/datamodel-code-generator/) |
-| Published as | `/openapi.json` — the file itself, not a document derived from the code; Swagger UI renders it at `/docs` |
+| Published as | `/openapi.yaml` (`application/yaml`) — the file itself, not a document derived from the code; Swagger UI renders it at `/docs`. FastAPI's derived `/openapi.json` is turned off |
 | Regenerate | `cd stock-app && tox -e api` |
 
 The loop is: edit the contract, run `tox -e api`, and the models change until
@@ -315,8 +315,8 @@ A published contract nobody checks is a wish, so four checks fail the build:
 | `SYMBOL_PATTERN` and the 3650-day cap match what is published | A limit changed in code, leaving the description behind | `make test-unit-python` |
 
 The first regenerates into a temporary file and diffs it; the other two live in
-`tests/test_openapi_contract.py`, which also asserts that `/openapi.json`
-serves the contract itself.
+`tests/test_openapi_contract.py`, which also asserts that `/openapi.yaml`
+serves the contract file byte for byte and that no `/openapi.json` exists.
 
 ## Schema
 

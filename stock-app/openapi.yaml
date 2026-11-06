@@ -11,7 +11,7 @@ info:
 
     This document is the contract, not a report about the code: the pydantic
     models in `src/adapters/inbound/http/models.py` are generated from it, and
-    the service serves this file unchanged at `/openapi.json`.
+    the service serves this file unchanged at `/openapi.yaml`.
 
 servers:
   - url: http://stock.localhost

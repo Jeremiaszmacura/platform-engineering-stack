@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from openapi_spec_validator import validate
 
 from src.adapters.inbound.http.params import MAX_RANGE_DAYS, SECRET_KEY_PATTERN, SYMBOL_PATTERN
-from src.adapters.inbound.http.spec import load_contract
+from src.adapters.inbound.http.spec import CONTRACT_PATH, YAML_MEDIA_TYPE, load_contract
 from src.main import app
 
 
@@ -81,14 +81,21 @@ class TestContractCoverage(unittest.TestCase):
 class TestContractIsPublished(unittest.TestCase):
     """Tests that clients are handed the authored contract, not a derived one."""
 
-    def test_openapi_endpoint_serves_the_contract_unchanged(self):
-        served = TestClient(app).get("/openapi.json")
+    def test_contract_endpoint_serves_the_yaml_file_unchanged(self):
+        served = TestClient(app).get("/openapi.yaml")
 
         self.assertEqual(served.status_code, 200)
-        self.assertEqual(served.json(), load_contract())
+        self.assertEqual(served.headers["content-type"].split(";")[0], YAML_MEDIA_TYPE)
+        self.assertEqual(served.text, CONTRACT_PATH.read_text(encoding="utf-8"))
 
-    def test_swagger_ui_is_available(self):
-        self.assertEqual(TestClient(app).get("/docs").status_code, 200)
+    def test_no_document_derived_from_the_code_is_served(self):
+        self.assertEqual(TestClient(app).get("/openapi.json").status_code, 404)
+
+    def test_swagger_ui_loads_the_yaml_contract(self):
+        page = TestClient(app).get("/docs")
+
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("/openapi.yaml", page.text)
 
 
 class TestRulesStatedInProse(unittest.TestCase):

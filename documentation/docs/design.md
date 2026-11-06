@@ -83,7 +83,7 @@ It also answers `/`, `/health`, `/metrics` and the same `/secret` endpoints as g
 but not `/error` or `/redirect`.
 
 - **Contract-first:** `stock-app/openapi.yaml` is the source of truth. The request/response models are
-  generated from it, and the service publishes that file at `/openapi.json`. See [stock-app API](services/stock-app-api.md).
+  generated from it, and the service publishes that file unchanged, as YAML, at `/openapi.yaml`. See [stock-app API](services/stock-app-api.md).
 - **Hexagonal:** `adapters → application → domain`, ports are `typing.Protocol`, and `src/main.py` is
   the only place that builds adapters. The import rule is enforced by `lint-imports`.
 - **Database:** TimescaleDB runs as a StatefulSet with a PVC in the `data` namespace and has no Ingress.

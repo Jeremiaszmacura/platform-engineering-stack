@@ -63,8 +63,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     # Title and version come from the contract so they are written down once.
+    # openapi_url=None turns off FastAPI's derived /openapi.json (and its /docs):
+    # serve_contract publishes the authored YAML instead.
     contract = load_contract()
-    app = FastAPI(title=contract["info"]["title"], version=contract["info"]["version"])
+    app = FastAPI(title=contract["info"]["title"], version=contract["info"]["version"], openapi_url=None)
     app.state.repository = repository
     app.state.price_history_service = service
     app.state.secret_store = secret_store

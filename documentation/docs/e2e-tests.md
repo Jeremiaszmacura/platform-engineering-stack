@@ -10,7 +10,7 @@ through the ingress (like a user or Prometheus would). They never use kubectl.
 | `test_vault_workflows.py` | Vault is up, mounts exist, secret write/read/404/422 on go-app and stock-app, backends can't read each other's secrets |
 | `test_frontend.py` | frontend-app is served; go-app answers its cross-origin calls (CORS) |
 | `test_stock_ui.py` | stock-ui is served; stock-app answers its cross-origin calls (CORS) |
-| `test_stock_api.py` | Every stock-app endpoint and status code, each response validated against the `/openapi.json` the running pod publishes |
+| `test_stock_api.py` | Every stock-app endpoint and status code, each response validated against the `/openapi.yaml` the running pod publishes |
 | `test_stock_workflows.py` | stock-app's cache-aside pipeline: provider on a cold window, cache on a repeat, and the metrics that count it (marker `external`) |
 | `test_monitoring_pipeline.py` | All scrape jobs up, every node and nginx pod scraped separately, traffic reaches Prometheus, Grafana datasource and dashboards exist |
 

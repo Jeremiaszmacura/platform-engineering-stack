@@ -2,7 +2,7 @@
 
 A service's OpenAPI contract belongs to the service, not to the documentation:
 `stock-app/openapi.yaml` is what generates that service's models and what it
-serves at `/openapi.json`. Copying it under `docs/` would create a second copy
+serves at `/openapi.yaml`. Copying it under `docs/` would create a second copy
 to keep in step, so it is read from its own directory and injected into the
 built site instead. There is still exactly one file.
 

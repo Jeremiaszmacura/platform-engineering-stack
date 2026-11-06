@@ -1,7 +1,7 @@
 """End-to-end tests of every stock-app endpoint, checked against its own contract.
 
 Each response is validated with ``openapi-core`` against the document the
-running service publishes at ``/openapi.json``, so these tests assert what the
+running service publishes at ``/openapi.yaml``, so these tests assert what the
 service *promises* rather than a copy of that promise kept here. A response
 that stops matching its declared schema fails, and so does one the service
 honours but never published.
@@ -23,6 +23,7 @@ from datetime import date, timedelta
 
 import pytest
 import requests
+import yaml
 from openapi_core import OpenAPI
 from openapi_core.contrib.requests import RequestsOpenAPIRequest, RequestsOpenAPIResponse
 from openapi_core.exceptions import OpenAPIError
@@ -51,9 +52,9 @@ def contract():
     Returns:
         The contract, ready to validate responses against.
     """
-    response = requests.get(f"{STOCK_APP_URL}/openapi.json", timeout=REQUEST_TIMEOUT_SECONDS)
+    response = requests.get(f"{STOCK_APP_URL}/openapi.yaml", timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
-    return OpenAPI.from_dict(response.json())
+    return OpenAPI.from_dict(yaml.safe_load(response.text))
 
 
 @pytest.fixture(scope="module")
@@ -125,15 +126,16 @@ def test_instruments_are_listed(contract):
 
 
 def test_contract_is_published():
-    """GET /openapi.json serves the authored contract shipped in the image.
+    """GET /openapi.yaml serves the authored YAML contract shipped in the image.
 
-    Not routed through ``call``: FastAPI adds this endpoint and ``/docs``
-    itself, so the contract neither declares nor should declare them.
+    Not routed through ``call``: this endpoint and ``/docs`` publish the
+    contract, so the contract neither declares nor should declare them.
     """
-    response = requests.get(f"{STOCK_APP_URL}/openapi.json", timeout=REQUEST_TIMEOUT_SECONDS)
+    response = requests.get(f"{STOCK_APP_URL}/openapi.yaml", timeout=REQUEST_TIMEOUT_SECONDS)
 
     assert response.status_code == 200
-    document = response.json()
+    assert response.headers["content-type"].startswith("application/yaml")
+    document = yaml.safe_load(response.text)
     assert document["info"]["title"] == "stock-app"
     assert "/api/v1/instruments/{symbol}/bars" in document["paths"]
     # Reusable parameters only exist in the authored file; a document derived
@@ -142,12 +144,12 @@ def test_contract_is_published():
 
 
 def test_swagger_ui_renders_the_contract():
-    """GET /docs serves the Swagger UI page that loads /openapi.json."""
+    """GET /docs serves the Swagger UI page that loads /openapi.yaml."""
     response = requests.get(f"{STOCK_APP_URL}/docs", timeout=REQUEST_TIMEOUT_SECONDS)
 
     assert response.status_code == 200
     assert "swagger-ui" in response.text
-    assert "/openapi.json" in response.text
+    assert "/openapi.yaml" in response.text
 
 
 INVALID_WINDOWS = [
