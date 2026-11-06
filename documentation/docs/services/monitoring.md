@@ -17,6 +17,8 @@ annotations:
 ```
 
 Each endpoint of the Service (every pod, or every node for node-exporter) becomes its own target.
+Only the Service's own ports are scraped; other container ports of the same pods (e.g. nginx's 8080 next to
+its exporter sidecar) are dropped by a relabel rule.
 Read-only API access comes from the `prometheus` ServiceAccount and the ClusterRole in `platform/rbac/prometheus.yaml`.
 
 | Job | Annotated Service | What it measures |

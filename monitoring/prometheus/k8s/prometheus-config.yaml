@@ -33,6 +33,12 @@ data:
           - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
             action: keep
             regex: "true"
+          # role: endpoints also turns every other container port of a backing
+          # pod into a target (e.g. nginx's 8080 next to its exporter sidecar).
+          # Only real endpoint ports carry endpoint_port_* labels: keep those.
+          - source_labels: [__meta_kubernetes_endpoint_port_protocol]
+            action: keep
+            regex: .+
           - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_job]
             action: replace
             target_label: job
