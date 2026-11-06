@@ -1,35 +1,11 @@
-## General
+# Project rules
 
-- At the end of each plan, give me a list of unresolved questions to answer, if any. Make questions extremely concise.
+General and programming rules live in `.claude/CLAUDE.md` (with `.claude/shared/`).
 
-## Programming rules
-
-- Write code following YAGNI principles. Only add code that is necessary for the current requirements. Avoid adding features or functionality that may be needed in the future but are not currently required. Focus on delivering a simple and functional solution that meets the immediate needs of the project.
-
-- Code should be clean, well-structured, and easy to understand. Use meaningful variable and function names, and include comments where necessary to explain complex logic or decisions. Avoid unnecessary complexity and strive for simplicity in your code design.
-
-- Functions should be small and focused on a single task. Each function should have a clear purpose.
-
-- Avoid code duplication by creating reusable functions or modules. If you find yourself writing the same code multiple times, consider refactoring it into a separate function or module that can be called from different parts of the codebase.
-
-- Write code that is easy to test. This includes writing functions that are pure (i.e., they do not have side effects) and can be easily mocked or stubbed in tests. Avoid writing code that is tightly coupled to specific implementations or external dependencies, as this can make testing more difficult.
-
-- Catch errors immediately and handle exceptions properly.
-
-- Add docstrings to all functions and classes to explain their purpose, parameters, and return values. Docstrings should be clear and concise.
-
-- Implementation should be data oriented, meaning that the code should be designed to work with data structures and objects (Object-Oriented Programming).
-
-## Project specific rules
-
-- `recreate-cluster` script is the main entry point for deploying the Kubernetes cluster. It should be designed to be idempotent, meaning that running it multiple times should not cause any issues or unintended consequences. The script should handle all necessary steps for creating and configuring the cluster, including deploying the various components and applications.
-
-- Each directory in project contain different component of the cluster.
-
-- Python and Go applications are simple sample applications. Their traffic is monitored with Prometheus and visualized in Grafana.
-
-- Grafana dashboards are persisted in `monitoring/grafana/ansible/dashboards` directory. Each dashboard should be defined in a separate JSON file.
-
-- Frontend application is designed to provide a simple interface for testing the Python and Go applications. It should allow users to trigger requests to the backend applications and display the results. Those results are then monitored with Prometheus and visualized in Grafana.
-
-- Documentation is built using mkdocs in `documentation` directory and should be clear and concise. Documentation should be up-to-date with the current state of the project. Each project should have own documentation page explaining its purpose. Documentation should include instructions for deploying the cluster, and explaining workflow of the cluster and its components.
+- `recreate-cluster.sh` is the single entry point that deploys the kind cluster. It must stay idempotent: running it again must not break anything.
+- Each top-level directory is one cluster component. Its Kubernetes manifests live in `<component>/k8s/`.
+- python-app and go-app are sample backends with the same HTTP contract. Their traffic is scraped by Prometheus and shown in Grafana.
+- frontend-app is a simple UI that sends test requests to the backends and shows the results.
+- Grafana dashboards live in `monitoring/grafana/ansible/dashboards/`, one JSON file per dashboard, each with a fixed `uid`.
+- Documentation lives in MkDocs (`documentation/docs/`). Keep it short, clear and up to date. Every component has one page in `documentation/docs/services/`; component READMEs only link to it.
+- When adding a component, follow `documentation/docs/adding-a-service.md`.

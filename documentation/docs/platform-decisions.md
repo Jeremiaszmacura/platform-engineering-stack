@@ -1,29 +1,27 @@
-# Platform Engineering Decisions
+# Platform Decisions
 
-This page records the architectural decisions for the platform engineering,
-related to cluster configuration, deployment and management.
+Short records of how the cluster is organized and why.
 
-## Deployments
+## Where Kubernetes files live
 
-* Cluster wide configuration and management of the cluster are defined in infra directory.
-It contains Resources like ClusterRole, ClusterRoleBinding, ServiceAccount, RBAC, etc.
+- A resource that belongs to one component (Deployment, Service, Ingress, ConfigMap, Secret, ServiceAccount)
+  lives in that component's `k8s/` directory. **Why:** the owner of a component can see and change everything about it in one place.
+- Cluster-wide setup (the kind config, the ingress controller) lives at the repo root and in `recreate-cluster.sh`.
+- All workloads run in the `default` namespace. **Why:** one small learning cluster; namespaces can come when they are needed.
 
-* K8s Resources like Deployments, StatefulSets, and DaemonSets are placed in the
-`k8s/` directory of the component/service that owns them.
+## How Prometheus finds targets
 
-## Rules for placing K8s resources
+- One-replica apps are scraped by Service name (`static_configs`).
+- Multi-instance targets (node-exporter on every node, nginx-exporter in every nginx pod) are found with DNS
+  on a headless Service (`dns_sd_configs`). **Why:** scraping a normal Service hits a random pod each time and mixes the numbers.
+  DNS discovery needs no extra Kubernetes permissions.
 
-### ServiceAccounts
+## Images
 
-- **Application-specific:** if the ServiceAccount belongs to a specific
-  microservice/application, place it in the Application/Environment Repository —
-  the owning component's `k8s/` directory, next to that component's Deployment.
-- **Cluster-wide/Infrastructure:** if the ServiceAccount is for cluster-wide
-  tools (e.g. monitoring, logging, ingress), place it in the Cluster
-  Admin/Infrastructure Repository — `monitoring/<tool>/k8s/` for the monitoring
-  stack, or the cluster bootstrap for controllers installed by
-  `recreate-cluster.sh`.
-- **Strict constraint:** never mix application-level ServiceAccounts into the
-  global cluster admin repository. An application's identity is part of that
-  application; keeping it in the cluster admin repository hides who owns it and
-  couples application changes to cluster-admin changes.
+- Third-party images are pinned to an exact version; base images to a minor line (e.g. `golang:1.26-alpine`) so they get security patches.
+- Our own images run as a non-root user.
+
+## Secrets
+
+- Dev credentials are kept in one Kubernetes Secret per tool and referenced from everywhere else.
+  They are fine only because this is a local playground.
