@@ -4,13 +4,13 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": ".claude/hooks/bash-firewall.sh" }
+          { "type": "command", "command": "cd \"$CLAUDE_PROJECT_DIR\" && .claude/hooks/bash-firewall.sh" }
         ]
       },
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": ".claude/hooks/protect-sensitive-files.sh" }
+          { "type": "command", "command": "cd \"$CLAUDE_PROJECT_DIR\" && .claude/hooks/protect-sensitive-files.sh" }
         ]
       }
     ],
@@ -20,11 +20,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/go-changed.sh"
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && .claude/hooks/go-changed.sh"
           },
           {
             "type": "command",
-            "command": ".claude/hooks/python-changed.sh"
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && .claude/hooks/python-changed.sh"
           }
         ]
       }
@@ -34,23 +34,23 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/tidy-go.sh"
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && .claude/hooks/tidy-go.sh"
           },
           {
             "type": "command",
-            "command": ".claude/hooks/lint.sh"
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && .claude/hooks/lint.sh"
           },
           {
             "type": "command",
-            "command": ".claude/hooks/go-test.sh"
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && .claude/hooks/go-test.sh"
           },
           {
             "type": "command",
-            "command": ".claude/hooks/lint-python.sh"
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && .claude/hooks/lint-python.sh"
           },
           {
             "type": "command",
-            "command": ".claude/hooks/test-python.sh"
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && .claude/hooks/test-python.sh"
           }
         ]
       }
