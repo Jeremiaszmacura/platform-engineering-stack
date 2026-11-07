@@ -45,7 +45,6 @@ SERVICE_URLS = {
     "stock-ui": STOCK_UI_URL,
     "prometheus": PROMETHEUS_URL,
     "grafana": GRAFANA_URL,
-    "nginx": "http://nginx.localhost",
     "documentation": "http://docs.localhost",
     "vault": VAULT_URL,
 }

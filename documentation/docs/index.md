@@ -12,7 +12,6 @@ deploy services, collect metrics, build dashboards, keep secrets, run a stateful
 | [stock-ui](services/stock-ui.md) | Charts stock-app's prices | http://stock-ui.localhost |
 | [go-app](services/go-app.md) | Sample backend for traffic tests | http://go.localhost |
 | [frontend-app](services/frontend-app.md) | Sends test traffic to the backends | http://app.localhost |
-| [nginx](services/nginx.md) | Sample third-party server with a metrics exporter | http://nginx.localhost |
 | [Vault](services/vault.md) | Secret store for the backends | http://vault.localhost (token `root`) |
 | [Monitoring](services/monitoring.md) | Prometheus + Grafana | http://prometheus.localhost, http://grafana.localhost (`admin`/`admin`) |
 | [Documentation](services/documentation.md) | This site | http://docs.localhost |
