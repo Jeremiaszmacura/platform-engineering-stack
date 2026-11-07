@@ -31,6 +31,9 @@ flowchart LR
 - **Stateful data:** TimescaleDB uses a PVC; it is empty after every `./recreate-cluster.sh`, which is fine
   because stock-app refills it from the provider.
 - **API contract:** stock-app's `openapi.yaml` is the source of truth; its models are generated from it.
+- **Dependency updates:** Renovate (`renovate.json`) opens update PRs daily. Minor, patch and digest updates
+  auto-merge when CI is green (the e2e job deploys the whole cluster); majors and language runtimes
+  (Python, Go, Node) wait for a human. Releases must be 3 days old; local `<component>:dev` images are ignored.
 
 ## Conventions
 

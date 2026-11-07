@@ -1,0 +1,46 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "schedule": ["before 6am"],
+  "minimumReleaseAge": "3 days",
+  "postUpdateOptions": ["gomodTidy"],
+  "ignoreDeps": ["documentation", "frontend-app", "go-app", "stock-app", "stock-ui"],
+  "pre-commit": {
+    "enabled": true
+  },
+  "kubernetes": {
+    "managerFilePatterns": ["/(^|/)k8s/.+\\.ya?ml$/"]
+  },
+  "customManagers": [
+    {
+      "description": "ingress-nginx manifest URL in recreate-cluster.sh",
+      "customType": "regex",
+      "managerFilePatterns": ["/^recreate-cluster\\.sh$/"],
+      "matchStrings": ["ingress-nginx/controller-v(?<currentValue>\\d+\\.\\d+\\.\\d+)/"],
+      "depNameTemplate": "kubernetes/ingress-nginx",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^controller-v(?<version>.+)$"
+    },
+    {
+      "description": "golangci-lint version installed in CI",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/go-qa\\.yaml$/"],
+      "matchStrings": ["golangci-lint@v(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      "depNameTemplate": "golangci/golangci-lint",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Merge minor, patch and digest updates automatically once CI is green",
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Language runtimes must stay in sync with the versions set in .github/workflows, so a human merges them",
+      "matchDepNames": ["python", "golang", "node", "go"],
+      "automerge": false
+    }
+  ]
+}
