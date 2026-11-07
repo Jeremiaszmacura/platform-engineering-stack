@@ -2,19 +2,26 @@ site_name: Platform Engineering Stack
 site_url: https://jeremiaszmacura.github.io/platform-engineering-stack/
 nav:
   - Home: index.md
-  - Getting Started: getting-started.md
   - Design: design.md
-  - Platform Decisions: platform-decisions.md
+  - Testing: testing.md
   - Adding a Service: adding-a-service.md
   - Services:
-      - python-app: services/python-app.md
+      - stock-app: services/stock-app.md
+      - stock-app API: services/stock-app-api.md
+      - TimescaleDB: services/timescaledb.md
+      - stock-ui: services/stock-ui.md
       - go-app: services/go-app.md
       - frontend-app: services/frontend-app.md
       - nginx: services/nginx.md
       - Vault: services/vault.md
       - Monitoring: services/monitoring.md
       - Documentation: services/documentation.md
-  - End-to-End Tests: e2e-tests.md
+# Adds stock-app/openapi.yaml to the site (see hooks/contracts.py).
+hooks:
+  - hooks/contracts.py
+plugins:
+  - search
+  - swagger-ui-tag
 theme:
   name: material
   palette:

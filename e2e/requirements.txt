@@ -1,2 +1,6 @@
+# Validates responses against stock-app's published contract.
+openapi-core==0.23.1
 pytest==8.4.1
+# stock-app publishes its contract as YAML
+PyYAML==6.0.3
 requests==2.32.4

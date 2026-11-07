@@ -9,9 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
-// TestMiddlewareLabelsUnmatchedRoutesWithConstant verifies that requests to
-// unregistered paths share a single "unmatched" endpoint label instead of
-// minting a new time series per probed URL.
+// TestMiddlewareLabelsUnmatchedRoutesWithConstant checks unknown paths share the "unmatched" label.
 func TestMiddlewareLabelsUnmatchedRoutesWithConstant(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()

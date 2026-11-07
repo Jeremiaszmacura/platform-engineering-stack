@@ -1,9 +1,4 @@
-"""End-to-end tests of the frontend: serving the UI and cross-origin API access.
-
-The React app served at app.localhost calls the backends directly on their own
-ingress hosts, so the backend ingresses must answer those cross-origin requests
-with CORS headers.
-"""
+"""frontend-app is served, and the backends answer its cross-origin calls with CORS headers."""
 
 import requests
 

@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vault
+  namespace: vault
   labels:
     app: vault
 spec:
@@ -14,16 +15,19 @@ spec:
       labels:
         app: vault
     spec:
+      serviceAccountName: vault
       containers:
         - name: vault
           image: hashicorp/vault:1.20.4
-          # Dev mode: in-memory storage, auto-unsealed — never for production.
-          # No livenessProbe on purpose: a restart wipes all secrets.
+          # Dev mode: in memory, auto-unsealed. No livenessProbe: a restart wipes all secrets.
           args: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
           env:
             - name: VAULT_DEV_ROOT_TOKEN_ID
               valueFrom:
                 secretKeyRef: {name: vault-dev-token, key: token}
+            # Skip the entrypoint's setcap: it copies the ~475 MiB binary and OOMs the limit (dev mode doesn't mlock).
+            - name: SKIP_SETCAP
+              value: "true"
           ports:
             - containerPort: 8200
           securityContext:
@@ -41,6 +45,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: vault-service
+  namespace: vault
   labels:
     app: vault
 spec:

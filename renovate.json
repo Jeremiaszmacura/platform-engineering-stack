@@ -4,7 +4,7 @@
   "schedule": ["before 6am"],
   "minimumReleaseAge": "3 days",
   "postUpdateOptions": ["gomodTidy"],
-  "ignoreDeps": ["documentation", "frontend-app", "go-app", "python-app"],
+  "ignoreDeps": ["documentation", "frontend-app", "go-app", "stock-app", "stock-ui"],
   "pre-commit": {
     "enabled": true
   },

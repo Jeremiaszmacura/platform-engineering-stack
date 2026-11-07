@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
+  namespace: monitoring
   labels:
     app: prometheus
 data:
@@ -14,28 +15,22 @@ data:
         static_configs:
           - targets: ['localhost:9090']
 
-      # Multi-pod targets use DNS discovery on a headless Service, so every
-      # pod/node is scraped as its own target (a normal Service would hit a
-      # random one per scrape and mix their numbers).
-      - job_name: 'node-exporter'
-        dns_sd_configs:
-          - names: ['node-exporter-service.default.svc.cluster.local']
-            type: A
-            port: 9100
-
-      - job_name: 'nginx-metrics'
-        dns_sd_configs:
-          - names: ['nginx-metrics-service.default.svc.cluster.local']
-            type: A
-            port: 9113
-
-      # Sample apps run one replica; scraped every 5s so dashboards react fast
-      - job_name: 'python-app'
+      # Scrapes Services annotated prometheus.io/scrape: "true"; prometheus.io/job sets the job label.
+      - job_name: 'kubernetes-services'
         scrape_interval: 5s
-        static_configs:
-          - targets: ['python-app-service:8000']
-
-      - job_name: 'go-app'
-        scrape_interval: 5s
-        static_configs:
-          - targets: ['go-app-service:8080']
+        kubernetes_sd_configs:
+          - role: endpoints
+            # kube-system Services carry the same annotation.
+            namespaces:
+              names: [apps, monitoring]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          # Keep only Service ports; role: endpoints also adds the pods' other container ports.
+          - source_labels: [__meta_kubernetes_endpoint_port_protocol]
+            action: keep
+            regex: .+
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_job]
+            action: replace
+            target_label: job

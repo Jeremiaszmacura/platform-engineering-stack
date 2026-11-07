@@ -1,0 +1,30 @@
+# Tool configuration only; the service is not packaged.
+
+# Must match pre-commit's line length, or generated models.py would be reformatted.
+[tool.black]
+line-length = 120
+
+# Shared by `tox -e api` and the drift check in `tox -e pre-commit`.
+[tool.datamodel-codegen]
+input = "openapi.yaml"
+input-file-type = "openapi"
+output = "src/adapters/inbound/http/models.py"
+output-model-type = "pydantic_v2.BaseModel"
+target-python-version = "3.14"
+formatters = ["black", "isort"]
+custom-file-header = """\
+# Generated from openapi.yaml by datamodel-code-generator - do not edit.
+# Change the contract and run `tox -e api`; `make lint-python` fails on drift."""
+# snake_case in Python, camelCase on the wire.
+snake-case-field = true
+allow-population-by-field-name = true
+# Enums become Literal types, so a two-value enum costs no extra class.
+enum-field-as-literal = "all"
+use-annotated = true
+use-double-quotes = true
+use-field-description = true
+use-schema-description = true
+use-standard-collections = true
+use-union-operator = true
+# A timestamp in the header would make every regeneration a diff.
+disable-timestamp = true

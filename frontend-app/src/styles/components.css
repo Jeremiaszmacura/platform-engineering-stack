@@ -1,0 +1,313 @@
+/* Components. Each result row has a coloured rail for its status. */
+
+/* Endpoint picker -------------------------------------------------------- */
+
+.endpoints {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.endpoint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 9px var(--space-3);
+  border-radius: var(--radius-md);
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.endpoint:hover {
+  background: var(--surface-hover);
+}
+
+.endpoint[aria-pressed='true'] {
+  background: var(--accent-wash);
+}
+
+.endpoint__method {
+  flex-shrink: 0;
+  min-width: 34px;
+  font-size: var(--step-label);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+
+.endpoint[aria-pressed='true'] .endpoint__method {
+  color: var(--accent);
+}
+
+.endpoint__name {
+  display: block;
+  font-size: var(--step-small);
+  font-weight: 650;
+}
+
+.endpoint__note {
+  display: block;
+  font-size: var(--step-label);
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+
+/* Fields ----------------------------------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field__row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.field__control {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  outline: none;
+  font-size: var(--step-small);
+  transition: border-color 0.15s ease;
+}
+
+.field__control:focus {
+  border-color: var(--accent);
+}
+
+.field__note {
+  font-size: var(--step-label);
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+
+/* Target and run --------------------------------------------------------- */
+
+.target {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+}
+
+.target__url {
+  margin-top: 4px;
+  font-size: var(--step-small);
+  /* URLs carry a synced window as query parameters and will not fit on a line. */
+  word-break: break-all;
+}
+
+.run {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 42px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-pill);
+  font-size: var(--step-small);
+  font-weight: 650;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.button--primary {
+  flex: 1;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.button--primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.button--primary:disabled {
+  cursor: progress;
+}
+
+.button--ghost {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.button--ghost:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  animation: spin 0.7s linear infinite;
+}
+
+/* On the button the spinner has to read against the accent, not on it. */
+.button .spinner {
+  width: 15px;
+  height: 15px;
+  border-color: color-mix(in srgb, var(--accent-ink) 30%, transparent);
+  border-top-color: var(--accent-ink);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Run statistics --------------------------------------------------------- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+
+.stat {
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.stat__value {
+  margin-top: 6px;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.stat__note {
+  margin-top: 2px;
+  font-size: var(--step-label);
+  color: var(--text-dim);
+}
+
+/* Results ---------------------------------------------------------------- */
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.result {
+  --tone: var(--text-dim);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--tone);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.result--ok {
+  --tone: var(--up);
+}
+
+.result--redirect {
+  --tone: var(--info);
+}
+
+.result--client {
+  --tone: var(--warn);
+}
+
+.result--failed {
+  --tone: var(--down);
+}
+
+.result__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--step-small);
+}
+
+.result__index {
+  color: var(--text-dim);
+}
+
+.result__status {
+  font-weight: 700;
+  color: var(--tone);
+}
+
+/* Shows where a followed redirect landed (the browser reports 200). */
+.result__followed {
+  color: var(--tone);
+}
+
+.result__meta {
+  color: var(--text-muted);
+}
+
+/* The clock time is the least useful column, so it is the one pushed away. */
+.result__time {
+  margin-left: auto;
+  color: var(--text-dim);
+}
+
+.result__body {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  background: var(--surface-raised);
+  font-family: var(--font-data);
+  font-size: var(--step-small);
+  line-height: 1.5;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  /* A /metrics body is thousands of lines; it scrolls rather than owning the page. */
+  max-height: 260px;
+  overflow: auto;
+}
+
+/* Empty and loading states ----------------------------------------------- */
+
+.state {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-3);
+  min-height: 320px;
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.state__title {
+  font-size: var(--step-heading);
+  font-weight: 650;
+  color: var(--text);
+}
+
+.state__body {
+  max-width: 44ch;
+  font-size: var(--step-small);
+}

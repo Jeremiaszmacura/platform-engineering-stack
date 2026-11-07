@@ -13,20 +13,20 @@ from cluster import (
     wait_until,
 )
 
-EXPECTED_PROMETHEUS_JOBS = {"self", "nginx-metrics", "node-exporter", "python-app", "go-app"}
-EXPECTED_DASHBOARD_TITLES = {"Go App Metrics", "Infrastructure Overview", "NGINX Monitoring", "Python App Metrics"}
+EXPECTED_PROMETHEUS_JOBS = {"self", "nginx-metrics", "node-exporter", "go-app", "stock-app"}
+EXPECTED_DASHBOARD_TITLES = {
+    "Go App Metrics",
+    "Infrastructure Overview",
+    "NGINX Monitoring",
+    "Stock App Metrics",
+}
 
-# Jobs that must scrape every instance separately: one node-exporter per kind
-# node (kind-cluster.yaml) and one nginx-exporter sidecar per nginx replica.
+# One node-exporter per kind node, one exporter sidecar per nginx replica.
 EXPECTED_TARGETS_PER_JOB = {"node-exporter": 3, "nginx-metrics": 2}
 
 
 def fetch_up_jobs():
-    """Return the set of Prometheus scrape job names whose targets are all healthy.
-
-    Returns:
-        Job names where every active target reports health "up".
-    """
+    """Return the jobs whose active targets are all up."""
     response = requests.get(f"{PROMETHEUS_URL}/api/v1/targets", timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     targets = response.json()["data"]["activeTargets"]
@@ -36,14 +36,7 @@ def fetch_up_jobs():
 
 
 def count_up_targets(job):
-    """Return how many targets of a Prometheus scrape job are healthy.
-
-    Args:
-        job: Scrape job name.
-
-    Returns:
-        Number of the job's active targets reporting health "up".
-    """
+    """Return how many targets of job are up."""
     response = requests.get(f"{PROMETHEUS_URL}/api/v1/targets", timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     targets = response.json()["data"]["activeTargets"]
@@ -70,11 +63,7 @@ def test_all_scrape_targets_are_up():
 
 
 def test_backend_traffic_reaches_prometheus(backend):
-    """Requests sent to a backend show up as increased counters in Prometheus.
-
-    This covers the whole pipeline: the app serves traffic, records it in its
-    own /metrics, and Prometheus scrapes it into the time series database.
-    """
+    """Requests to a backend show up in Prometheus."""
     request_count = 5
     query = f'sum(http_requests_total{{job="{backend.prometheus_job}"}})'
     baseline = query_prometheus_value(query)

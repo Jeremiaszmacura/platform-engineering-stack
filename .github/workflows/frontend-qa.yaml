@@ -22,5 +22,8 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Build frontend
+      - name: Build frontends
         run: make build-frontend
+
+      - name: Run frontend unit tests
+        run: make test-unit-frontend

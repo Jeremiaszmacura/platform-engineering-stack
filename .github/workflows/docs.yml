@@ -7,6 +7,8 @@ on:
     paths:
       - 'documentation/**'
       - '.github/workflows/docs.yml'
+      # The docs render this contract.
+      - 'stock-app/openapi.yaml'
   workflow_dispatch:
 
 permissions:

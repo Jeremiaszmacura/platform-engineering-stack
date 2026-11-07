@@ -1,0 +1,610 @@
+/* Components. The crosshair readout is the only emphasized element. */
+
+/* Search ----------------------------------------------------------------- */
+
+.search {
+  position: relative;
+  width: min(340px, 100%);
+}
+
+.search__field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  height: 42px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s ease;
+}
+
+.search__field:focus-within {
+  border-color: var(--accent);
+}
+
+.search__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: var(--step-body);
+}
+
+.search__input::placeholder {
+  color: var(--text-dim);
+}
+
+.search__icon {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.search__results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding: var(--space-2);
+  margin: 0;
+  list-style: none;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-float);
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.search__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 9px var(--space-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.search__option:hover,
+.search__option[data-active='true'] {
+  background: var(--surface-hover);
+}
+
+.search__symbol {
+  font-family: var(--font-data);
+  font-weight: 700;
+  font-size: var(--step-small);
+  flex-shrink: 0;
+  min-width: 62px;
+}
+
+.search__name {
+  color: var(--text-muted);
+  font-size: var(--step-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search__meta {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.search__empty {
+  padding: var(--space-3);
+  color: var(--text-dim);
+  font-size: var(--step-small);
+}
+
+/* Account menu ----------------------------------------------------------- */
+
+.account {
+  position: relative;
+}
+
+.account__chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px 12px 4px 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+}
+
+.account__chip:hover {
+  background: var(--surface-hover);
+}
+
+.account__avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: var(--step-small);
+  font-weight: 700;
+}
+
+.account__identity {
+  display: none;
+  line-height: 1.15;
+  text-align: left;
+}
+
+/* Both stack inside the chip, so neither may stay inline. */
+.account__name {
+  display: block;
+  font-size: var(--step-small);
+  font-weight: 600;
+}
+
+.account__role {
+  display: block;
+  font-size: var(--step-label);
+  color: var(--text-dim);
+}
+
+.account__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  width: 232px;
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-float);
+}
+
+.account__item {
+  display: block;
+  width: 100%;
+  padding: 9px var(--space-3);
+  border-radius: var(--radius-md);
+  text-align: left;
+  font-size: var(--step-small);
+  color: var(--text-muted);
+}
+
+.account__item:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.account__note {
+  padding: var(--space-3);
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-2);
+  color: var(--text-dim);
+  font-size: var(--step-label);
+  line-height: 1.45;
+}
+
+@media (min-width: 1100px) {
+  .account__identity {
+    display: block;
+  }
+}
+
+/* Instrument header ------------------------------------------------------ */
+
+.instrument {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.instrument__name {
+  font-size: var(--step-display);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+
+.instrument__tags {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.instrument__ticker {
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-wash);
+  color: var(--accent);
+  font-family: var(--font-data);
+  font-size: var(--step-small);
+  font-weight: 700;
+}
+
+.instrument__quote {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.instrument__price {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--step-figure);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.instrument__delta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--step-figure);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.instrument__delta-note {
+  font-family: var(--font-ui);
+  font-size: var(--step-small);
+  font-weight: 500;
+  color: var(--text-dim);
+  letter-spacing: 0;
+}
+
+/* Statistics row --------------------------------------------------------- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+
+.stat {
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.stat__value {
+  margin-top: 6px;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.stat__note {
+  margin-top: 2px;
+  font-size: var(--step-label);
+  color: var(--text-dim);
+}
+
+/* Chart ------------------------------------------------------------------ */
+
+.chart-card {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding-inline: var(--space-2);
+}
+
+.toolbar__zoom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.chart {
+  position: relative;
+  height: 420px;
+}
+
+.chart__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.chart__state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-3);
+  text-align: center;
+  padding: var(--space-5);
+  color: var(--text-muted);
+}
+
+.chart__state-title {
+  font-size: var(--step-heading);
+  font-weight: 650;
+  color: var(--text);
+}
+
+.chart__state-body {
+  max-width: 42ch;
+  font-size: var(--step-small);
+}
+
+.chart__starters {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Standalone pills need the frame the segmented groups get from their track. */
+.chart__starters .pill {
+  font-family: var(--font-data);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+}
+
+.chart__starters .pill:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The crosshair readout: the signature element of this interface. */
+.readout {
+  position: absolute;
+  z-index: 5;
+  min-width: 178px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
+  pointer-events: none;
+}
+
+.readout__date {
+  font-size: var(--step-label);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.readout__price {
+  margin-top: 2px;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.readout__grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 2px var(--space-4);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--step-small);
+}
+
+.readout__cell {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.readout__key {
+  color: var(--text-dim);
+}
+
+/* Indicator panels ------------------------------------------------------- */
+
+.indicators {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+
+.indicator {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px dashed var(--border-strong);
+}
+
+.indicator__value {
+  margin-top: 4px;
+  font-family: var(--font-data);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.indicator__note {
+  font-size: var(--step-label);
+  color: var(--text-dim);
+}
+
+.panel-note {
+  padding: 0 var(--space-5) var(--space-5);
+  margin-top: calc(var(--space-3) * -1);
+  color: var(--text-dim);
+  font-size: var(--step-small);
+}
+
+/* Tables and mocked views ------------------------------------------------ */
+
+.table-wrap {
+  overflow-x: auto;
+  padding: var(--space-4) var(--space-2) var(--space-2);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 560px;
+}
+
+.table th {
+  padding: var(--space-2) var(--space-4);
+  text-align: right;
+  font-size: var(--step-label);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.table th:first-child,
+.table td:first-child {
+  text-align: left;
+}
+
+.table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: right;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--step-small);
+  white-space: nowrap;
+}
+
+.table tbody tr:hover {
+  background: var(--surface-raised);
+}
+
+/* A pill acting on its own row needs the frame a segmented group would give it. */
+.table .pill {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+}
+
+.table .pill:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.table__symbol {
+  font-weight: 700;
+}
+
+.table__name {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--step-label);
+  color: var(--text-dim);
+}
+
+.allocation {
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.allocation__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.allocation__head {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--step-small);
+}
+
+.allocation__weight {
+  font-family: var(--font-data);
+  color: var(--text-muted);
+}
+
+.allocation__track {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+
+.allocation__fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+.sparkline {
+  display: block;
+  width: 76px;
+  height: 26px;
+  margin-left: auto;
+}
+
+.headline-figure {
+  padding: var(--space-5);
+}
+
+.headline-figure__value {
+  margin-top: var(--space-2);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--step-figure);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--accent-wash);
+  color: var(--text-muted);
+  font-size: var(--step-small);
+}
+
+.banner--error {
+  background: color-mix(in srgb, var(--down) 12%, transparent);
+}

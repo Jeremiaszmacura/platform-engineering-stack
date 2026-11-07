@@ -1,9 +1,4 @@
-"""End-to-end tests of the HTTP contract shared by both sample backends.
-
-Both backends implement the same endpoints (see design.md), so every test in
-this module runs once against python-app and once against go-app through the
-``backend`` fixture.
-"""
+"""go-app's sample endpoints, through the ingress (runs once per entry in BACKENDS)."""
 
 import requests
 
@@ -18,13 +13,7 @@ def test_home_returns_greeting(backend):
 
 
 def test_health_reports_healthy(backend):
-    """GET /health returns a healthy status.
-
-    Kubernetes already calls /health in-cluster through each pod's
-    readinessProbe; this test additionally verifies the external path
-    (ingress host -> service -> pod) and the response body
-    contract, which the probe does not check.
-    """
+    """GET /health returns a healthy status through the ingress."""
     response = requests.get(f"{backend.base_url}/health", timeout=REQUEST_TIMEOUT_SECONDS)
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"

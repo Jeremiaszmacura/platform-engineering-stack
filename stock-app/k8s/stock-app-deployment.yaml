@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stock-app
+  namespace: apps
+  labels:
+    app: stock-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stock-app
+  template:
+    metadata:
+      labels:
+        app: stock-app
+    spec:
+      serviceAccountName: stock-app
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001  # Matches the stockapp user created in the Dockerfile
+      # Both containers share this environment (YAML anchor).
+      initContainers:
+        - name: migrate
+          image: stock-app:dev  # LOCAL image name
+          imagePullPolicy: IfNotPresent
+          command: ["alembic", "upgrade", "head"]
+          env: &stockAppEnv
+            - name: HOME
+              value: /home/stockapp  # Writable through the emptyDir below
+            - name: STOCK_DB_HOST
+              value: timescaledb-service.data  # Cross-namespace: TimescaleDB runs in the data namespace
+            - name: STOCK_DB_PORT
+              value: "5432"
+            - name: STOCK_DB_NAME
+              value: stockdata
+            - name: STOCK_DB_USER
+              value: stockapp
+            - name: STOCK_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stock-app-secret
+                  key: db-password
+            - name: STOCK_PROVIDER
+              value: yahoo
+            - name: STOCK_STALE_AFTER_SECONDS
+              value: "3600"  # Today's bar keeps moving, so the trailing edge refetches hourly
+            # Shared across every service that talks to Vault, hence no STOCK_ prefix
+            - name: VAULT_ADDR
+              value: http://vault-service.vault:8200  # Cross-namespace: Vault runs in the vault namespace
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef: {name: vault-dev-token, key: token}
+            - name: VAULT_SECRET_PATH
+              value: stock-app  # Namespaces this service's keys within the `services/` KV mount
+          securityContext: &stockAppSecurity
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources: &stockAppResources
+            requests: {cpu: 50m, memory: 192Mi}  # pandas + yfinance resident set
+            limits: {cpu: 500m, memory: 512Mi}
+          volumeMounts: &stockAppVolumeMounts
+            - name: tmp
+              mountPath: /tmp
+            - name: home
+              mountPath: /home/stockapp  # yfinance caches exchange timezones under ~/.cache
+      containers:
+        - name: stock-app
+          image: stock-app:dev  # LOCAL image name
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env: *stockAppEnv
+          securityContext: *stockAppSecurity
+          resources: *stockAppResources
+          volumeMounts: *stockAppVolumeMounts
+          # No livenessProbe: /health checks the database, and a DB outage must not restart the app.
+          readinessProbe:
+            httpGet: {path: /health, port: 8000}
+            initialDelaySeconds: 10  # pandas and yfinance take a few seconds to import
+            periodSeconds: 5
+            failureThreshold: 6
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: home
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stock-app-service
+  namespace: apps
+  labels:
+    app: stock-app
+  annotations:
+    prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
+    prometheus.io/job: stock-app
+spec:
+  type: ClusterIP
+  selector:
+    app: stock-app
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
