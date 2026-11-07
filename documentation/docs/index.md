@@ -35,4 +35,5 @@ make lint        # linters + repo-wide pre-commit hooks
 make test-e2e    # end-to-end tests against the running cluster
 ```
 
-More in [Testing](testing.md). How it fits together: [Design](design.md).
+More in [Testing](testing.md). How it fits together: [Design](design.md), and the live
+[cluster map](services/documentation.md#cluster-map) (`make cluster-map`).
