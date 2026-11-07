@@ -1,9 +1,9 @@
-# One-shot setup: enables the KV v2 mounts services/ (one sub-path per service,
-# e.g. services/go-app/...) and infra/ (reserved). Safe to re-run.
+# Enables the KV v2 mounts services/ (one path per service) and infra/. Safe to re-run.
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: vault-configure
+  namespace: vault
   labels:
     app: vault-configure
 spec:
@@ -14,13 +14,14 @@ spec:
       labels:
         app: vault-configure
     spec:
+      serviceAccountName: vault-configure
       restartPolicy: OnFailure
       containers:
         - name: vault-configure
           image: hashicorp/vault:1.20.4
           env:
             - name: VAULT_ADDR
-              value: http://vault-service:8200
+              value: http://vault-service.vault:8200  # Same namespace, but kept fully qualified for consistency
             - name: VAULT_TOKEN
               valueFrom:
                 secretKeyRef: {name: vault-dev-token, key: token}

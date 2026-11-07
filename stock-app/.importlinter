@@ -1,0 +1,71 @@
+# Hexagonal layering rules, checked by `lint-imports` in `make lint-python`.
+[importlinter]
+root_package = src
+# Required for the forbidden contracts below, which name third-party packages.
+include_external_packages = True
+
+[importlinter:contract:layers]
+name = Dependency rule points one way: adapters -> application -> domain
+type = layers
+layers =
+    src.main
+    src.adapters
+    src.application
+    src.observability
+    src.domain
+
+[importlinter:contract:pure-core]
+name = The core knows nothing about frameworks, drivers or the environment
+type = forbidden
+source_modules =
+    src.domain
+    src.application
+forbidden_modules =
+    fastapi
+    starlette
+    sqlalchemy
+    psycopg
+    alembic
+    yfinance
+    pandas
+    numpy
+    hvac
+    os
+
+[importlinter:contract:provider-owns-pandas]
+name = Only the provider adapter may touch pandas, numpy and yfinance
+type = forbidden
+source_modules =
+    src.adapters.inbound
+    src.adapters.persistence
+    src.adapters.secrets
+    src.observability
+    src.config
+forbidden_modules =
+    yfinance
+    pandas
+    numpy
+
+[importlinter:contract:persistence-owns-sqlalchemy]
+name = Only the persistence adapter may touch SQLAlchemy and the database driver
+type = forbidden
+source_modules =
+    src.adapters.inbound
+    src.adapters.providers
+    src.adapters.secrets
+    src.observability
+forbidden_modules =
+    sqlalchemy
+    psycopg
+
+[importlinter:contract:secrets-owns-hvac]
+name = Only the secrets adapter may touch the Vault client
+type = forbidden
+source_modules =
+    src.adapters.inbound
+    src.adapters.persistence
+    src.adapters.providers
+    src.observability
+    src.config
+forbidden_modules =
+    hvac

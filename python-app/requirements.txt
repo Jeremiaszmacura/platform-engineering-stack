@@ -1,4 +1,0 @@
-fastapi==0.116.1
-hvac==2.3.0
-prometheus_client==0.22.1
-uvicorn==0.35.0

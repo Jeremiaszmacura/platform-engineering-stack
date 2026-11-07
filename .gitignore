@@ -1,6 +1,9 @@
 # Project
 documentation/site/
 .cache
+.claude/settings.local.json
+# Working plans (e.g. from the plan-implementation skill) stay local
+plans/
 
 # Go
 go-app/**/*.exe
@@ -23,6 +26,7 @@ logs/
 # React / Node
 node_modules/
 frontend-app/dist/
+stock-ui/dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

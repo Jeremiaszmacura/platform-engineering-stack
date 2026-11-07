@@ -1,0 +1,12 @@
+# Used only by the documentation image, the one built from the repository root.
+
+.git
+**/.tox
+**/.venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/.import_linter_cache
+**/.coverage
+**/dist
+documentation/site

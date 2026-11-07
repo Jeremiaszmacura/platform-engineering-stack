@@ -9,8 +9,7 @@ import (
 	"testing"
 )
 
-// newTestServer returns a fake Vault server running handler and a Client
-// pointed at it, scoped to the go-app secret path.
+// newTestServer returns a Client pointed at a fake Vault running handler.
 func newTestServer(t *testing.T, handler http.HandlerFunc) *Client {
 	t.Helper()
 	server := httptest.NewServer(handler)

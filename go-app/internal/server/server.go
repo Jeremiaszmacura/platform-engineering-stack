@@ -25,8 +25,7 @@ const (
 	shutdownTimeout = 10 * time.Second
 )
 
-// StartServer runs the HTTP server on listenAddr and shuts it down gracefully
-// when SIGINT or SIGTERM is received.
+// StartServer runs the server and shuts it down gracefully on SIGINT or SIGTERM.
 func StartServer() error {
 	srv := &http.Server{
 		Addr:         listenAddr,
@@ -72,8 +71,7 @@ func newRouter() *gin.Engine {
 	return router
 }
 
-// shutdownGracefully stops the server, allowing in-flight requests up to
-// shutdownTimeout to complete.
+// shutdownGracefully gives in-flight requests up to shutdownTimeout to finish.
 func shutdownGracefully(srv *http.Server) error {
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()

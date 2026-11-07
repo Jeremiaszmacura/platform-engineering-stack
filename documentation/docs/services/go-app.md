@@ -1,25 +1,11 @@
 # go-app
 
-Sample backend written in Go with Gin. URL: http://go.localhost
-
-- Implements the [shared backend contract](../design.md#shared-backend-contract).
-- Code: `cmd/main.go` (start), `internal/server` (router, graceful shutdown), `internal/handlers` (endpoints),
-  `internal/appmetrics` (metrics middleware), `internal/vaultclient` (small stdlib Vault client).
-- Config (env): `VAULT_ADDR`, `VAULT_TOKEN` (required), `VAULT_SECRET_PATH` (default `go-app`).
-
-## Develop
+Sample backend (Go, Gin) at http://go.localhost, used to generate traffic for the dashboards.
+Endpoints: `/`, `/health`, `/error` (500), `/redirect` (302), `/metrics`, and `POST /secret` / `GET /secret/{key}`
+(Vault path `services/go-app/`; 201/200, 404 missing, 422 invalid key or empty value, 502 Vault failed).
 
 ```sh
 cd go-app
-go test ./...
-golangci-lint run
-VAULT_TOKEN=root go run ./cmd/main.go          # http://localhost:8080
-```
-
-## Redeploy into a running cluster
-
-```sh
-docker build -t go-app:dev ./go-app
-kind load docker-image go-app:dev --name sample-cluster
-kubectl rollout restart deployment go-app
+go test ./... && golangci-lint run
+VAULT_TOKEN=root go run ./cmd/main.go    # http://localhost:8080
 ```

@@ -1,6 +1,0 @@
-.venv/
-.tox/
-k8s/
-tests/
-README.md
-Dockerfile

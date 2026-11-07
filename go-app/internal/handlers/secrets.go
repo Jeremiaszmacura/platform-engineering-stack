@@ -36,8 +36,7 @@ type secretRequest struct {
 	Value string `json:"value"`
 }
 
-// Write stores the secret from the request body in Vault.
-// It answers 422 when the key or value is missing or invalid.
+// Write stores the secret from the request body in Vault (422 for a missing or invalid key or value).
 func (h *SecretsHandler) Write(c *gin.Context) {
 	var req secretRequest
 	if err := c.ShouldBindJSON(&req); err != nil || !validKey.MatchString(req.Key) || req.Value == "" {

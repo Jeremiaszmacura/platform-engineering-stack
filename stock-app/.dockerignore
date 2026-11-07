@@ -1,0 +1,14 @@
+.coverage
+.coveragerc
+.dockerignore
+.gitignore
+.tox/
+.venv/
+Dockerfile
+README.md
+k8s
+pyproject.toml
+requirements-dev.txt
+tests
+tools
+tox.ini

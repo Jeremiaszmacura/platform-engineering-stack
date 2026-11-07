@@ -32,18 +32,23 @@ jobs:
       - name: Install Ansible
         run: pip install ansible-core
 
+      # Yahoo rate-limits CI runners, so stock-app replays its recorded prices.
       - name: Create cluster and deploy all components
-        run: ./recreate-cluster.sh
+        run: STOCK_PROVIDER=fixture ./recreate-cluster.sh
 
+      # `external` tests need live Yahoo data.
       - name: Run e2e tests
-        run: make test-e2e
+        run: make test-e2e E2E_PYTEST_ARGS='-m "not external"'
 
       - name: Dump cluster state on failure
         if: failure()
         run: |
           kubectl get pods -A -o wide || true
-          kubectl get events --sort-by=.lastTimestamp | tail -n 50 || true
-          for deployment in $(kubectl get deployments -o name); do
-            echo "--- logs: $deployment ---"
-            kubectl logs "$deployment" --tail=50 || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -n 50 || true
+          kubectl get statefulsets,pvc -n data -o wide || true
+          for ns in apps monitoring vault docs data; do
+            for deployment in $(kubectl get deployments -n "$ns" -o name); do
+              echo "--- logs: $ns/$deployment ---"
+              kubectl logs "$deployment" -n "$ns" --tail=50 || true
+            done
           done

@@ -1,9 +1,20 @@
-# Dev-mode root token, the single source for Vault and every client of it.
-# Fine for this local playground only.
+# Dev root token, declared for Vault (namespace vault) and its clients (namespace apps). Dev only.
 apiVersion: v1
 kind: Secret
 metadata:
   name: vault-dev-token
+  namespace: vault
+  labels:
+    app: vault
+type: Opaque
+stringData:
+  token: root
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-dev-token
+  namespace: apps
   labels:
     app: vault
 type: Opaque

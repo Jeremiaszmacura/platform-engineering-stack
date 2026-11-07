@@ -1,0 +1,8 @@
+-r requirements.txt
+-r ../requirements-dev.txt
+# Same version as the pre-commit hook, so generated code doesn't flip-flop.
+black==26.5.1
+datamodel-code-generator==0.71.0
+httpx==0.28.1
+import-linter==2.13
+openapi-spec-validator==0.9.0
