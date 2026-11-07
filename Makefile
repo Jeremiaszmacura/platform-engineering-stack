@@ -10,7 +10,7 @@ E2E_PYTEST_ARGS ?=
 # Frontends built with Vite (npm ci + npm run build)
 FRONTENDS := frontend-app stock-ui
 
-.PHONY: help all build build-go build-frontend test test-unit test-unit-go test-unit-python test-unit-frontend test-e2e tidy tidy-go lint lint-go lint-python
+.PHONY: help all build build-go build-frontend test test-unit test-unit-go test-unit-python test-unit-frontend test-e2e tidy tidy-go lint lint-go lint-python cluster-map
 
 help:
 	@echo "Targets:"
@@ -20,6 +20,7 @@ help:
 	@echo "  test-e2e        Run end-to-end tests (needs a running cluster: ./recreate-cluster.sh)"
 	@echo "  tidy            Run go mod tidy in every Go service"
 	@echo "  lint            Run Go linters and pre-commit hooks"
+	@echo "  cluster-map     Write the cluster map data from the running cluster (open documentation/cluster-map/index.html)"
 	@echo "  all             build + test-unit"
 
 all: build test
@@ -94,3 +95,8 @@ lint-python:
 		echo "==> tox pre-commit: $$service"; \
 		(cd $$service && tox -e pre-commit) || exit 1; \
 	done
+
+# Learning aid
+
+cluster-map:
+	python3 documentation/cluster-map/cluster_map.py
