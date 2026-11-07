@@ -20,7 +20,6 @@ IMAGES=(
 COMPONENTS=(
     monitoring/prometheus/k8s
     monitoring/grafana/k8s
-    nginx/k8s
     vault/k8s
     timescaledb/k8s
     stock-app/k8s
@@ -39,7 +38,6 @@ URLS=(
     "Stock-UI http://stock-ui.localhost"
     "Stock-app http://stock.localhost"
     "Go-app http://go.localhost"
-    "NGINX http://nginx.localhost"
     "Vault http://vault.localhost"
     "Prometheus http://prometheus.localhost"
     "Grafana http://grafana.localhost"

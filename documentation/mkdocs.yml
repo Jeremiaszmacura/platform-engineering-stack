@@ -12,7 +12,6 @@ nav:
       - stock-ui: services/stock-ui.md
       - go-app: services/go-app.md
       - frontend-app: services/frontend-app.md
-      - nginx: services/nginx.md
       - Vault: services/vault.md
       - Monitoring: services/monitoring.md
       - Documentation: services/documentation.md

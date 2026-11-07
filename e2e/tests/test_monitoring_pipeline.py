@@ -13,16 +13,15 @@ from cluster import (
     wait_until,
 )
 
-EXPECTED_PROMETHEUS_JOBS = {"self", "nginx-metrics", "node-exporter", "go-app", "stock-app"}
+EXPECTED_PROMETHEUS_JOBS = {"self", "node-exporter", "go-app", "stock-app"}
 EXPECTED_DASHBOARD_TITLES = {
     "Go App Metrics",
     "Infrastructure Overview",
-    "NGINX Monitoring",
     "Stock App Metrics",
 }
 
-# One node-exporter per kind node, one exporter sidecar per nginx replica.
-EXPECTED_TARGETS_PER_JOB = {"node-exporter": 3, "nginx-metrics": 2}
+# One node-exporter per kind node.
+EXPECTED_TARGETS_PER_JOB = {"node-exporter": 3}
 
 
 def fetch_up_jobs():
@@ -44,7 +43,7 @@ def count_up_targets(job):
 
 
 def test_multi_instance_jobs_scrape_every_instance():
-    """Every node and every nginx pod is scraped as its own target."""
+    """Every node is scraped as its own target."""
     for job, expected in EXPECTED_TARGETS_PER_JOB.items():
         wait_until(
             lambda job=job, expected=expected: count_up_targets(job) == expected,

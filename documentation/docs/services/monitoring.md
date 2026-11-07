@@ -5,7 +5,7 @@ shows them. Both run in namespace `monitoring`.
 
 - **Scraping:** Services annotated `prometheus.io/scrape: "true"` + `prometheus.io/job: <name>` in namespaces
   `apps` and `monitoring` are discovered automatically, one target per pod (jobs: `stock-app`, `go-app`,
-  `nginx-metrics`, `node-exporter`, plus `self`).
+  `node-exporter`, plus `self`).
 - **App metrics:** both backends expose `http_requests_total`, `http_request_duration_seconds`,
   `http_responses_by_status_total` (probes and scrapes excluded); stock-app adds `stock_*` metrics for its
   provider calls and cache hits.
