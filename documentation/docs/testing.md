@@ -10,8 +10,8 @@
 
 ## End-to-end tests
 
-They need a cluster (`./recreate-cluster.sh`) and cover: every URL answers, go-app's endpoints, Vault secrets
-on both backends, CORS for both frontends, every stock-app endpoint validated against its published
+They need a cluster (`./recreate-cluster.sh`) and cover: every URL answers, the cluster map and its RBAC, Vault secrets,
+CORS for the frontends, every stock-app endpoint validated against its published
 `/openapi.yaml`, the cache-aside flow, and the Prometheus/Grafana pipeline.
 
 stock-app calls Yahoo Finance by default. To test without it, deploy with `STOCK_PROVIDER=fixture` and skip the

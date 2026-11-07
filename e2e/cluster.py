@@ -1,7 +1,6 @@
 """Service catalog and helpers for the e2e suite (everything is reached through ingress on *.localhost)."""
 
 import time
-from dataclasses import dataclass
 
 import requests
 
@@ -21,26 +20,12 @@ GRAFANA_CREDENTIALS = ("admin", "admin")
 VAULT_TOKEN = "root"  # nosec B105 - dev-mode root token
 
 
-@dataclass(frozen=True)
-class Backend:
-    """A backend: name (test id), ingress URL and Prometheus job."""
-
-    name: str
-    base_url: str
-    prometheus_job: str
-
-
-BACKENDS = (Backend(name="go-app", base_url="http://go.localhost", prometheus_job="go-app"),)
-
-# Not in BACKENDS: stock-app has no /error or /redirect.
 STOCK_APP_URL = "http://stock.localhost"
-
-# Both backends expose the same /secret contract, each under its own Vault path.
-SECRET_BACKENDS = BACKENDS + (Backend(name="stock-app", base_url=STOCK_APP_URL, prometheus_job="stock-app"),)
+CLUSTER_MAP_URL = "http://cluster-map.localhost"
 
 SERVICE_URLS = {
-    "go-app": "http://go.localhost",
     "stock-app": STOCK_APP_URL,
+    "cluster-map": CLUSTER_MAP_URL,
     "frontend-app": FRONTEND_URL,
     "stock-ui": STOCK_UI_URL,
     "prometheus": PROMETHEUS_URL,
@@ -69,13 +54,6 @@ def service_responds(url):
     """Return True if a GET to url answers below 500."""
     response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
     return response.status_code < 500
-
-
-def fetch_metrics(backend):
-    """Return the backend's /metrics text."""
-    response = requests.get(f"{backend.base_url}/metrics", timeout=REQUEST_TIMEOUT_SECONDS)
-    response.raise_for_status()
-    return response.text
 
 
 def read_counter(metrics_text, metric_name, required_labels):

@@ -306,7 +306,7 @@ class TestSecretEndpoints(RouteTestCase):
 
     def test_a_traversal_attempt_never_reaches_the_store(self):
         """An encoded separator is decoded before routing, so no route matches at all."""
-        response = self.client.get("/secret/..%2Fgo-app%2Ftoken")
+        response = self.client.get("/secret/..%2Fother-service%2Ftoken")
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(self.secrets.stored, {})

@@ -10,7 +10,7 @@ nav:
       - stock-app API: services/stock-app-api.md
       - TimescaleDB: services/timescaledb.md
       - stock-ui: services/stock-ui.md
-      - go-app: services/go-app.md
+      - cluster-map: services/cluster-map.md
       - frontend-app: services/frontend-app.md
       - Vault: services/vault.md
       - Monitoring: services/monitoring.md

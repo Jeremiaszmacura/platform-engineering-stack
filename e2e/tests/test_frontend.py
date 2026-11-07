@@ -1,8 +1,8 @@
-"""frontend-app is served, and the backends answer its cross-origin calls with CORS headers."""
+"""frontend-app is served, and stock-app answers its cross-origin calls with CORS headers."""
 
 import requests
 
-from cluster import FRONTEND_URL, REQUEST_TIMEOUT_SECONDS
+from cluster import FRONTEND_URL, REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL
 
 
 def test_frontend_serves_ui():
@@ -12,10 +12,10 @@ def test_frontend_serves_ui():
     assert response.headers["Content-Type"].startswith("text/html")
 
 
-def test_backend_allows_frontend_origin(backend):
-    """Backend responses carry CORS headers allowing the frontend origin."""
+def test_backend_allows_frontend_origin():
+    """stock-app responses carry CORS headers allowing the frontend origin."""
     response = requests.get(
-        f"{backend.base_url}/health",
+        f"{STOCK_APP_URL}/health",
         headers={"Origin": FRONTEND_URL},
         timeout=REQUEST_TIMEOUT_SECONDS,
     )
@@ -23,10 +23,10 @@ def test_backend_allows_frontend_origin(backend):
     assert response.headers["Access-Control-Allow-Origin"] in ("*", FRONTEND_URL)
 
 
-def test_backend_answers_cors_preflight(backend):
-    """OPTIONS preflight from the frontend origin is accepted by the backend ingress."""
+def test_backend_answers_cors_preflight():
+    """OPTIONS preflight from the frontend origin is accepted by stock-app's ingress."""
     response = requests.options(
-        f"{backend.base_url}/health",
+        f"{STOCK_APP_URL}/health",
         headers={"Origin": FRONTEND_URL, "Access-Control-Request-Method": "GET"},
         timeout=REQUEST_TIMEOUT_SECONDS,
     )

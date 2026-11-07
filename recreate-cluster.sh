@@ -10,7 +10,7 @@ STOCK_PROVIDER="${STOCK_PROVIDER:-yahoo}"
 # <image> <build context> [Dockerfile]. Docs build from the repo root to include stock-app/openapi.yaml.
 IMAGES=(
     "stock-app:dev stock-app"
-    "go-app:dev go-app"
+    "cluster-map:dev cluster-map"
     "frontend-app:dev frontend-app"
     "stock-ui:dev stock-ui"
     "documentation:dev . documentation/Dockerfile"
@@ -23,7 +23,7 @@ COMPONENTS=(
     vault/k8s
     timescaledb/k8s
     stock-app/k8s
-    go-app/k8s
+    cluster-map/k8s
     frontend-app/k8s
     stock-ui/k8s
     documentation/k8s
@@ -37,7 +37,7 @@ URLS=(
     "Frontend http://app.localhost"
     "Stock-UI http://stock-ui.localhost"
     "Stock-app http://stock.localhost"
-    "Go-app http://go.localhost"
+    "Cluster-map http://cluster-map.localhost"
     "Vault http://vault.localhost"
     "Prometheus http://prometheus.localhost"
     "Grafana http://grafana.localhost"

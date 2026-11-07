@@ -1,6 +1,6 @@
 # Adding a Service
 
-Copy an existing component (e.g. `go-app/`) and then:
+Copy an existing component (e.g. `stock-app/` or `cluster-map/`) and then:
 
 1. **Code:** a `Dockerfile` (pinned base image, non-root). Go needs `go.mod`, Python needs `tox.ini` — the
    Makefile finds them. A Vite frontend goes into `FRONTENDS` in the `Makefile`.

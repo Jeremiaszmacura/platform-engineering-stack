@@ -7,7 +7,7 @@ Serves daily stock prices (OHLCV bars) at http://stock.localhost/api/v1 — Fast
 | `GET /api/v1/instruments` | Symbols stored locally and the date window synced for each |
 | `GET /api/v1/instruments/{symbol}/bars?start=&end=` | Daily bars for the window |
 | `GET /api/v1/instruments/{symbol}/summary?start=&end=` | High, low, first and last close for the window |
-| `POST /secret`, `GET /secret/{key}` | Secrets in Vault under `services/stock-app/` (same rules as go-app) |
+| `POST /secret`, `GET /secret/{key}` | Secrets in Vault under `services/stock-app/` |
 | `GET /health`, `/metrics`, `/openapi.yaml`, `/docs` | Readiness (checks the DB), Prometheus metrics, the contract, Swagger UI |
 
 ## Key ideas

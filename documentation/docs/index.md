@@ -10,7 +10,7 @@ deploy services, collect metrics, build dashboards, keep secrets, run a stateful
 | [stock-app](services/stock-app.md) | Real backend: daily stock prices, cached in TimescaleDB | http://stock.localhost |
 | [TimescaleDB](services/timescaledb.md) | stock-app's database | in-cluster only |
 | [stock-ui](services/stock-ui.md) | Charts stock-app's prices | http://stock-ui.localhost |
-| [go-app](services/go-app.md) | Sample backend for traffic tests | http://go.localhost |
+| [cluster-map](services/cluster-map.md) | Live map of the cluster, for learning Kubernetes | http://cluster-map.localhost |
 | [frontend-app](services/frontend-app.md) | Sends test traffic to the backends | http://app.localhost |
 | [Vault](services/vault.md) | Secret store for the backends | http://vault.localhost (token `root`) |
 | [Monitoring](services/monitoring.md) | Prometheus + Grafana | http://prometheus.localhost, http://grafana.localhost (`admin`/`admin`) |

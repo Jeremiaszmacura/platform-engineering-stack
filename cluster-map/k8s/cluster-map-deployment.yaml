@@ -1,66 +1,66 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: go-app
-  namespace: apps
+  name: cluster-map
+  namespace: monitoring
   labels:
-    app: go-app
+    app: cluster-map
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: go-app
+      app: cluster-map
   template:
     metadata:
       labels:
-        app: go-app
+        app: cluster-map
     spec:
-      serviceAccountName: go-app
+      serviceAccountName: cluster-map
       securityContext:
         runAsNonRoot: true
-        runAsUser: 65532
+        runAsUser: 65532  # distroless "nonroot"
       containers:
-        - name: go-app
-          image: go-app:dev  # built locally and loaded into kind
+        - name: cluster-map
+          image: cluster-map:dev  # built locally and loaded into kind
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           env:
-            - name: VAULT_ADDR
-              value: http://vault-service.vault:8200  # Cross-namespace: vault runs in the vault namespace
-            - name: VAULT_TOKEN
-              valueFrom:
-                secretKeyRef: {name: vault-dev-token, key: token}
-            - name: VAULT_SECRET_PATH
-              value: go-app  # own path under services/, so Vault policies can scope per service
+            - name: CLUSTER_NAME
+              value: sample-cluster
+            - name: REFERENCES
+              value: grafana=http://prometheus-service:9090  # Grafana's datasource, set by Ansible outside Kubernetes
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           resources:
             requests: {cpu: 50m, memory: 64Mi}
             limits: {cpu: 250m, memory: 256Mi}
+          # Ready once the informers have finished their first list
           readinessProbe:
             httpGet: {path: /health, port: 8080}
-            initialDelaySeconds: 3
             periodSeconds: 5
           livenessProbe:
             httpGet: {path: /health, port: 8080}
-            initialDelaySeconds: 10
+            initialDelaySeconds: 30
             periodSeconds: 20
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: go-app-service
-  namespace: apps
+  name: cluster-map-service
+  namespace: monitoring
   labels:
-    app: go-app
+    app: cluster-map
   annotations:
     prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
-    prometheus.io/job: go-app  # Keeps the historic job label for dashboards/e2e
+    prometheus.io/job: cluster-map
 spec:
   type: ClusterIP
   selector:
-    app: go-app
+    app: cluster-map
   ports:
     - port: 8080
       targetPort: 8080
