@@ -6,11 +6,11 @@ documentation/site/
 plans/
 
 # Go
-go-app/**/*.exe
-go-app/**/*.test
-go-app/**/*.out
-go-app/bin/
-go-app/vendor/
+cluster-map/**/*.exe
+cluster-map/**/*.test
+cluster-map/**/*.out
+cluster-map/cluster-map
+cluster-map/vendor/
 
 # Python
 __pycache__/

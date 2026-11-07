@@ -8,14 +8,14 @@ from cluster import (
     METRICS_PIPELINE_TIMEOUT_SECONDS,
     PROMETHEUS_URL,
     REQUEST_TIMEOUT_SECONDS,
+    STOCK_APP_URL,
     TARGETS_UP_TIMEOUT_SECONDS,
     query_prometheus_value,
     wait_until,
 )
 
-EXPECTED_PROMETHEUS_JOBS = {"self", "node-exporter", "go-app", "stock-app"}
+EXPECTED_PROMETHEUS_JOBS = {"self", "node-exporter", "stock-app", "cluster-map"}
 EXPECTED_DASHBOARD_TITLES = {
-    "Go App Metrics",
     "Infrastructure Overview",
     "Stock App Metrics",
 }
@@ -61,19 +61,19 @@ def test_all_scrape_targets_are_up():
     )
 
 
-def test_backend_traffic_reaches_prometheus(backend):
-    """Requests to a backend show up in Prometheus."""
+def test_backend_traffic_reaches_prometheus():
+    """Requests to stock-app show up in Prometheus."""
     request_count = 5
-    query = f'sum(http_requests_total{{job="{backend.prometheus_job}"}})'
+    query = 'sum(http_requests_total{job="stock-app"})'
     baseline = query_prometheus_value(query)
 
     for _ in range(request_count):
-        requests.get(f"{backend.base_url}/", timeout=REQUEST_TIMEOUT_SECONDS)
+        requests.get(f"{STOCK_APP_URL}/", timeout=REQUEST_TIMEOUT_SECONDS)
 
     wait_until(
         lambda: query_prometheus_value(query) >= baseline + request_count,
         METRICS_PIPELINE_TIMEOUT_SECONDS,
-        description=f"Prometheus to scrape {request_count} new {backend.name} requests",
+        description=f"Prometheus to scrape {request_count} new stock-app requests",
     )
 
 

@@ -9,7 +9,6 @@ export const DEFAULT_RANGE = { start: isoDaysAgo(37), end: isoDaysAgo(7) };
 /** Backends the tool can target, in the order the navigation offers them. */
 export const APPS = [
   { id: 'stock-app', label: 'Stock App', note: 'FastAPI + TimescaleDB', baseUrl: 'http://stock.localhost' },
-  { id: 'go-app', label: 'Go App', note: 'Gin', baseUrl: 'http://go.localhost' },
 ];
 
 /** Endpoints offered per backend, keyed by app id. */
@@ -40,13 +39,6 @@ export const ENDPOINTS = {
       needsSymbol: true,
       needsRange: true,
     },
-  ],
-  'go-app': [
-    { path: '/', name: 'Home', method: 'GET', description: 'Get welcome message' },
-    { path: '/health', name: 'Health check', method: 'GET', description: 'Check app health' },
-    { path: '/error', name: 'Error', method: 'GET', description: 'Simulate a server error (500)' },
-    { path: '/redirect', name: 'Redirect', method: 'GET', description: 'Redirect to health' },
-    { path: '/metrics', name: 'Metrics', method: 'GET', description: 'Prometheus metrics' },
   ],
 };
 

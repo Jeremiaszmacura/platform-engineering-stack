@@ -7,14 +7,13 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 go build -o go-app ./cmd/main.go
+RUN CGO_ENABLED=0 go build -o cluster-map .
 
 # Static, non-root runtime image
 FROM gcr.io/distroless/static-debian12:nonroot
 
-COPY --from=builder /app/go-app /go-app
+COPY --from=builder /app/cluster-map /cluster-map
 
-ENV GIN_MODE=release
 EXPOSE 8080
 
-CMD ["/go-app"]
+CMD ["/cluster-map"]

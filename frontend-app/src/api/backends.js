@@ -1,4 +1,4 @@
-/** Sends the requests. Any status below 600 is a result to show (go-app's /error is meant to 500). */
+/** Sends the requests. Any status below 600 is a result to show, errors included. */
 
 import axios from 'axios';
 

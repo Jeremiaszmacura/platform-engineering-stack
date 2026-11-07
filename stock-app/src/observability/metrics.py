@@ -7,7 +7,6 @@ from enum import StrEnum
 
 from prometheus_client import Counter, Histogram
 
-# Same names as go-app, so dashboards share queries.
 REQUEST_COUNT = Counter("http_requests_total", "Total number of HTTP requests", ["method", "endpoint", "status_code"])
 
 REQUEST_DURATION = Histogram(

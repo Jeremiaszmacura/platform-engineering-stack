@@ -1,8 +1,8 @@
 # Platform Engineering Stack
 
 A small Kubernetes cluster that runs on your laptop, for learning platform engineering.
-It has a real stock-data service (Python + TimescaleDB) with a chart UI, a sample Go backend,
-a test web page, Vault for secrets, and Prometheus + Grafana to watch the traffic.
+It has a real stock-data service (Python + TimescaleDB) with a chart UI, a live cluster
+map (Go) for learning Kubernetes, a test web page, Vault for secrets, and Prometheus + Grafana to watch the traffic.
 
 ## Start
 

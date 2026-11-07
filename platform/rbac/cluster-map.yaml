@@ -1,0 +1,79 @@
+# Read-only API access for cluster-map (its ServiceAccount lives in cluster-map/k8s/). No Secrets: their names and keys come from pod specs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-map
+rules:
+  - apiGroups: [""]
+    resources: [nodes, pods, services, serviceaccounts, persistentvolumeclaims, persistentvolumes]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses, networkpolicies]
+    verbs: [get, list, watch]
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [roles, rolebindings, clusterroles, clusterrolebindings]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-map
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-map
+subjects:
+  - kind: ServiceAccount
+    name: cluster-map
+    namespace: monitoring
+---
+# resourceNames: exactly one ConfigMap each (kube-proxy's pod range, Prometheus' discovery namespaces)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-map-kube-proxy
+  namespace: kube-system
+rules:
+  - apiGroups: [""]
+    resources: [configmaps]
+    resourceNames: [kube-proxy]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-map-kube-proxy
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-map-kube-proxy
+subjects:
+  - kind: ServiceAccount
+    name: cluster-map
+    namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-map-prometheus
+  namespace: monitoring
+rules:
+  - apiGroups: [""]
+    resources: [configmaps]
+    resourceNames: [prometheus-config]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-map-prometheus
+  namespace: monitoring
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-map-prometheus
+subjects:
+  - kind: ServiceAccount
+    name: cluster-map
+    namespace: monitoring

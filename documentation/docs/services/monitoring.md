@@ -4,9 +4,9 @@ Prometheus (http://prometheus.localhost) scrapes the apps; Grafana (http://grafa
 shows them. Both run in namespace `monitoring`.
 
 - **Scraping:** Services annotated `prometheus.io/scrape: "true"` + `prometheus.io/job: <name>` in namespaces
-  `apps` and `monitoring` are discovered automatically, one target per pod (jobs: `stock-app`, `go-app`,
-  `node-exporter`, plus `self`).
-- **App metrics:** both backends expose `http_requests_total`, `http_request_duration_seconds`,
+  `apps` and `monitoring` are discovered automatically, one target per pod (jobs: `stock-app`,
+  `cluster-map`, `node-exporter`, plus `self`).
+- **App metrics:** stock-app exposes `http_requests_total`, `http_request_duration_seconds`,
   `http_responses_by_status_total` (probes and scrapes excluded); stock-app adds `stock_*` metrics for its
   provider calls and cache hits.
 - **Dashboards** are code: `monitoring/grafana/ansible/dashboards/*.json` (fixed `uid`, queries filtered by `job`),
