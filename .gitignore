@@ -1,7 +1,5 @@
 # Project
 documentation/site/
-# Generated from the running cluster by `make cluster-map`
-documentation/cluster-map/data.js
 .cache
 .claude/settings.local.json
 # Working plans (e.g. from the plan-implementation skill) stay local
