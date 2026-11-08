@@ -23,7 +23,7 @@ If no target is given, ask for a package/dir or offer "review my current changes
 
 **1. Read the design of record.** Don't judge from memory or from this file - the rules live in the docs:
 - `documentation/docs/design.md` - its architecture section with the decisions the code must not silently break.
-- `.claude/shared/clean-code.md` - the architecture-relevant rules only (YAGNI; interfaces defined by the consumer; return concrete types).
+- `.claude/rules/clean-code.md` and `.claude/rules/go.md` - the architecture-relevant rules only (YAGNI; interfaces defined by the consumer; return concrete types).
 
 Pull other `documentation/docs/*.md` in only when a finding needs them. If the docs are *silent* on something, that's a question - not a rule you invent.
 
