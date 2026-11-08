@@ -8,7 +8,7 @@ E2E_VENV := $(E2E_DIR)/.venv
 E2E_PYTEST_ARGS ?=
 
 # Frontends built with Vite (npm ci + npm run build)
-FRONTENDS := frontend-app stock-ui
+FRONTENDS := traffic-generator stock-ui
 
 .PHONY: help all build build-go build-frontend test test-unit test-unit-go test-unit-python test-unit-frontend test-e2e tidy tidy-go lint lint-go lint-python
 

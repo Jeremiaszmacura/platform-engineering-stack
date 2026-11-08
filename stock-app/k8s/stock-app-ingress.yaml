@@ -6,7 +6,7 @@ metadata:
   labels:
     app: stock-app
   annotations:
-    # The frontends (app.localhost, stock-ui.localhost) call this backend cross-origin
+    # The frontends (traffic-generator.localhost, stock-ui.localhost) call this backend cross-origin
     nginx.ingress.kubernetes.io/enable-cors: "true"
 spec:
   ingressClassName: nginx

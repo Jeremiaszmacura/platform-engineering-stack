@@ -11,7 +11,7 @@ nav:
       - TimescaleDB: services/timescaledb.md
       - stock-ui: services/stock-ui.md
       - cluster-map: services/cluster-map.md
-      - frontend-app: services/frontend-app.md
+      - traffic-generator: services/traffic-generator.md
       - Vault: services/vault.md
       - Monitoring: services/monitoring.md
       - Documentation: services/documentation.md

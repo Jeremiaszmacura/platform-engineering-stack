@@ -253,7 +253,7 @@ body { margin: 0; }
           <span class="label">Docker network "kind" · each node is a container on it</span>
           <div class="nodes" id="nodes"></div>
         </div>
-        <p class="map-note">The map refreshes every 5 seconds; new pods flash. Try <code>kubectl scale deploy/frontend-app -n apps --replicas=3</code> or <code>kubectl delete pod -n apps -l app=stock-ui</code> and watch. Dashed chips use <code>hostNetwork</code>: they share the node's IP instead of getting a pod IP. Faded chips are finished Job pods.</p>
+        <p class="map-note">The map refreshes every 5 seconds; new pods flash. Try <code>kubectl scale deploy/traffic-generator -n apps --replicas=3</code> or <code>kubectl delete pod -n apps -l app=stock-ui</code> and watch. Dashed chips use <code>hostNetwork</code>: they share the node's IP instead of getting a pod IP. Faded chips are finished Job pods.</p>
       </div>
       <aside class="inspector" id="inspector" aria-live="polite"></aside>
     </div>
@@ -444,7 +444,7 @@ const NOTES = {
   "kube-apiserver": "Every kubectl command, every controller, Prometheus discovery and this page talk to it. Only identities with RBAC permissions get answers.",
   "node-exporter": "One per node (DaemonSet) on hostNetwork, so its endpoint IPs are the node IPs. Prometheus scrapes each one as its own target.",
   "cluster-map": "Serves this page. Informers keep a watched copy of the API objects in memory; each /api/map request turns that copy into the map. Its ClusterRole can list and watch, but not read Secrets.",
-  "frontend-app": "Serves static files only. The JavaScript runs in your browser, and the browser calls stock.localhost itself, cross-origin, through ingress-nginx. This pod never calls the backend.",
+  "traffic-generator": "Serves static files only. The JavaScript runs in your browser, and the browser calls stock.localhost itself, cross-origin, through ingress-nginx. This pod never calls the backend.",
   "stock-ui": "Static files only. Your browser calls http://stock.localhost for data; the pod itself never does.",
   "stock-app": "Also calls Yahoo Finance over the internet (pod → node SNAT → Docker → your machine). Readiness probe only: /health checks the DB, and a DB outage must not restart the app.",
   "grafana": "Datasource access mode is \"proxy\": the Grafana server runs the queries, not your browser. Ansible configures it from your machine through grafana.localhost.",
@@ -693,7 +693,7 @@ function journeys(data, v) {
         ["ingress-nginx", "The stock-app Ingress has <code>nginx.ingress.kubernetes.io/enable-cors: \"true\"</code>, so nginx answers the preflight and adds <code>Access-Control-Allow-*</code> headers itself. The app has no CORS code."],
         ["ingress-nginx → pod", `Proxied to stock-app at ${code(ip(api) + ":" + target(apiSvc, "8000"))} on ${esc(api ? nodeShort(api.node) : "?")}, using the same mechanism as the previous trace.`]
       ],
-      after: `<div class="callout">frontend-app works the same way: the browser calls <code>stock.localhost</code>. The frontend pods only serve static files, which is why they have no outgoing connections on the map.</div>` },
+      after: `<div class="callout">traffic-generator works the same way: the browser calls <code>stock.localhost</code>. Its pods only serve static files, which is why they have no outgoing connections on the map.</div>` },
     { id: "east", tab: "stock-app → TimescaleDB", kind: "east-west",
       summary: "stock-app runs a query. This is in-cluster traffic: DNS, then a ClusterIP, then kube-proxy.",
       steps: [
@@ -801,7 +801,7 @@ function renderFindings(data) {
     netpols.length
       ? ["var(--accent)", "Checked · network", `${netpols.length} NetworkPolicies are applied`, `Policies: ${netpols.map(code).join(", ")}. Check which pods they select with <code>kubectl describe networkpolicy -A</code>.`, ""]
       : ["var(--warn)", "Open · network", "No NetworkPolicies: every pod can reach every pod",
-         "stock-ui, frontend-app or the docs site could connect to <code>timescaledb-service.data:5432</code> or Vault. Only passwords protect them. kindnet enforces NetworkPolicy, so you can practise here.",
+         "stock-ui, traffic-generator or the docs site could connect to <code>timescaledb-service.data:5432</code> or Vault. Only passwords protect them. kindnet enforces NetworkPolicy, so you can practise here.",
          "Exercise: default-deny ingress in <code>data</code>, then allow only stock-app pods from <code>apps</code> on 5432 (example below). Apply it and watch the count above change."],
     ["var(--accent)", "Broad · RBAC", "Prometheus can read more than it uses",
      "Discovery only looks at a few namespaces, but the ClusterRole allows reading pods, Services and Endpoints in every namespace, plus nodes, which the config never uses. Also, <code>v1 Endpoints</code> is deprecated in favour of EndpointSlices.",
@@ -814,7 +814,7 @@ function renderFindings(data) {
      "Exercise: add a PVC for Grafana or provision dashboards from ConfigMaps. Run Vault with file or Raft storage."],
     ["var(--accent)", "Single · availability", "One replica of everything",
      "Every app runs a single pod with no PodDisruptionBudget, so draining a node (<code>kubectl drain</code>) causes downtime, and a pod with a local-path volume can't move at all.",
-     "Exercise: run 2 replicas of frontend-app with a PDB (<code>minAvailable: 1</code>) and topology spread across workers, then drain a node and watch the map."]
+     "Exercise: run 2 replicas of traffic-generator with a PDB (<code>minAvailable: 1</code>) and topology spread across workers, then drain a node and watch the map."]
   ];
   $("#findings").innerHTML = findings.map(([sev, tag, title, text, fix]) => `
     <div class="finding" style="--sev:${sev}"><span class="sev">${tag}</span><h3>${title}</h3><p>${text}</p>${fix ? `<p class="fix">${fix}</p>` : ""}</div>`).join("");
@@ -830,7 +830,7 @@ const CMDS = [
   ["Read kindnet's routes between nodes", "docker exec sample-cluster-control-plane ip route"],
   ["Check what this page's identity may do", "kubectl auth can-i --list --as=system:serviceaccount:monitoring:cluster-map"],
   ["Watch the events cluster-map's informers receive", "kubectl get pods -A --watch"],
-  ["Change the cluster and watch the map", "kubectl scale deploy/frontend-app -n apps --replicas=3\nkubectl scale deploy/frontend-app -n apps --replicas=1"],
+  ["Change the cluster and watch the map", "kubectl scale deploy/traffic-generator -n apps --replicas=3\nkubectl scale deploy/traffic-generator -n apps --replicas=1"],
   ["Confirm a ServiceAccount hands out no token", "kubectl get sa -n apps stock-app -o yaml"],
   ["Follow the volume chain", "kubectl get pvc,pv -A\nkubectl get pv -o jsonpath='{.items[0].spec.nodeAffinity}'"]
 ];

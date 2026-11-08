@@ -10,7 +10,7 @@ TARGETS_UP_TIMEOUT_SECONDS = 90
 METRICS_PIPELINE_TIMEOUT_SECONDS = 60
 POLL_INTERVAL_SECONDS = 2
 
-FRONTEND_URL = "http://app.localhost"
+TRAFFIC_GENERATOR_URL = "http://traffic-generator.localhost"
 STOCK_UI_URL = "http://stock-ui.localhost"
 PROMETHEUS_URL = "http://prometheus.localhost"
 GRAFANA_URL = "http://grafana.localhost"
@@ -26,7 +26,7 @@ CLUSTER_MAP_URL = "http://cluster-map.localhost"
 SERVICE_URLS = {
     "stock-app": STOCK_APP_URL,
     "cluster-map": CLUSTER_MAP_URL,
-    "frontend-app": FRONTEND_URL,
+    "traffic-generator": TRAFFIC_GENERATOR_URL,
     "stock-ui": STOCK_UI_URL,
     "prometheus": PROMETHEUS_URL,
     "grafana": GRAFANA_URL,

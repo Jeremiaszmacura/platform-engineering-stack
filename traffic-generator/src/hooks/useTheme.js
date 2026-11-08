@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'api-tester:theme';
+const STORAGE_KEY = 'traffic-generator:theme';
 
 /** Colour schemes the interface can be shown in. */
 export const THEMES = { dark: 'dark', light: 'light' };

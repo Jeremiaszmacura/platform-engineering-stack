@@ -1,27 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend-app
+  name: traffic-generator
   namespace: apps
   labels:
-    app: frontend-app
+    app: traffic-generator
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: frontend-app
+      app: traffic-generator
   template:
     metadata:
       labels:
-        app: frontend-app
+        app: traffic-generator
     spec:
-      serviceAccountName: frontend-app
+      serviceAccountName: traffic-generator
       securityContext:
         runAsNonRoot: true
         runAsUser: 101  # nginx-unprivileged's default user
       containers:
-        - name: frontend-app
-          image: frontend-app:dev  # built locally and loaded into kind
+        - name: traffic-generator
+          image: traffic-generator:dev  # built locally and loaded into kind
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
@@ -41,14 +41,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend-app-service
+  name: traffic-generator-service
   namespace: apps
   labels:
-    app: frontend-app
+    app: traffic-generator
 spec:
   type: ClusterIP
   selector:
-    app: frontend-app
+    app: traffic-generator
   ports:
     - port: 80
       targetPort: 8080
