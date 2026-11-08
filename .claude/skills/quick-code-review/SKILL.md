@@ -7,5 +7,5 @@ description: Quick single-pass code review by one reviewer against this project'
 
 Act as senior Go developer.
 
-Before reviewing, read and apply the shared programming rules in [.claude/shared/clean-code.md](../../shared/clean-code.md). They cover the general clean-code and Go-specific practices this project expects.
-When code that you review is Go Lang, additionally use [.claude/shared/go-programming-rules.md](../../shared/go-programming-rules.md) for Go-specific rules.
+Before reviewing, read and apply the shared programming rules in [.claude/rules/clean-code.md](../../rules/clean-code.md). They cover the general clean-code practices this project expects.
+When code that you review is Go Lang, additionally use [.claude/rules/go.md](../../rules/go.md) for Go-specific rules.

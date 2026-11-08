@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.go"
+  - "**/go.mod"
+---
+
 ## Go specific programming rules
 
 * Write idiomatic Go, not translated Java/C++/Python. Prefer simple, explicit, readable code over clever abstractions.
