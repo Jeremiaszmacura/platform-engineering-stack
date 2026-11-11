@@ -33,7 +33,9 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         if endpoint in MONITORING_ENDPOINTS:
             # Simplify the user agent (e.g. "Prometheus" from "Prometheus/2.x.x")
             user_agent = request.headers.get("user-agent", "unknown")
-            MONITORING_REQUESTS.labels(endpoint=endpoint, user_agent=user_agent.split("/")[0]).inc()
+            MONITORING_REQUESTS.labels(
+                endpoint=endpoint, user_agent=user_agent.split("/")[0], status_code=status_code
+            ).inc()
             return response
 
         REQUEST_COUNT.labels(method=request.method, endpoint=endpoint, status_code=status_code).inc()
