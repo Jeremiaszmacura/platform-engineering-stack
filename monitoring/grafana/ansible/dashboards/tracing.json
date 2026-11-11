@@ -1,0 +1,348 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Tracing",
+    "tags": [
+      "tracing",
+      "tempo",
+      "stock"
+    ],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Requests, measured from traces",
+        "type": "row",
+        "collapsed": false,
+        "panels": [],
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Requests per Second by Route",
+        "type": "timeseries",
+        "datasource": {
+          "type": "tempo",
+          "uid": "tempo"
+        },
+        "description": "How many stock-app requests each route serves, counted from request spans.",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "tempo",
+              "uid": "tempo"
+            },
+            "queryType": "traceql",
+            "query": "{resource.service.name=\"stock-app\" && kind=server} | rate() by (span.http.route)",
+            "metricsQueryType": "range"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 1
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "fillOpacity": 0,
+              "lineWidth": 1,
+              "showPoints": "never"
+            },
+            "unit": "reqps",
+            "noValue": "0"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "p95 Duration by Route",
+        "type": "timeseries",
+        "datasource": {
+          "type": "tempo",
+          "uid": "tempo"
+        },
+        "description": "95th percentile request duration per route.",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "tempo",
+              "uid": "tempo"
+            },
+            "queryType": "traceql",
+            "query": "{resource.service.name=\"stock-app\" && kind=server} | quantile_over_time(duration, .95) by (span.http.route)",
+            "metricsQueryType": "range"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 1
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "fillOpacity": 0,
+              "lineWidth": 1,
+              "showPoints": "never"
+            },
+            "unit": "s",
+            "noValue": "0"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Failed Requests per Second",
+        "type": "timeseries",
+        "datasource": {
+          "type": "tempo",
+          "uid": "tempo"
+        },
+        "description": "Requests whose span ended with an error status (5XX answers).",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "tempo",
+              "uid": "tempo"
+            },
+            "queryType": "traceql",
+            "query": "{resource.service.name=\"stock-app\" && kind=server && status=error} | rate() by (span.http.route)",
+            "metricsQueryType": "range"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 1
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "fillOpacity": 0,
+              "lineWidth": 1,
+              "showPoints": "never"
+            },
+            "unit": "reqps",
+            "noValue": "0"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Where the time goes",
+        "type": "row",
+        "collapsed": false,
+        "panels": [],
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 9
+        }
+      },
+      {
+        "id": 6,
+        "title": "p95 Duration of Outgoing Calls",
+        "type": "timeseries",
+        "datasource": {
+          "type": "tempo",
+          "uid": "tempo"
+        },
+        "description": "SQL queries, Vault calls (GET/POST) and market data provider calls made while serving requests.",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "tempo",
+              "uid": "tempo"
+            },
+            "queryType": "traceql",
+            "query": "{resource.service.name=\"stock-app\" && kind=client} | quantile_over_time(duration, .95) by (name)",
+            "metricsQueryType": "range"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 10
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "fillOpacity": 0,
+              "lineWidth": 1,
+              "showPoints": "never"
+            },
+            "unit": "s",
+            "noValue": "0"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Find a trace (click a trace ID to open it)",
+        "type": "row",
+        "collapsed": false,
+        "panels": [],
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 18
+        }
+      },
+      {
+        "id": 8,
+        "title": "Recent Requests",
+        "type": "table",
+        "datasource": {
+          "type": "tempo",
+          "uid": "tempo"
+        },
+        "description": "The latest stock-app requests. Search finds a trace about 30 s after the request.",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "tempo",
+              "uid": "tempo"
+            },
+            "queryType": "traceql",
+            "query": "{resource.service.name=\"stock-app\" && kind=server}",
+            "limit": 20,
+            "tableType": "traces"
+          }
+        ],
+        "gridPos": {
+          "h": 10,
+          "w": 12,
+          "x": 0,
+          "y": 19
+        }
+      },
+      {
+        "id": 9,
+        "title": "Slow Requests (> 500 ms)",
+        "type": "table",
+        "datasource": {
+          "type": "tempo",
+          "uid": "tempo"
+        },
+        "description": "Requests worth a look: open one to see which call took the time.",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "tempo",
+              "uid": "tempo"
+            },
+            "queryType": "traceql",
+            "query": "{resource.service.name=\"stock-app\" && kind=server && duration > 500ms}",
+            "limit": 20,
+            "tableType": "traces"
+          }
+        ],
+        "gridPos": {
+          "h": 10,
+          "w": 12,
+          "x": 12,
+          "y": 19
+        }
+      },
+      {
+        "id": 10,
+        "title": "Failed Requests",
+        "type": "table",
+        "datasource": {
+          "type": "tempo",
+          "uid": "tempo"
+        },
+        "description": "Requests that ended with an error status.",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "tempo",
+              "uid": "tempo"
+            },
+            "queryType": "traceql",
+            "query": "{resource.service.name=\"stock-app\" && kind=server && status=error}",
+            "limit": 20,
+            "tableType": "traces"
+          }
+        ],
+        "gridPos": {
+          "h": 10,
+          "w": 12,
+          "x": 0,
+          "y": 29
+        }
+      },
+      {
+        "id": 11,
+        "title": "Traces with a Slow SQL Query (> 50 ms)",
+        "type": "table",
+        "datasource": {
+          "type": "tempo",
+          "uid": "tempo"
+        },
+        "description": "Requests containing a database query slower than 50 ms.",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "tempo",
+              "uid": "tempo"
+            },
+            "queryType": "traceql",
+            "query": "{resource.service.name=\"stock-app\" && kind=client && span.db.system=\"postgresql\" && duration > 50ms}",
+            "limit": 20,
+            "tableType": "traces"
+          }
+        ],
+        "gridPos": {
+          "h": 10,
+          "w": 12,
+          "x": 12,
+          "y": 29
+        }
+      }
+    ],
+    "time": {
+      "from": "now-30m",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "uid": "tracing"
+  },
+  "overwrite": true
+}

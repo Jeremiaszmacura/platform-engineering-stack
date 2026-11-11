@@ -18,8 +18,9 @@ Grafana (http://grafana.localhost, `admin`/`admin`) shows both. All three run in
 ## Tracing
 
 Every stock-app HTTP request is one trace: the request span, its SQL queries, its Vault calls and its market
-data provider calls. Open them in Grafana: **Explore → Tempo**, or the *Recent Requests* table on the Stock App
-dashboard.
+data provider calls. Open them in Grafana: the **Tracing** dashboard (rate and latency per route measured from
+traces, and tables of recent, slow and failed requests), or **Explore → Tempo**. New to tracing? Start with
+[Tracing](../tracing.md).
 
 - **Instrumentation:** OpenTelemetry in stock-app (`src/observability/tracing.py`, wired in `src/main.py`); the
   core layers never import it. `/health` and `/metrics` are not traced.

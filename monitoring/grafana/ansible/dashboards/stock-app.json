@@ -6,8 +6,7 @@
       "app",
       "stock",
       "prometheus",
-      "timescaledb",
-      "tempo"
+      "timescaledb"
     ],
     "timezone": "browser",
     "panels": [
@@ -1001,48 +1000,6 @@
             },
             "unit": "rowsps"
           }
-        }
-      },
-      {
-        "id": 21,
-        "title": "Traces",
-        "type": "row",
-        "collapsed": false,
-        "panels": [],
-        "gridPos": {
-          "h": 1,
-          "w": 24,
-          "x": 0,
-          "y": 45
-        }
-      },
-      {
-        "id": 22,
-        "title": "Recent Requests",
-        "type": "table",
-        "datasource": {
-          "type": "tempo",
-          "uid": "tempo"
-        },
-        "description": "The latest stock-app requests, from Tempo. Click a trace ID to see its spans: the request, its SQL queries, and its Vault and market data provider calls.",
-        "targets": [
-          {
-            "refId": "A",
-            "datasource": {
-              "type": "tempo",
-              "uid": "tempo"
-            },
-            "queryType": "traceql",
-            "query": "{resource.service.name=\"stock-app\" && kind=server}",
-            "limit": 20,
-            "tableType": "traces"
-          }
-        ],
-        "gridPos": {
-          "h": 10,
-          "w": 24,
-          "x": 0,
-          "y": 46
         }
       }
     ],

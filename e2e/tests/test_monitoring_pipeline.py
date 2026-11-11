@@ -18,6 +18,7 @@ EXPECTED_PROMETHEUS_JOBS = {"self", "node-exporter", "stock-app", "cluster-map"}
 EXPECTED_DASHBOARD_TITLES = {
     "Infrastructure Overview",
     "Stock App Metrics",
+    "Tracing",
 }
 
 # One node-exporter per kind node.
