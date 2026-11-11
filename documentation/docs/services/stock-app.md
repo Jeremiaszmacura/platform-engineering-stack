@@ -14,7 +14,8 @@ Serves daily stock prices (OHLCV bars) at http://stock.localhost/api/v1 — Fast
 
 - **Cache-aside:** a request is answered from TimescaleDB; only the part of the window never requested before
   is fetched from the provider (at most one call per request). The `instruments` table records which date
-  window was *requested*, not which bars came back, because weekends and holidays have no bars.
+  window was *requested*, not which bars came back, because weekends and holidays have no bars. That window is
+  one contiguous range, so a request outside it also fetches the gap between them.
 - **Contract-first:** `openapi.yaml` is the API definition. The models in `src/adapters/inbound/http/models.py`
   are generated from it (`tox -e api`); `make lint` fails if they drift. Rendered: [stock-app API](stock-app-api.md).
 - **Hexagonal layout:** `adapters → application → domain`; `src/main.py` is the only place adapters are built.

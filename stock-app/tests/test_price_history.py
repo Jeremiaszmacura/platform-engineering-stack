@@ -11,6 +11,8 @@ from src.domain.models import DataSource, DateRange, Instrument, Interval, Price
 STALE_AFTER = timedelta(hours=1)
 NOW = datetime(2026, 7, 25, 12, 0, tzinfo=timezone.utc)
 
+JANUARY = DateRange(start=date(2026, 1, 1), end=date(2026, 1, 31))
+MARCH = DateRange(start=date(2026, 3, 1), end=date(2026, 3, 31))
 JUNE = DateRange(start=date(2026, 6, 1), end=date(2026, 6, 30))
 
 
@@ -122,6 +124,14 @@ class TestMissingRange(unittest.TestCase):
         coverage = build_coverage(date(2026, 6, 10), date(2026, 7, 20), NOW)
         self.assertEqual(missing_range(coverage, JUNE, NOW, STALE_AFTER), JUNE)
 
+    def test_range_before_a_disjoint_window_also_fetches_the_gap(self):
+        """The ledger is one window, so an earlier range must be fetched up to it, not just on its own."""
+        coverage = build_coverage(JUNE.start, JUNE.end, NOW)
+
+        fetched = missing_range(coverage, JANUARY, NOW, STALE_AFTER)
+
+        self.assertEqual(fetched, DateRange(start=JANUARY.start, end=JUNE.start))
+
     def test_end_beyond_the_window_fetches_only_the_tail(self):
         coverage = build_coverage(date(2026, 1, 1), date(2026, 6, 10), NOW)
 
@@ -196,6 +206,17 @@ class TestPriceHistoryService(unittest.TestCase):
 
         self.assertEqual(history.source, DataSource.PROVIDER)
         self.assertEqual(self.provider.calls[-1], widened)
+
+    def test_earlier_disjoint_window_leaves_no_unfetched_gap(self):
+        """Syncing June then January must not make March a cache hit with no bars."""
+        self.provider.bars = [build_bar(day) for day in (JANUARY.start, MARCH.start, JUNE.start)]
+        self.service.get_price_history("AAPL", JUNE)
+        self.service.get_price_history("AAPL", JANUARY)
+
+        march = self.service.get_price_history("AAPL", MARCH)
+
+        self.assertEqual([bar.session_date for bar in march.bars], [MARCH.start])
+        self.assertEqual(self.provider.calls, [JUNE, DateRange(start=JANUARY.start, end=JUNE.start)])
 
     def test_stale_tail_refetches_only_the_tail(self):
         self.service.get_price_history("AAPL", JUNE)

@@ -26,12 +26,13 @@ def missing_range(
 
     Decided from the sync ledger, not by counting bars (markets close on weekends and holidays).
     Missing parts on both ends are fetched as one range, so a request makes at most one provider call.
+    The ledger is one window, so a fetch before it runs up to it; otherwise the gap would look synced.
     """
     if coverage is None or coverage.first_synced_date is None or coverage.last_synced_date is None:
         return requested
 
     if requested.start < coverage.first_synced_date:
-        return requested
+        return DateRange(start=requested.start, end=max(requested.end, coverage.first_synced_date))
 
     # The last synced day can still change (intraday bar, later revisions); older days never do.
     beyond_synced = requested.end > coverage.last_synced_date
