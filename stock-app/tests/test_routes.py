@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
+from prometheus_client import REGISTRY
 
 from src.adapters.inbound.http.deps import get_price_history_service, get_repository, get_secret_store
 from src.adapters.inbound.http.params import MAX_RANGE_DAYS
@@ -170,6 +171,15 @@ class TestServiceRoutes(RouteTestCase):
         response = self.client.get("/health")
 
         self.assertEqual(response.status_code, 503)
+
+    def test_health_checks_are_counted_by_status_code(self):
+        self.repository.healthy = False
+        labels = {"endpoint": "/health", "user_agent": "kube-probe", "status_code": "503"}
+        before = REGISTRY.get_sample_value("monitoring_requests_total", labels) or 0
+
+        self.client.get("/health", headers={"user-agent": "kube-probe/1.33"})
+
+        self.assertEqual(REGISTRY.get_sample_value("monitoring_requests_total", labels), before + 1)
 
     def test_metrics_are_exposed(self):
         response = self.client.get("/metrics")

@@ -16,7 +16,9 @@ REQUEST_DURATION = Histogram(
 RESPONSE_STATUS = Counter("http_responses_by_status_total", "HTTP responses by status code", ["status_class"])
 
 MONITORING_REQUESTS = Counter(
-    "monitoring_requests_total", "Total number of monitoring/metrics requests", ["endpoint", "user_agent"]
+    "monitoring_requests_total",
+    "Total number of monitoring/metrics requests",
+    ["endpoint", "user_agent", "status_code"],
 )
 
 # Service-specific instrumentation: the cache-aside pipeline.
