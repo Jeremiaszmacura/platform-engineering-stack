@@ -5,8 +5,9 @@ Handlers are sync (def) because yfinance and SQLAlchemy Core are; FastAPI runs t
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response
-from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from prometheus_client import REGISTRY
+from prometheus_client.exposition import choose_encoder
 
 from src.adapters.inbound.http.deps import get_price_history_service, get_repository, get_secret_store
 from src.adapters.inbound.http.mappers import (
@@ -55,9 +56,10 @@ def get_health(repository: Repository, response: Response) -> HealthStatus:
 
 
 @router.get("/metrics", operation_id="getMetrics")
-def get_metrics() -> Response:
-    """Return Prometheus metrics."""
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+def get_metrics(request: Request) -> Response:
+    """Return metrics as text, or as OpenMetrics (which carries trace exemplars) when the scraper accepts it."""
+    encoder, content_type = choose_encoder(request.headers.get("accept", ""))
+    return Response(encoder(REGISTRY), media_type=content_type)
 
 
 @router.post("/secret", operation_id="storeSecret", status_code=201)

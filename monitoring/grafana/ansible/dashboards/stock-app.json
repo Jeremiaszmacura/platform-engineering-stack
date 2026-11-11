@@ -464,7 +464,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "description": "95th percentile API request duration, total and by endpoint.",
+        "description": "95th percentile API request duration, total and by endpoint. Dots are exemplars: click one to open that request's trace in Tempo.",
         "targets": [
           {
             "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"stock-app\"}[$__rate_interval])))",
@@ -473,7 +473,8 @@
             "datasource": {
               "type": "prometheus",
               "uid": "prometheus"
-            }
+            },
+            "exemplar": true
           },
           {
             "expr": "histogram_quantile(0.95, sum by (le, endpoint) (rate(http_request_duration_seconds_bucket{job=\"stock-app\"}[$__rate_interval])))",

@@ -1,6 +1,6 @@
 # Grafana provisioning
 
-Ansible playbooks that set up the Prometheus datasource and dashboards in Grafana.
+Ansible playbooks that set up the Prometheus and Tempo datasources and dashboards in Grafana.
 
 ```sh
 ansible-playbook monitoring/grafana/ansible/provision.yaml

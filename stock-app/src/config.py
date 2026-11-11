@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     vault_addr: str = Field(default="http://vault-service.vault:8200", validation_alias="VAULT_ADDR")
     vault_token: SecretStr = Field(default=SecretStr(DEFAULT_VAULT_TOKEN), validation_alias="VAULT_TOKEN")
     vault_secret_path: str = Field(default="stock-app", validation_alias="VAULT_SECRET_PATH")
+    # Standard OpenTelemetry variable; tracing is off when unset (tests, local runs).
+    otlp_endpoint: str | None = Field(default=None, validation_alias="OTEL_EXPORTER_OTLP_ENDPOINT")
 
     @property
     def database_url(self) -> str:

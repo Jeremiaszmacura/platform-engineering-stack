@@ -19,6 +19,8 @@ IMAGES=(
 # Applied in order, after platform/ (Vault and TimescaleDB before their clients).
 COMPONENTS=(
     monitoring/prometheus/k8s
+    monitoring/tempo/k8s
+    monitoring/otel-collector/k8s
     monitoring/grafana/k8s
     vault/k8s
     timescaledb/k8s
@@ -86,7 +88,12 @@ kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --ti
 echo "🚀 Deploying components..."
 for dir in "${COMPONENTS[@]}"; do
     echo "  ${dir}"
-    kubectl apply -f "$dir"
+    # A kustomization.yaml builds ConfigMaps from plain config files (e.g. prometheus.yml)
+    if [ -f "$dir/kustomization.yaml" ]; then
+        kubectl apply -k "$dir"
+    else
+        kubectl apply -f "$dir"
+    fi
     # stock-app's migration initContainer needs a database that accepts connections
     if [ "$dir" = timescaledb/k8s ]; then
         kubectl rollout status statefulset/timescaledb -n data --timeout=300s

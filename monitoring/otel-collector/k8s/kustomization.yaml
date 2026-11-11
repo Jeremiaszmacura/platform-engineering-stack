@@ -1,0 +1,15 @@
+# Applied with `kubectl apply -k`, which builds the ConfigMap from the plain otel-collector.yaml next to it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - otel-collector-deployment.yaml
+  - otel-collector-serviceaccount.yaml
+configMapGenerator:
+  - name: otel-collector-config
+    namespace: monitoring
+    files:
+      - otel-collector.yaml
+    options:
+      labels:
+        app: otel-collector
+      disableNameSuffixHash: true  # Keep the plain name the Deployment mounts

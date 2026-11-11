@@ -1,0 +1,15 @@
+# Applied with `kubectl apply -k`, which builds the ConfigMap from the plain tempo.yaml next to it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - tempo-deployment.yaml
+  - tempo-serviceaccount.yaml
+configMapGenerator:
+  - name: tempo-config
+    namespace: monitoring
+    files:
+      - tempo.yaml
+    options:
+      labels:
+        app: tempo
+      disableNameSuffixHash: true  # Keep the plain name the Deployment mounts

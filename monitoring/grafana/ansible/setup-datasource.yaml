@@ -1,26 +1,36 @@
 ---
-- name: Configure Prometheus datasource in Grafana
+- name: Configure the Prometheus and Tempo datasources in Grafana
   hosts: localhost
   connection: local
   gather_facts: false
   vars_files:
     - vars.yaml
   vars:
-    # Fixed uid: dashboards reference the datasource by it
-    datasource:
-      uid: "prometheus"
-      name: "Prometheus"
-      type: "prometheus"
-      url: "{{ prometheus_url }}"
-      access: "proxy"
-      isDefault: true
-      jsonData:
-        timeInterval: "5s"
-        queryTimeout: "60s"
-        httpMethod: "POST"
+    # Fixed uids: dashboards and the exemplar link reference the datasources by them
+    datasources:
+      - uid: "prometheus"
+        name: "Prometheus"
+        type: "prometheus"
+        url: "{{ prometheus_url }}"
+        access: "proxy"
+        isDefault: true
+        jsonData:
+          timeInterval: "5s"
+          queryTimeout: "60s"
+          httpMethod: "POST"
+          # A latency exemplar's trace_id label opens that trace in Tempo
+          exemplarTraceIdDestinations:
+            - name: "trace_id"
+              datasourceUid: "tempo"
+      - uid: "tempo"
+        name: "Tempo"
+        type: "tempo"
+        url: "{{ tempo_url }}"
+        access: "proxy"
+        isDefault: false
 
   tasks:
-    - name: Create the datasource (409 means it already exists)
+    - name: Create each datasource (409 means it already exists)
       ansible.builtin.uri:
         url: "{{ grafana_url }}/api/datasources"
         method: POST
@@ -28,18 +38,25 @@
         password: "{{ grafana_password }}"
         force_basic_auth: true
         body_format: json
-        body: "{{ datasource }}"
+        body: "{{ item }}"
         status_code: [200, 409]
-      register: create_result
+      loop: "{{ datasources }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: create_results
 
-    - name: Update the existing datasource so config changes are applied
+    - name: Update the existing datasources so config changes are applied
       ansible.builtin.uri:
-        url: "{{ grafana_url }}/api/datasources/uid/{{ datasource.uid }}"
+        url: "{{ grafana_url }}/api/datasources/uid/{{ result.item.uid }}"
         method: PUT
         user: "{{ grafana_user }}"
         password: "{{ grafana_password }}"
         force_basic_auth: true
         body_format: json
-        body: "{{ datasource }}"
+        body: "{{ result.item }}"
         status_code: 200
-      when: create_result.status == 409
+      loop: "{{ create_results.results }}"
+      loop_control:
+        loop_var: result
+        label: "{{ result.item.name }}"
+      when: result.status == 409

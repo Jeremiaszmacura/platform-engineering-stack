@@ -12,6 +12,7 @@ from src.observability.metrics import (
     REQUEST_DURATION,
     RESPONSE_STATUS,
 )
+from src.observability.tracing import current_trace_id
 
 
 class PrometheusMiddleware(BaseHTTPMiddleware):
@@ -39,6 +40,14 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
             return response
 
         REQUEST_COUNT.labels(method=request.method, endpoint=endpoint, status_code=status_code).inc()
-        REQUEST_DURATION.labels(method=request.method, endpoint=endpoint).observe(process_time)
+        REQUEST_DURATION.labels(method=request.method, endpoint=endpoint).observe(
+            process_time, exemplar=trace_exemplar()
+        )
         RESPONSE_STATUS.labels(status_class=f"{status_code[0]}XX").inc()
         return response
+
+
+def trace_exemplar() -> dict[str, str] | None:
+    """Return the exemplar linking a latency sample to its trace in Tempo, or None outside a trace."""
+    trace_id = current_trace_id()
+    return {"trace_id": trace_id} if trace_id else None

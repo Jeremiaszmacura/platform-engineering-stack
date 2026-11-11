@@ -1,0 +1,39 @@
+# One pipeline: receive the apps' spans, add Kubernetes metadata, forward them to Tempo.
+extensions:
+  health_check:
+    endpoint: "0.0.0.0:13133"  # Readiness probe
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: "0.0.0.0:4318"  # OTLP over HTTP, as the apps export it
+
+processors:
+  # First in the pipeline: refuses data before the pod runs out of memory.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+  # Finds the sending pod by its IP and adds its namespace, pod, deployment and node to every span.
+  k8s_attributes:
+    filter:
+      namespace: apps  # The only namespace that sends traces; RBAC allows reading pods there only
+    extract:
+      metadata: [k8s.namespace.name, k8s.pod.name, k8s.deployment.name, k8s.node.name]
+    pod_association:
+      - sources:
+          - from: connection
+
+# No batch processor: the apps' SDKs already send spans in batches, and the exporter queues and retries.
+exporters:
+  otlp_http/tempo:
+    endpoint: http://tempo-service:4318
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, k8s_attributes]
+      exporters: [otlp_http/tempo]

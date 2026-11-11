@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tempo
+  namespace: monitoring
+  labels:
+    app: tempo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tempo
+  template:
+    metadata:
+      labels:
+        app: tempo
+    spec:
+      serviceAccountName: tempo
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001  # the image's "tempo" user
+        fsGroup: 10001  # makes the emptyDir writable for it
+      containers:
+        - name: tempo
+          image: grafana/tempo:3.1.1
+          args:
+            - "-target=all"
+            - "-config.file=/etc/tempo/tempo.yaml"
+          ports:
+            - name: http
+              containerPort: 3200
+            - name: otlp-http
+              containerPort: 4318
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 1Gi}
+          readinessProbe:
+            httpGet: {path: /ready, port: 3200}
+            periodSeconds: 5
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/tempo/
+            - name: data
+              mountPath: /var/tempo
+      volumes:
+        - name: config-volume
+          configMap:
+            name: tempo-config
+        - name: data
+          emptyDir: {}
+---
+# Not annotated for Prometheus: the scrape config would also scrape the OTLP port.
+apiVersion: v1
+kind: Service
+metadata:
+  name: tempo-service
+  namespace: monitoring
+  labels:
+    app: tempo
+spec:
+  type: ClusterIP
+  selector:
+    app: tempo
+  ports:
+    - name: http
+      port: 3200
+      targetPort: 3200
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318

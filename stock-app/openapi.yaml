@@ -72,9 +72,14 @@ paths:
       summary: Expose Prometheus metrics.
       responses:
         "200":
-          description: Metrics in Prometheus text exposition format.
+          description: >-
+            Metrics in Prometheus text format, or in OpenMetrics (which carries trace exemplars) when the
+            Accept header asks for it.
           content:
             text/plain:
+              schema:
+                type: string
+            application/openmetrics-text:
               schema:
                 type: string
 
