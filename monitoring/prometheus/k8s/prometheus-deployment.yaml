@@ -24,6 +24,7 @@ spec:
           image: prom/prometheus:v3.15.1
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--enable-feature=exemplar-storage"  # Keeps the trace ids attached to latency samples
           ports:
             - containerPort: 9090
           securityContext:

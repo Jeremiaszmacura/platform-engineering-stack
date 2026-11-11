@@ -30,6 +30,7 @@ forbidden_modules =
     pandas
     numpy
     hvac
+    opentelemetry
     os
 
 [importlinter:contract:provider-owns-pandas]

@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tempo-config
+  namespace: monitoring
+  labels:
+    app: tempo
+data:
+  tempo.yaml: |
+    # Single binary (-target=all): receives, stores and queries traces in one pod.
+    stream_over_http_enabled: true
+
+    server:
+      http_listen_port: 3200  # Query API, used by Grafana
+      log_level: info
+
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            http:
+              endpoint: "0.0.0.0:4318"  # OTLP over HTTP, as the apps export it
+
+    storage:
+      trace:
+        backend: local  # On the pod's emptyDir: traces are gone after a restart, which is fine here
+        wal:
+          path: /var/tempo/wal
+        local:
+          path: /var/tempo/blocks
+
+    usage_report:
+      reporting_enabled: false  # No anonymous usage stats sent to Grafana Labs

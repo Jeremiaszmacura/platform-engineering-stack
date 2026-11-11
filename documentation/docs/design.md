@@ -4,7 +4,7 @@
 
 Everything from your machine enters through ingress-nginx on host port 80 and is routed by host name
 (`<component>.localhost`) to the component's Service. The frontends call stock-app cross-origin;
-stock-app's Ingress enables CORS. Metrics stay inside the cluster.
+stock-app's Ingress enables CORS. Metrics and traces stay inside the cluster.
 
 ```mermaid
 flowchart LR
@@ -13,6 +13,7 @@ flowchart LR
     ST --> TS[(TimescaleDB)]
     ST --> VA[Vault]
     PR[Prometheus] -.scrapes.-> ST & CM
+    ST -.traces.-> TE[Tempo]
     CM & PR -.watch / list.-> API[Kubernetes API]
 ```
 
@@ -26,6 +27,8 @@ flowchart LR
   discovery) and cluster-map (the live map) get read-only API access; neither can read Secrets.
 - **Metrics discovery:** a Service is scraped when annotated `prometheus.io/scrape: "true"` and
   `prometheus.io/job: <name>`, so new services need no Prometheus change.
+- **Tracing:** stock-app traces every HTTP request with OpenTelemetry and sends it over OTLP to Tempo, which Grafana
+  reads. The latency histogram's exemplars and every log line carry the trace id.
 - **Secrets:** dev credentials live in one Secret per tool. Secrets can't cross namespaces, so the Vault token
   and the database password are declared in both namespaces that need them. Vault (dev mode) holds app secrets,
   one path per service (`services/<service>/`).

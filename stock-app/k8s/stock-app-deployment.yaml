@@ -53,6 +53,9 @@ spec:
                 secretKeyRef: {name: vault-dev-token, key: token}
             - name: VAULT_SECRET_PATH
               value: stock-app  # Namespaces this service's keys within the `services/` KV mount
+            # Standard OpenTelemetry variable: request traces go to Tempo (monitoring namespace) over OTLP/HTTP
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://tempo-service.monitoring:4318
           securityContext: &stockAppSecurity
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

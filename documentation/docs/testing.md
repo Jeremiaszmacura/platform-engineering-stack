@@ -12,7 +12,7 @@
 
 They need a cluster (`./recreate-cluster.sh`) and cover: every URL answers, the cluster map and its RBAC, Vault secrets,
 CORS for the frontends, every stock-app endpoint validated against its published
-`/openapi.yaml`, the cache-aside flow, and the Prometheus/Grafana pipeline.
+`/openapi.yaml`, the cache-aside flow, the Prometheus/Grafana pipeline, and request traces in Tempo.
 
 stock-app calls Yahoo Finance by default. To test without it, deploy with `STOCK_PROVIDER=fixture` and skip the
 tests that need a live provider:

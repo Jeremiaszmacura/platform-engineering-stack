@@ -38,6 +38,12 @@
       "automerge": true
     },
     {
+      "description": "OpenTelemetry's Python SDK and instrumentations are released together and must match",
+      "matchDatasources": ["pypi"],
+      "matchPackageNames": ["opentelemetry-*"],
+      "groupName": "OpenTelemetry Python"
+    },
+    {
       "description": "Language runtimes must stay in sync with the versions set in .github/workflows, so a human merges them",
       "matchDepNames": ["python", "golang", "node", "go"],
       "automerge": false

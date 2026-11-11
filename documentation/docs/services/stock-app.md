@@ -19,6 +19,8 @@ Serves daily stock prices (OHLCV bars) at http://stock.localhost/api/v1 — Fast
   are generated from it (`tox -e api`); `make lint` fails if they drift. Rendered: [stock-app API](stock-app-api.md).
 - **Hexagonal layout:** `adapters → application → domain`; `src/main.py` is the only place adapters are built.
   The import rule is checked by `lint-imports` (`.importlinter`).
+- **Tracing:** each request is an OpenTelemetry trace in Tempo, with spans for SQL, Vault and the provider
+  ([Monitoring](monitoring.md#tracing)).
 - **Providers** (`STOCK_PROVIDER`): `yahoo` (default, live) or `fixture` (replays
   `fixtures/market-data.json`, used by CI; re-record with `tox -e record`). No metric is labeled by symbol.
 

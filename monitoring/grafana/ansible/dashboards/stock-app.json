@@ -6,7 +6,8 @@
       "app",
       "stock",
       "prometheus",
-      "timescaledb"
+      "timescaledb",
+      "tempo"
     ],
     "timezone": "browser",
     "panels": [
@@ -464,7 +465,7 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "description": "95th percentile API request duration, total and by endpoint.",
+        "description": "95th percentile API request duration, total and by endpoint. Dots are exemplars: click one to open that request's trace in Tempo.",
         "targets": [
           {
             "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"stock-app\"}[$__rate_interval])))",
@@ -473,7 +474,8 @@
             "datasource": {
               "type": "prometheus",
               "uid": "prometheus"
-            }
+            },
+            "exemplar": true
           },
           {
             "expr": "histogram_quantile(0.95, sum by (le, endpoint) (rate(http_request_duration_seconds_bucket{job=\"stock-app\"}[$__rate_interval])))",
@@ -999,6 +1001,48 @@
             },
             "unit": "rowsps"
           }
+        }
+      },
+      {
+        "id": 21,
+        "title": "Traces",
+        "type": "row",
+        "collapsed": false,
+        "panels": [],
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 45
+        }
+      },
+      {
+        "id": 22,
+        "title": "Recent Requests",
+        "type": "table",
+        "datasource": {
+          "type": "tempo",
+          "uid": "tempo"
+        },
+        "description": "The latest stock-app requests, from Tempo. Click a trace ID to see its spans: the request, its SQL queries, and its Vault and market data provider calls.",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "tempo",
+              "uid": "tempo"
+            },
+            "queryType": "traceql",
+            "query": "{resource.service.name=\"stock-app\" && kind=server}",
+            "limit": 20,
+            "tableType": "traces"
+          }
+        ],
+        "gridPos": {
+          "h": 10,
+          "w": 24,
+          "x": 0,
+          "y": 46
         }
       }
     ],
