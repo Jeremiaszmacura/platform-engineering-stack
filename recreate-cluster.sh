@@ -11,7 +11,7 @@ STOCK_PROVIDER="${STOCK_PROVIDER:-yahoo}"
 IMAGES=(
     "stock-app:dev stock-app"
     "cluster-map:dev cluster-map"
-    "frontend-app:dev frontend-app"
+    "traffic-generator:dev traffic-generator"
     "stock-ui:dev stock-ui"
     "documentation:dev . documentation/Dockerfile"
 )
@@ -24,7 +24,7 @@ COMPONENTS=(
     timescaledb/k8s
     stock-app/k8s
     cluster-map/k8s
-    frontend-app/k8s
+    traffic-generator/k8s
     stock-ui/k8s
     documentation/k8s
 )
@@ -34,7 +34,7 @@ NAMESPACES=(apps monitoring vault docs)
 
 # Ingress URLs printed and checked at the end: <name> <url>
 URLS=(
-    "Frontend http://app.localhost"
+    "Traffic-generator http://traffic-generator.localhost"
     "Stock-UI http://stock-ui.localhost"
     "Stock-app http://stock.localhost"
     "Cluster-map http://cluster-map.localhost"

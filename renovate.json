@@ -4,7 +4,7 @@
   "schedule": ["before 6am"],
   "minimumReleaseAge": "3 days",
   "postUpdateOptions": ["gomodTidy"],
-  "ignoreDeps": ["cluster-map", "documentation", "frontend-app", "stock-app", "stock-ui"],
+  "ignoreDeps": ["cluster-map", "documentation", "traffic-generator", "stock-app", "stock-ui"],
   "pre-commit": {
     "enabled": true
   },

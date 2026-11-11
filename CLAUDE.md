@@ -8,7 +8,7 @@ Programming rules live in `.claude/rules/`: `clean-code.md` always applies, `go.
 - Each top-level directory is one cluster component. Its Kubernetes manifests live in `<component>/k8s/`; cluster-scoped resources (namespaces, RBAC, kind config) live in `platform/`.
 - stock-app is the real backend: it serves daily stock prices (OHLCV bars) from TimescaleDB, fetching missing data from a market data provider. stock-ui is the web UI that charts that data.
 - cluster-map (Go) serves a live, interactive map of the cluster for learning Kubernetes; it reads the API with its own read-only ServiceAccount.
-- frontend-app is a simple UI that sends test requests to stock-app and shows the results. Backend traffic is scraped by Prometheus and shown in Grafana.
+- traffic-generator is a simple UI that simulates traffic to stock-app (bursts of concurrent requests) for observability and testing, and shows the results. Backend traffic is scraped by Prometheus and shown in Grafana.
 - Grafana dashboards live in `monitoring/grafana/ansible/dashboards/`, one JSON file per dashboard, each with a fixed `uid`.
 - Documentation lives in MkDocs (`documentation/docs/`). Keep it short, clear and up to date. Every component has one page in `documentation/docs/services/`; component READMEs only link to it.
 - When adding a component, follow `documentation/docs/adding-a-service.md`.

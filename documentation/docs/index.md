@@ -11,7 +11,7 @@ deploy services, collect metrics, build dashboards, keep secrets, run a stateful
 | [TimescaleDB](services/timescaledb.md) | stock-app's database | in-cluster only |
 | [stock-ui](services/stock-ui.md) | Charts stock-app's prices | http://stock-ui.localhost |
 | [cluster-map](services/cluster-map.md) | Live map of the cluster, for learning Kubernetes | http://cluster-map.localhost |
-| [frontend-app](services/frontend-app.md) | Sends test traffic to the backends | http://app.localhost |
+| [traffic-generator](services/traffic-generator.md) | Simulates traffic to the backends, for observability and testing | http://traffic-generator.localhost |
 | [Vault](services/vault.md) | Secret store for the backends | http://vault.localhost (token `root`) |
 | [Monitoring](services/monitoring.md) | Prometheus + Grafana | http://prometheus.localhost, http://grafana.localhost (`admin`/`admin`) |
 | [Documentation](services/documentation.md) | This site | http://docs.localhost |

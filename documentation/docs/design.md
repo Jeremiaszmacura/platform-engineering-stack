@@ -9,7 +9,7 @@ stock-app's Ingress enables CORS. Metrics stay inside the cluster.
 ```mermaid
 flowchart LR
     B[Browser] -->|"*.localhost :80"| IC[ingress-nginx]
-    IC --> SUI[stock-ui] & FE[frontend-app] & ST[stock-app] & CM[cluster-map] & OTHER["Vault · Prometheus · Grafana · docs"]
+    IC --> SUI[stock-ui] & TG[traffic-generator] & ST[stock-app] & CM[cluster-map] & OTHER["Vault · Prometheus · Grafana · docs"]
     ST --> TS[(TimescaleDB)]
     ST --> VA[Vault]
     PR[Prometheus] -.scrapes.-> ST & CM
@@ -20,7 +20,7 @@ flowchart LR
 
 - **Ownership:** a resource owned by one component lives in `<component>/k8s/`; cluster-wide resources
   (kind config, namespaces, RBAC) live in `platform/` and are applied first.
-- **Namespaces:** `apps` (stock-app, frontend-app, stock-ui), `monitoring` (+ cluster-map), `vault`, `data`
+- **Namespaces:** `apps` (stock-app, traffic-generator, stock-ui), `monitoring` (+ cluster-map), `vault`, `data`
   (TimescaleDB), `docs`. Every manifest sets its namespace; cross-namespace calls use `<service>.<namespace>`.
 - **Least privilege:** each workload has its own ServiceAccount with no API token. Only Prometheus (service
   discovery) and cluster-map (the live map) get read-only API access; neither can read Secrets.

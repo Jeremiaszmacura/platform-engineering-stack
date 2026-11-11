@@ -11,7 +11,7 @@ export function NavBar({ apps, activeAppId, onSelectApp, theme, onToggleTheme })
         <span className="nav__mark" aria-hidden="true">
           <MarkIcon size={16} />
         </span>
-        API Tester
+        Traffic Generator
       </div>
 
       <div className="nav__tabs pill-group" role="group" aria-label="Target backend">
