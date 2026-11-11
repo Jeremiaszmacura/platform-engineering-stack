@@ -1,4 +1,4 @@
-"""End-to-end tests of request tracing: stock-app -> Tempo -> Grafana, and trace exemplars in Prometheus.
+"""End-to-end tests of request tracing: stock-app -> OpenTelemetry Collector -> Tempo -> Grafana, and exemplars.
 
 Each test sends its own W3C traceparent, so it knows the trace id to look up. Tempo has no Ingress; it is
 queried through Grafana's datasource proxy, which also proves the datasource is wired.
@@ -7,6 +7,7 @@ queried through Grafana's datasource proxy, which also proves the datasource is 
 import secrets
 import time
 import uuid
+from typing import NamedTuple
 
 import requests
 
@@ -29,6 +30,15 @@ SERVER = "SPAN_KIND_SERVER"
 CLIENT = "SPAN_KIND_CLIENT"
 
 
+class Span(NamedTuple):
+    """One span from Tempo, with the attributes of the service (resource) that sent it."""
+
+    kind: str
+    name: str
+    attributes: dict
+    resource: dict
+
+
 def traced_request(method, path, **kwargs):
     """Send a request to stock-app inside a new sampled trace; return the trace id."""
     trace_id = secrets.token_hex(16)
@@ -46,14 +56,19 @@ def attribute_values(attributes):
 
 
 def fetch_spans(trace_id):
-    """Return the trace's spans as (kind, name, attributes), or [] while Tempo has not received it."""
+    """Return the trace's spans, or [] while Tempo has not received it."""
     response = requests.get(
         f"{TEMPO_VIA_GRAFANA_URL}/api/v2/traces/{trace_id}", auth=GRAFANA_CREDENTIALS, timeout=REQUEST_TIMEOUT_SECONDS
     )
     response.raise_for_status()
     # Tempo answers 200 with an empty "trace" object for a trace it has not received yet.
     return [
-        (span["kind"], span["name"], attribute_values(span.get("attributes", [])))
+        Span(
+            span["kind"],
+            span["name"],
+            attribute_values(span.get("attributes", [])),
+            attribute_values(resource_spans["resource"]["attributes"]),
+        )
         for resource_spans in response.json()["trace"].get("resourceSpans", [])
         for scope_spans in resource_spans["scopeSpans"]
         for span in scope_spans["spans"]
@@ -74,7 +89,7 @@ def wait_for_spans(trace_id, is_complete):
 
 def has_server_span(spans, name):
     """Return True if spans include the stock-app request span called name."""
-    return any(kind == SERVER and span_name == name for kind, span_name, _ in spans)
+    return any(span.kind == SERVER and span.name == name for span in spans)
 
 
 def test_a_request_is_traced_with_its_database_queries():
@@ -84,10 +99,21 @@ def test_a_request_is_traced_with_its_database_queries():
     spans = wait_for_spans(
         trace_id,
         lambda spans: has_server_span(spans, "GET /api/v1/instruments")
-        and any(kind == CLIENT and attributes.get("db.system") == "postgresql" for kind, _, attributes in spans),
+        and any(span.kind == CLIENT and span.attributes.get("db.system") == "postgresql" for span in spans),
     )
 
-    assert any(attributes.get("http.status_code") == "200" for kind, _, attributes in spans if kind == SERVER)
+    assert any(span.attributes.get("http.status_code") == "200" for span in spans if span.kind == SERVER)
+
+
+def test_the_collector_adds_kubernetes_metadata():
+    """Spans reach Tempo through the Collector, which names the pod, deployment and namespace that sent them."""
+    trace_id = traced_request("GET", "/")
+
+    (span,) = wait_for_spans(trace_id, lambda spans: has_server_span(spans, "GET /"))
+
+    assert span.resource["k8s.namespace.name"] == "apps"
+    assert span.resource["k8s.deployment.name"] == "stock-app"
+    assert span.resource["k8s.pod.name"].startswith("stock-app-")
 
 
 def test_a_secret_request_traces_the_vault_call():
@@ -98,8 +124,8 @@ def test_a_secret_request_traces_the_vault_call():
         trace_id,
         lambda spans: has_server_span(spans, "POST /secret")
         and any(
-            kind == CLIENT and attributes.get("http.url", "").startswith("http://vault-service.vault:8200/")
-            for kind, _, attributes in spans
+            span.kind == CLIENT and span.attributes.get("http.url", "").startswith("http://vault-service.vault:8200/")
+            for span in spans
         ),
     )
 

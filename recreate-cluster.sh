@@ -20,6 +20,7 @@ IMAGES=(
 COMPONENTS=(
     monitoring/prometheus/k8s
     monitoring/tempo/k8s
+    monitoring/otel-collector/k8s
     monitoring/grafana/k8s
     vault/k8s
     timescaledb/k8s

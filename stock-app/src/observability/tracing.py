@@ -1,4 +1,4 @@
-"""OpenTelemetry tracing: one trace per HTTP request, exported over OTLP to Tempo."""
+"""OpenTelemetry tracing: one trace per HTTP request, exported over OTLP to the OpenTelemetry Collector."""
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter

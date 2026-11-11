@@ -33,18 +33,48 @@ flowchart LR
     U[Browser] --> ST[stock-app<br/>creates spans]
     ST -->|SQL| DB[(TimescaleDB)]
     ST -->|HTTP| VA[Vault]
-    ST -.->|"spans (OTLP)"| TE[Tempo<br/>stores traces]
+    ST -.->|"spans (OTLP)"| OC[OpenTelemetry Collector<br/>adds pod info]
+    OC -.->|OTLP| TE[Tempo<br/>stores traces]
     GR[Grafana<br/>searches and draws] --> TE
 ```
 
 1. **Create:** while it serves a request, stock-app records spans with OpenTelemetry, the vendor-neutral standard.
-2. **Export:** every few seconds it sends finished spans in the standard OTLP format to Tempo.
-3. **Store:** Tempo keeps traces and answers searches like "requests slower than 500 ms".
-4. **Show:** Grafana queries Tempo and draws dashboards and the waterfall above.
+2. **Export:** every few seconds it sends finished spans, in the standard OTLP format, to the Collector.
+3. **Process:** the Collector adds which pod, deployment and node the spans came from, then forwards them.
+4. **Store:** Tempo keeps traces and answers searches like "requests slower than 500 ms".
+5. **Show:** Grafana queries Tempo and draws dashboards and the waterfall above.
 
-In Kubernetes terms, Tempo is an ordinary Deployment with a Service in the `monitoring` namespace. stock-app finds
-it through cluster DNS, and the address comes from an environment variable in its Deployment, so pointing it
-somewhere else needs no code change.
+In Kubernetes terms, the Collector and Tempo are ordinary Deployments with Services in the `monitoring` namespace.
+stock-app finds the Collector through cluster DNS, and the address comes from an environment variable in its
+Deployment, so pointing it somewhere else needs no code change.
+
+## The OpenTelemetry Collector
+
+A small service that sits between the apps and the storage. It runs a **pipeline** in three stages:
+
+| Stage | What ours does |
+|---|---|
+| **Receivers** take data in | accept spans over OTLP |
+| **Processors** change it | guard the Collector's memory; add pod, deployment, namespace and node names |
+| **Exporters** send it on | forward to Tempo, queueing and retrying while Tempo is down |
+
+Why put it in the middle instead of sending straight to Tempo:
+
+- **Apps stay simple.** They only know "send to the Collector". Swapping Tempo for another backend, or sending to
+  two, is a Collector config change; no app is redeployed.
+- **One place for shared rules:** add Kubernetes metadata, drop sensitive attributes, or keep only slow and failed
+  traces (*tail sampling*, which an app cannot do because it decides before the request ends).
+- **It absorbs trouble.** If Tempo restarts, the Collector buffers and retries instead of each app.
+
+Two common ways to run it in Kubernetes:
+
+- **Gateway** (ours): one central Deployment that every app sends to.
+- **Agent:** a DaemonSet, one Collector per node, that apps reach locally. Large clusters often use both: agents
+  next to the apps, forwarding to a gateway.
+
+To name the pod behind each span, the Collector looks up the sender's IP in the Kubernetes API. That needs
+permission, so it gets a ServiceAccount with a **Role** that can only read pods in the `apps` namespace, which is
+less than a cluster-wide ClusterRole would grant.
 
 ## Who creates the spans
 

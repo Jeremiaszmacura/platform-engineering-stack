@@ -13,7 +13,7 @@ deploy services, collect metrics, build dashboards, keep secrets, run a stateful
 | [cluster-map](services/cluster-map.md) | Live map of the cluster, for learning Kubernetes | http://cluster-map.localhost |
 | [traffic-generator](services/traffic-generator.md) | Simulates traffic to the backends, for observability and testing | http://traffic-generator.localhost |
 | [Vault](services/vault.md) | Secret store for the backends | http://vault.localhost (token `root`) |
-| [Monitoring](services/monitoring.md) | Prometheus + Tempo (request traces) + Grafana | http://prometheus.localhost, http://grafana.localhost (`admin`/`admin`) |
+| [Monitoring](services/monitoring.md) | Prometheus, OpenTelemetry Collector + Tempo (request traces), Grafana | http://prometheus.localhost, http://grafana.localhost (`admin`/`admin`) |
 | [Documentation](services/documentation.md) | This site | http://docs.localhost |
 
 ## Run

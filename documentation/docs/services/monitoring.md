@@ -1,7 +1,8 @@
 # Monitoring
 
-Prometheus (http://prometheus.localhost) scrapes the apps' metrics, Tempo stores stock-app's request traces, and
-Grafana (http://grafana.localhost, `admin`/`admin`) shows both. All three run in namespace `monitoring`.
+Prometheus (http://prometheus.localhost) scrapes the apps' metrics, the OpenTelemetry Collector receives
+stock-app's request traces and passes them to Tempo, and Grafana (http://grafana.localhost, `admin`/`admin`) shows
+both. All of them run in namespace `monitoring`.
 
 - **Scraping:** Services annotated `prometheus.io/scrape: "true"` + `prometheus.io/job: <name>` in namespaces
   `apps` and `monitoring` are discovered automatically, one target per pod (jobs: `stock-app`,
@@ -24,8 +25,13 @@ traces, and tables of recent, slow and failed requests), or **Explore → Tempo*
 
 - **Instrumentation:** OpenTelemetry in stock-app (`src/observability/tracing.py`, wired in `src/main.py`); the
   core layers never import it. `/health` and `/metrics` are not traced.
-- **Export:** OTLP over HTTP to `tempo-service.monitoring:4318`, set by the standard `OTEL_EXPORTER_OTLP_ENDPOINT`.
-  Unset (unit tests, local runs), tracing is off. An incoming W3C `traceparent` header continues the caller's trace.
+- **Export:** OTLP over HTTP to `otel-collector-service.monitoring:4318`, set by the standard
+  `OTEL_EXPORTER_OTLP_ENDPOINT`. Unset (unit tests, local runs), tracing is off. An incoming W3C `traceparent`
+  header continues the caller's trace.
+- **OpenTelemetry Collector** (`monitoring/otel-collector/`, the `otelcol-k8s` distribution) runs as one gateway
+  Deployment. Its pipeline (`otel-collector.yaml`): `otlp` receiver → `memory_limiter` → `k8s_attributes` (adds
+  `k8s.namespace.name`, `k8s.pod.name`, `k8s.deployment.name`, `k8s.node.name`) → `otlp_http` exporter to Tempo.
+  `k8s_attributes` reads pods through a Role limited to namespace `apps` (`platform/rbac/otel-collector.yaml`).
 - **Tempo** (`monitoring/tempo/`) runs as a single binary with local storage on an `emptyDir`, so traces are lost
   when the pod restarts. It has no Ingress: Grafana is its UI. Search finds a new trace after about 30 s; opening
   it by id works at once.

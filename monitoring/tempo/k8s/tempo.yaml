@@ -10,7 +10,7 @@ distributor:
     otlp:
       protocols:
         http:
-          endpoint: "0.0.0.0:4318"  # OTLP over HTTP, as the apps export it
+          endpoint: "0.0.0.0:4318"  # OTLP over HTTP, as the OpenTelemetry Collector forwards it
 
 storage:
   trace:

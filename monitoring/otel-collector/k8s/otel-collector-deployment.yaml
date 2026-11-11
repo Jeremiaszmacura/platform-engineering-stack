@@ -1,0 +1,67 @@
+# Gateway mode: one central Collector that every app sends to (the agent mode would be a DaemonSet per node).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      serviceAccountName: otel-collector
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001  # the image's default user
+      containers:
+        - name: otel-collector
+          # The Kubernetes distribution: core components plus k8s_attributes
+          image: otel/opentelemetry-collector-k8s:0.164.0
+          args:
+            - "--config=/etc/otel-collector/otel-collector.yaml"
+          ports:
+            - name: otlp-http
+              containerPort: 4318
+            - name: health
+              containerPort: 13133
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}  # memory_limiter works relative to this limit
+          readinessProbe:
+            httpGet: {path: /, port: 13133}
+            periodSeconds: 5
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/otel-collector/
+      volumes:
+        - name: config-volume
+          configMap:
+            name: otel-collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector-service
+  namespace: monitoring
+  labels:
+    app: otel-collector
+spec:
+  type: ClusterIP
+  selector:
+    app: otel-collector
+  ports:
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318

@@ -13,7 +13,7 @@ flowchart LR
     ST --> TS[(TimescaleDB)]
     ST --> VA[Vault]
     PR[Prometheus] -.scrapes.-> ST & CM
-    ST -.traces.-> TE[Tempo]
+    ST -.traces.-> OC[OTel Collector] -.-> TE[Tempo]
     CM & PR -.watch / list.-> API[Kubernetes API]
 ```
 
@@ -24,11 +24,13 @@ flowchart LR
 - **Namespaces:** `apps` (stock-app, traffic-generator, stock-ui), `monitoring` (+ cluster-map), `vault`, `data`
   (TimescaleDB), `docs`. Every manifest sets its namespace; cross-namespace calls use `<service>.<namespace>`.
 - **Least privilege:** each workload has its own ServiceAccount with no API token. Only Prometheus (service
-  discovery) and cluster-map (the live map) get read-only API access; neither can read Secrets.
+  discovery), cluster-map (the live map) and the OpenTelemetry Collector (pods in `apps`, to label spans) get
+  read-only API access; none can read Secrets.
 - **Metrics discovery:** a Service is scraped when annotated `prometheus.io/scrape: "true"` and
   `prometheus.io/job: <name>`, so new services need no Prometheus change.
-- **Tracing:** stock-app traces every HTTP request with OpenTelemetry and sends it over OTLP to Tempo, which Grafana
-  reads. The latency histogram's exemplars and every log line carry the trace id.
+- **Tracing:** stock-app traces every HTTP request with OpenTelemetry and sends it over OTLP to the OpenTelemetry
+  Collector, which adds Kubernetes metadata and forwards it to Tempo; Grafana reads Tempo. Apps only know the
+  Collector's address. The latency histogram's exemplars and every log line carry the trace id.
 - **Secrets:** dev credentials live in one Secret per tool. Secrets can't cross namespaces, so the Vault token
   and the database password are declared in both namespaces that need them. Vault (dev mode) holds app secrets,
   one path per service (`services/<service>/`).
