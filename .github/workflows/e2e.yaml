@@ -29,9 +29,6 @@ jobs:
         with:
           python-version: '3.14'
 
-      - name: Install Ansible
-        run: pip install ansible-core
-
       # Yahoo rate-limits CI runners, so stock-app replays its recorded prices.
       - name: Create cluster and deploy all components
         run: STOCK_PROVIDER=fixture ./recreate-cluster.sh

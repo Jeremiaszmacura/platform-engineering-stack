@@ -29,7 +29,7 @@ spec:
             - name: CLUSTER_NAME
               value: sample-cluster
             - name: REFERENCES
-              value: grafana=http://prometheus-service:9090  # Grafana's datasource, set by Ansible outside Kubernetes
+              value: grafana=http://prometheus-service:9090  # Grafana's datasource, inside a provisioning file
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

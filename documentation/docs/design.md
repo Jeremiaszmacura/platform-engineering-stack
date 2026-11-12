@@ -35,7 +35,8 @@ flowchart LR
   and the database password are declared in both namespaces that need them. Vault (dev mode) holds app secrets,
   one path per service (`services/<service>/`).
 - **Stateful data:** TimescaleDB uses a PVC; it is empty after every `./recreate-cluster.sh`, which is fine
-  because stock-app refills it from the provider.
+  because stock-app refills it from the provider. Grafana's dashboards and datasources are files in ConfigMaps
+  that it loads on every start; its database (logins, preferences) is on an `emptyDir`.
 - **API contract:** stock-app's `openapi.yaml` is the source of truth; its models are generated from it.
 - **Dependency updates:** Renovate (`renovate.json`) opens update PRs daily. Minor, patch and digest updates
   auto-merge when CI is green (the e2e job deploys the whole cluster); majors and language runtimes

@@ -18,7 +18,7 @@ deploy services, collect metrics, build dashboards, keep secrets, run a stateful
 
 ## Run
 
-Needs Docker, kind, kubectl, Ansible and Python 3.14 (Go 1.26 and Node.js 24 for development).
+Needs Docker, kind, kubectl and Python 3.14 (Go 1.26 and Node.js 24 for development).
 
 ```sh
 ./recreate-cluster.sh                          # (re)create the cluster with everything

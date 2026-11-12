@@ -1,0 +1,27 @@
+# Applied with `kubectl apply -k`: builds Grafana's provisioning ConfigMaps from the plain files next to it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - grafana-admin-secret.yaml
+  - grafana-deployment.yaml
+  - grafana-ingress.yaml
+  - grafana-serviceaccount.yaml
+generatorOptions:
+  labels:
+    app: grafana
+  disableNameSuffixHash: true  # Keep the plain names the Deployment mounts
+configMapGenerator:
+  - name: grafana-datasources
+    namespace: monitoring
+    files:
+      - datasources.yaml
+  - name: grafana-dashboard-provider
+    namespace: monitoring
+    files:
+      - dashboards.yaml
+  - name: grafana-dashboards
+    namespace: monitoring
+    files:
+      - dashboards/infrastructure.json
+      - dashboards/stock-app.json
+      - dashboards/tracing.json

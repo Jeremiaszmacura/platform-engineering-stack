@@ -35,11 +35,25 @@ spec:
                 secretKeyRef:
                   name: grafana-admin-secret
                   key: admin-password
+            # Go collects garbage harder near this soft cap instead of growing into the OOM kill
+            - name: GOMEMLIMIT
+              value: 900MiB
           securityContext:
             allowPrivilegeEscalation: false
+          # Grafana 13 idles at ~330Mi; 512Mi was OOM-killed with auto-refreshing dashboards open
           resources:
-            requests: {cpu: 100m, memory: 128Mi}
-            limits: {cpu: 500m, memory: 512Mi}
+            requests: {cpu: 100m, memory: 384Mi}
+            limits: {cpu: 500m, memory: 1Gi}
+          volumeMounts:
+            # SQLite database (sessions, preferences): survives container restarts, not pod deletion
+            - name: data
+              mountPath: /var/lib/grafana
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboards
+              mountPath: /etc/grafana/dashboards
           readinessProbe:
             httpGet: {path: /api/health, port: 3000}
             periodSeconds: 5
@@ -47,6 +61,16 @@ spec:
             httpGet: {path: /api/health, port: 3000}
             initialDelaySeconds: 30
             periodSeconds: 20
+      # Datasources and dashboards come from ConfigMaps (kustomization.yaml) and load on every start
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: datasources
+          configMap: {name: grafana-datasources}
+        - name: dashboard-provider
+          configMap: {name: grafana-dashboard-provider}
+        - name: dashboards
+          configMap: {name: grafana-dashboards}
 ---
 apiVersion: v1
 kind: Service

@@ -6,7 +6,7 @@ map (Go) for learning Kubernetes, a traffic generator for testing, Vault for sec
 
 ## Start
 
-You need Docker, kind, kubectl and Ansible. Then:
+You need Docker, kind and kubectl. Then:
 
 ```sh
 ./recreate-cluster.sh

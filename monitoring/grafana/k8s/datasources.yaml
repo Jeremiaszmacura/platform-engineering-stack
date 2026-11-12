@@ -1,0 +1,23 @@
+# Grafana loads this at startup (/etc/grafana/provisioning/datasources).
+# Fixed uids: dashboards and the exemplar link reference the datasources by them.
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    url: http://prometheus-service:9090
+    access: proxy
+    isDefault: true
+    jsonData:
+      timeInterval: 5s
+      queryTimeout: 60s
+      httpMethod: POST
+      # A latency exemplar's trace_id label opens that trace in Tempo
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
+  - name: Tempo
+    uid: tempo
+    type: tempo
+    url: http://tempo-service:3200
+    access: proxy
