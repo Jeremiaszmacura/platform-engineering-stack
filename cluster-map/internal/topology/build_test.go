@@ -1,16 +1,19 @@
 package topology
 
 import (
+	"reflect"
 	"slices"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
+
+const gatewayNamespace = "envoy-gateway-system"
 
 func pod(namespace, name, owner, ip string, spec corev1.PodSpec) *corev1.Pod {
 	p := &corev1.Pod{
@@ -36,8 +39,8 @@ func service(namespace, name, app string, port int32, annotations map[string]str
 }
 
 func testPods() []*corev1.Pod {
-	controller := pod("ingress-nginx", "controller", "ReplicaSet", "10.0.0.5", corev1.PodSpec{NodeName: "worker"})
-	controller.Labels = map[string]string{"app.kubernetes.io/name": "ingress-nginx"}
+	proxy := pod(gatewayNamespace, "proxy", "ReplicaSet", "10.0.0.5", corev1.PodSpec{NodeName: "worker"})
+	proxy.Labels = map[string]string{"app.kubernetes.io/name": "envoy", gatewayv1.GatewayNameLabelKey: "gw"}
 	password := &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{Name: "db-secret"}, Key: "password"}}
 	api := pod("apps", "api", "ReplicaSet", "10.0.0.6", corev1.PodSpec{
@@ -60,21 +63,69 @@ func testPods() []*corev1.Pod {
 		Containers:  []corev1.Container{{Command: []string{"kube-apiserver", "--service-cluster-ip-range=10.96.0.0/16"}}},
 	})
 	apiserver.Labels = map[string]string{"component": "kube-apiserver"}
-	return []*corev1.Pod{controller, api, db, prometheus, apiserver}
+	return []*corev1.Pod{proxy, api, db, prometheus, apiserver}
 }
 
-func testIngresses() []*networkingv1.Ingress {
-	path := networkingv1.HTTPIngressPath{
-		Backend: networkingv1.IngressBackend{Service: &networkingv1.IngressServiceBackend{Name: "api-service"}},
+// testGateway admits routes from namespaces labelled access=true, like platform/gateway/gateway.yaml.
+func testGateway() *gatewayv1.Gateway {
+	from := gatewayv1.NamespacesFromSelector
+	listener := gatewayv1.Listener{
+		Name: "http", Protocol: gatewayv1.HTTPProtocolType, Port: 80, Hostname: new(gatewayv1.Hostname("*.localhost")),
+		AllowedRoutes: &gatewayv1.AllowedRoutes{Namespaces: &gatewayv1.RouteNamespaces{
+			From: &from, Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"access": "true"}},
+		}},
 	}
-	rule := networkingv1.IngressRule{
-		Host:             "api.localhost",
-		IngressRuleValue: networkingv1.IngressRuleValue{HTTP: &networkingv1.HTTPIngressRuleValue{Paths: []networkingv1.HTTPIngressPath{path}}},
+	return &gatewayv1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{Namespace: gatewayNamespace, Name: "gw"},
+		Spec:       gatewayv1.GatewaySpec{GatewayClassName: "envoy-gateway", Listeners: []gatewayv1.Listener{listener}},
+		Status: gatewayv1.GatewayStatus{
+			Addresses:  []gatewayv1.GatewayStatusAddress{{Value: "172.18.0.3"}},
+			Conditions: []metav1.Condition{{Type: "Programmed", Status: metav1.ConditionTrue}},
+			Listeners:  []gatewayv1.ListenerStatus{{Name: "http", AttachedRoutes: 1}},
+		},
 	}
-	return []*networkingv1.Ingress{{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "apps", Name: "api-ingress"},
-		Spec:       networkingv1.IngressSpec{Rules: []networkingv1.IngressRule{rule}},
-	}}
+}
+
+func condition(kind string, status metav1.ConditionStatus, reason string) metav1.Condition {
+	return metav1.Condition{Type: kind, Status: status, Reason: reason}
+}
+
+// httpRoute sends host to service:port through the test Gateway, with the status its controller reported.
+func httpRoute(namespace, host, service string, port int32, status metav1.Condition, filters ...gatewayv1.HTTPRouteFilter) *gatewayv1.HTTPRoute {
+	parent := gatewayv1.ParentReference{Name: "gw", Namespace: new(gatewayv1.Namespace(gatewayNamespace))}
+	backend := gatewayv1.BackendObjectReference{Name: gatewayv1.ObjectName(service), Port: new(port)}
+	return &gatewayv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: service + "-route"},
+		Spec: gatewayv1.HTTPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{ParentRefs: []gatewayv1.ParentReference{parent}},
+			Hostnames:       []gatewayv1.Hostname{gatewayv1.Hostname(host)},
+			Rules: []gatewayv1.HTTPRouteRule{{
+				Filters:     filters,
+				BackendRefs: []gatewayv1.HTTPBackendRef{{BackendRef: gatewayv1.BackendRef{BackendObjectReference: backend}}},
+			}},
+		},
+		Status: gatewayv1.HTTPRouteStatus{RouteStatus: gatewayv1.RouteStatus{
+			Parents: []gatewayv1.RouteParentStatus{{ParentRef: parent, Conditions: []metav1.Condition{status}}},
+		}},
+	}
+}
+
+// testRoutes: the Gateway accepts api's route (with CORS) and rejects db's, whose namespace isn't labelled.
+func testRoutes() []*gatewayv1.HTTPRoute {
+	cors := gatewayv1.HTTPRouteFilter{Type: gatewayv1.HTTPRouteFilterCORS}
+	return []*gatewayv1.HTTPRoute{
+		httpRoute("apps", "api.localhost", "api-service", 8080, condition("Accepted", metav1.ConditionTrue, "Accepted"), cors),
+		httpRoute("data", "db.localhost", "db-service", 5432, condition("Accepted", metav1.ConditionFalse, "NotAllowedByListeners")),
+	}
+}
+
+func proxyServiceFor(gateway string) *corev1.Service {
+	s := service(gatewayNamespace, gateway+"-proxy", "envoy", 80, nil)
+	s.Labels = map[string]string{gatewayv1.GatewayNameLabelKey: gateway}
+	s.Spec.Type = corev1.ServiceTypeNodePort
+	s.Spec.Ports[0].TargetPort = intstr.FromInt32(10080)
+	s.Spec.Ports[0].NodePort = 30080
+	return s
 }
 
 func addRBAC(s *Snapshot) {
@@ -112,15 +163,17 @@ func addStorage(s *Snapshot) {
 func testSnapshot() Snapshot {
 	s := Snapshot{
 		Nodes: []*corev1.Node{{
-			ObjectMeta: metav1.ObjectMeta{Name: "cp", Labels: map[string]string{"ingress-ready": "true", "node-role.kubernetes.io/control-plane": ""}},
+			ObjectMeta: metav1.ObjectMeta{Name: "cp", Labels: map[string]string{"node-role.kubernetes.io/control-plane": ""}},
 			Status:     corev1.NodeStatus{Addresses: []corev1.NodeAddress{{Type: corev1.NodeInternalIP, Address: "172.18.0.3"}}},
 		}},
 		Pods: testPods(),
 		Services: []*corev1.Service{
 			service("apps", "api-service", "api", 8080, map[string]string{"prometheus.io/scrape": "true", "prometheus.io/job": "api"}),
 			service("data", "db-service", "db", 5432, nil),
+			proxyServiceFor("gw"),
 		},
-		Ingresses:        testIngresses(),
+		Gateways:         []*gatewayv1.Gateway{testGateway()},
+		HTTPRoutes:       testRoutes(),
 		ProxyConfig:      "mode: iptables\nclusterCIDR: 10.244.0.0/16\n",
 		PrometheusConfig: "namespaces:\n  names: [apps, monitoring]\n",
 	}
@@ -132,7 +185,7 @@ func testSnapshot() Snapshot {
 func TestBuildLinks(t *testing.T) {
 	m := Build(testSnapshot())
 	want := []Link{
-		{"ingress-nginx/controller", "apps/api", "api.localhost", "ingress"},
+		{"envoy-gateway-system/proxy", "apps/api", "api.localhost", "gateway"},
 		{"apps/api", "data/db", "db-service.data:5432", "call"},
 		{"monitoring/prometheus", "apps/api", "scrape 10.0.0.6:8080/metrics (job api)", "scrape"},
 		{"monitoring/prometheus", "kube-system/kube-apiserver-cp", "Kubernetes API (ServiceAccount token)", "api"},
@@ -171,10 +224,98 @@ func TestBuildConfigAndVolumes(t *testing.T) {
 	}
 }
 
-func TestBuildIngressPlacement(t *testing.T) {
-	got := Build(testSnapshot()).Ingress
-	if got.Pinned || !slices.Equal(got.RunningOn, []string{"worker"}) || !slices.Equal(got.IngressReadyNodes, []string{"cp"}) {
-		t.Errorf("ingress = %+v", got)
+func TestBuildGateways(t *testing.T) {
+	want := []Gateway{{
+		ID: "envoy-gateway-system/gw", Name: "gw", Namespace: gatewayNamespace, Class: "envoy-gateway", Programmed: true,
+		Addresses: []string{"172.18.0.3"},
+		Listeners: []Listener{{
+			Name: "http", Protocol: "HTTP", Port: 80, Hostname: "*.localhost",
+			AllowedRoutes: "namespaces labelled access=true", AttachedRoutes: 1,
+		}},
+		ProxyPods:    []string{"envoy-gateway-system/proxy"},
+		ProxyService: "envoy-gateway-system/gw-proxy",
+	}}
+	if got := Build(testSnapshot()).Gateways; !reflect.DeepEqual(got, want) {
+		t.Errorf("gateways:\n got %+v\nwant %+v", got, want)
+	}
+}
+
+func TestBuildRoutes(t *testing.T) {
+	want := []Route{
+		{
+			ID: "apps/api-service-route", Name: "api-service-route", Namespace: "apps", Gateways: []string{"envoy-gateway-system/gw"},
+			Hostnames: []string{"api.localhost"}, Backends: []Backend{{Service: "apps/api-service", Port: 8080}},
+			Filters: []string{"CORS"}, Accepted: true, Status: "Accepted",
+		},
+		{
+			ID: "data/db-service-route", Name: "db-service-route", Namespace: "data", Gateways: []string{"envoy-gateway-system/gw"},
+			Hostnames: []string{"db.localhost"}, Backends: []Backend{{Service: "data/db-service", Port: 5432}},
+			Filters: []string{}, Status: "not accepted: NotAllowedByListeners",
+		},
+	}
+	if got := Build(testSnapshot()).Routes; !reflect.DeepEqual(got, want) {
+		t.Errorf("routes:\n got %+v\nwant %+v", got, want)
+	}
+}
+
+func TestBuildServicesShowAcceptedRoutesAndNodePorts(t *testing.T) {
+	byID := map[string]Service{}
+	for _, s := range Build(testSnapshot()).Services {
+		byID[s.ID] = s
+	}
+	if api := byID["apps/api-service"]; !slices.Equal(api.Hostnames, []string{"api.localhost"}) || !api.CORS {
+		t.Errorf("api-service: hostnames %v, cors %v; want the accepted route's host with CORS", api.Hostnames, api.CORS)
+	}
+	if db := byID["data/db-service"]; len(db.Hostnames) != 0 || db.CORS {
+		t.Errorf("db-service: hostnames %v, cors %v; a rejected route must not count", db.Hostnames, db.CORS)
+	}
+	proxy := byID["envoy-gateway-system/gw-proxy"]
+	if !slices.Equal(proxy.Ports, []string{"80 → 10080/TCP (nodePort 30080)"}) || !slices.Equal(proxy.NodePorts, []string{"30080"}) {
+		t.Errorf("proxy ports = %v, node ports = %v", proxy.Ports, proxy.NodePorts)
+	}
+}
+
+func TestRouteStatus(t *testing.T) {
+	parent := func(conditions ...metav1.Condition) []gatewayv1.RouteParentStatus {
+		return []gatewayv1.RouteParentStatus{{Conditions: conditions}}
+	}
+	accepted := condition("Accepted", metav1.ConditionTrue, "Accepted")
+	tests := []struct {
+		name         string
+		parents      []gatewayv1.RouteParentStatus
+		wantAccepted bool
+		wantStatus   string
+	}{
+		{"no controller yet", nil, false, "no status yet: no Gateway controller has processed it"},
+		{"accepted", parent(accepted), true, "Accepted"},
+		{"rejected", parent(condition("Accepted", metav1.ConditionFalse, "NotAllowedByListeners")), false, "not accepted: NotAllowedByListeners"},
+		{"missing backend", parent(accepted, condition("ResolvedRefs", metav1.ConditionFalse, "BackendNotFound")), true,
+			"accepted, but a backend is unresolved: BackendNotFound"},
+	}
+	for _, tt := range tests {
+		if accepted, status := routeStatus(tt.parents); accepted != tt.wantAccepted || status != tt.wantStatus {
+			t.Errorf("%s: routeStatus = %v, %q; want %v, %q", tt.name, accepted, status, tt.wantAccepted, tt.wantStatus)
+		}
+	}
+}
+
+func TestAllowedNamespaces(t *testing.T) {
+	from := func(f gatewayv1.FromNamespaces) *gatewayv1.AllowedRoutes {
+		return &gatewayv1.AllowedRoutes{Namespaces: &gatewayv1.RouteNamespaces{From: &f}}
+	}
+	tests := []struct {
+		allowed *gatewayv1.AllowedRoutes
+		want    string
+	}{
+		{nil, "the Gateway's namespace"},
+		{from(gatewayv1.NamespacesFromSame), "the Gateway's namespace"},
+		{from(gatewayv1.NamespacesFromAll), "all namespaces"},
+		{from(gatewayv1.NamespacesFromNone), "no namespace"},
+	}
+	for _, tt := range tests {
+		if got := allowedNamespaces(tt.allowed); got != tt.want {
+			t.Errorf("allowedNamespaces(%+v) = %q, want %q", tt.allowed, got, tt.want)
+		}
 	}
 }
 
@@ -224,7 +365,7 @@ func TestSDNamespaces(t *testing.T) {
 
 func TestBuildEmptySnapshotHasNoNilLists(t *testing.T) {
 	m := Build(Snapshot{})
-	if m.Pods == nil || m.Links == nil || m.Config == nil || m.NetworkPolicies == nil || m.Ingress.RunningOn == nil {
+	if m.Pods == nil || m.Links == nil || m.Config == nil || m.NetworkPolicies == nil || m.Gateways == nil || m.Routes == nil {
 		t.Errorf("empty snapshot produced nil lists: %+v", m)
 	}
 }

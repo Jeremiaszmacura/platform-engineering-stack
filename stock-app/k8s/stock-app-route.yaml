@@ -1,0 +1,26 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: stock-app-route
+  namespace: apps
+  labels:
+    app: stock-app
+spec:
+  parentRefs:
+    - name: shared-gateway
+      namespace: envoy-gateway-system
+  hostnames:
+    - stock.localhost
+  rules:
+    - filters:
+        # The frontends call this API from their own origins. Envoy answers the preflight and adds the
+        # Access-Control-Allow-* headers, so the app has no CORS code.
+        - type: CORS
+          cors:
+            allowOrigins:
+              - http://stock-ui.localhost
+              - http://traffic-generator.localhost
+            allowMethods: [GET]
+      backendRefs:
+        - name: stock-app-service
+          port: 8000

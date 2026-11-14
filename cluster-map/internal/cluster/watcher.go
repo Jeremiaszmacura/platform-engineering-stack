@@ -16,6 +16,9 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayclient "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+	gatewayinformers "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
 
 	"cluster-map/internal/topology"
 )
@@ -30,16 +33,23 @@ type Options struct {
 	References  []topology.Reference
 }
 
+// Clients are the API clients the watcher reads from: core Kubernetes objects and Gateway API objects.
+type Clients struct {
+	Core    kubernetes.Interface
+	Gateway gatewayclient.Interface
+}
+
 type lister[T any] interface {
 	List(labels.Selector) ([]*T, error)
 }
 
 // Watcher lists and watches cluster objects through shared informers.
 type Watcher struct {
-	client  kubernetes.Interface
-	factory informers.SharedInformerFactory
-	options Options
-	synced  []cache.InformerSynced
+	client         kubernetes.Interface
+	factory        informers.SharedInformerFactory
+	gatewayFactory gatewayinformers.SharedInformerFactory
+	options        Options
+	synced         []cache.InformerSynced
 
 	nodes               lister[corev1.Node]
 	pods                lister[corev1.Pod]
@@ -47,7 +57,8 @@ type Watcher struct {
 	serviceAccounts     lister[corev1.ServiceAccount]
 	claims              lister[corev1.PersistentVolumeClaim]
 	volumes             lister[corev1.PersistentVolume]
-	ingresses           lister[networkingv1.Ingress]
+	gateways            lister[gatewayv1.Gateway]
+	httpRoutes          lister[gatewayv1.HTTPRoute]
 	networkPolicies     lister[networkingv1.NetworkPolicy]
 	clusterRoles        lister[rbacv1.ClusterRole]
 	roles               lister[rbacv1.Role]
@@ -56,12 +67,14 @@ type Watcher struct {
 }
 
 // NewWatcher registers one informer per object kind; call Start to begin watching.
-func NewWatcher(client kubernetes.Interface, options Options) *Watcher {
-	f := informers.NewSharedInformerFactory(client, 0)
-	core, networking, rbac := f.Core().V1(), f.Networking().V1(), f.Rbac().V1()
+func NewWatcher(clients Clients, options Options) *Watcher {
+	f := informers.NewSharedInformerFactory(clients.Core, 0)
+	gf := gatewayinformers.NewSharedInformerFactory(clients.Gateway, 0)
+	core, networking, rbac, gateway := f.Core().V1(), f.Networking().V1(), f.Rbac().V1(), gf.Gateway().V1()
 	w := &Watcher{
-		client:              client,
+		client:              clients.Core,
 		factory:             f,
+		gatewayFactory:      gf,
 		options:             options,
 		nodes:               core.Nodes().Lister(),
 		pods:                core.Pods().Lister(),
@@ -69,8 +82,9 @@ func NewWatcher(client kubernetes.Interface, options Options) *Watcher {
 		serviceAccounts:     core.ServiceAccounts().Lister(),
 		claims:              core.PersistentVolumeClaims().Lister(),
 		volumes:             core.PersistentVolumes().Lister(),
-		ingresses:           networking.Ingresses().Lister(),
 		networkPolicies:     networking.NetworkPolicies().Lister(),
+		gateways:            gateway.Gateways().Lister(),
+		httpRoutes:          gateway.HTTPRoutes().Lister(),
 		clusterRoles:        rbac.ClusterRoles().Lister(),
 		roles:               rbac.Roles().Lister(),
 		clusterRoleBindings: rbac.ClusterRoleBindings().Lister(),
@@ -79,7 +93,7 @@ func NewWatcher(client kubernetes.Interface, options Options) *Watcher {
 	for _, informer := range []cache.SharedIndexInformer{
 		core.Nodes().Informer(), core.Pods().Informer(), core.Services().Informer(),
 		core.ServiceAccounts().Informer(), core.PersistentVolumeClaims().Informer(), core.PersistentVolumes().Informer(),
-		networking.Ingresses().Informer(), networking.NetworkPolicies().Informer(),
+		networking.NetworkPolicies().Informer(), gateway.Gateways().Informer(), gateway.HTTPRoutes().Informer(),
 		rbac.ClusterRoles().Informer(), rbac.Roles().Informer(),
 		rbac.ClusterRoleBindings().Informer(), rbac.RoleBindings().Informer(),
 	} {
@@ -91,6 +105,7 @@ func NewWatcher(client kubernetes.Interface, options Options) *Watcher {
 // Start begins listing and watching; informers stop when ctx is done.
 func (w *Watcher) Start(ctx context.Context) {
 	w.factory.Start(ctx.Done())
+	w.gatewayFactory.Start(ctx.Done())
 }
 
 // Ready reports whether every informer has completed its first list.
@@ -130,7 +145,8 @@ func (w *Watcher) Map(ctx context.Context) (topology.Map, error) {
 		ServiceAccounts:     list(w.serviceAccounts, &errs),
 		Claims:              list(w.claims, &errs),
 		Volumes:             list(w.volumes, &errs),
-		Ingresses:           list(w.ingresses, &errs),
+		Gateways:            list(w.gateways, &errs),
+		HTTPRoutes:          list(w.httpRoutes, &errs),
 		NetworkPolicies:     list(w.networkPolicies, &errs),
 		ClusterRoles:        list(w.clusterRoles, &errs),
 		Roles:               list(w.roles, &errs),

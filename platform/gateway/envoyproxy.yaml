@@ -1,0 +1,29 @@
+# How Envoy Gateway deploys the Envoy proxy that serves shared-gateway (referenced by gateway.yaml).
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: shared-gateway
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyDeployment:
+        name: shared-gateway-proxy
+        container:
+          resources:
+            requests: {cpu: 100m, memory: 64Mi}
+            limits: {cpu: "1", memory: 256Mi}
+      # kind maps host port 80 to node port 30080 of the control-plane node (platform/kind-cluster.yaml).
+      # A NodePort is open on every node, so kube-proxy forwards it to the proxy pod wherever it runs.
+      envoyService:
+        name: shared-gateway-proxy
+        type: NodePort
+        externalTrafficPolicy: Cluster  # Local would drop traffic reaching a node without a proxy pod
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              ports:
+                - port: 80
+                  nodePort: 30080

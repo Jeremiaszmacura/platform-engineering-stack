@@ -1,0 +1,6 @@
+# Envoy Gateway, the Gateway API implementation, plus the Gateway API CRDs its release manifest bundles.
+# Applied with `kubectl apply --server-side -k`: the CRDs are too large for client-side apply.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - https://github.com/envoyproxy/gateway/releases/download/v1.10.0/install.yaml

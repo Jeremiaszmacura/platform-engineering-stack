@@ -31,15 +31,28 @@ def test_map_shows_running_workloads_on_three_nodes():
     cluster_map = fetch_map()
     apps = {pod["app"] for pod in cluster_map["pods"] if pod["phase"] == "Running"}
     assert len(cluster_map["nodes"]) == 3
-    assert {"cluster-map", "stock-app", "timescaledb", "prometheus", "ingress-nginx"} <= apps
+    assert {"cluster-map", "stock-app", "timescaledb", "prometheus", "envoy"} <= apps
 
 
-def test_map_links_follow_ingress_config_and_scraping():
-    """Links come from Ingress rules, Service addresses in env and Prometheus annotations."""
+def test_map_links_follow_routes_config_and_scraping():
+    """Links come from HTTPRoutes, Service addresses in env and Prometheus annotations."""
     links = {(link["kind"], link["label"]) for link in fetch_map()["links"]}
-    assert ("ingress", "cluster-map.localhost") in links
+    assert ("gateway", "cluster-map.localhost") in links
     assert ("call", "timescaledb-service.data:5432") in links
     assert any(kind == "scrape" and "job cluster-map" in label for kind, label in links)
+
+
+def test_gateway_is_programmed_and_accepts_every_route():
+    """The shared Gateway runs an Envoy proxy behind NodePort 30080 and has accepted every component's HTTPRoute."""
+    cluster_map = fetch_map()
+    gateway = next(g for g in cluster_map["gateways"] if g["name"] == "shared-gateway")
+    proxy_service = next(s for s in cluster_map["services"] if s["id"] == gateway["proxy_service"])
+    assert gateway["programmed"] is True
+    assert gateway["proxy_pods"]
+    assert proxy_service["node_ports"] == ["30080"]
+    routes = {route["name"]: route["status"] for route in cluster_map["routes"]}
+    assert routes["stock-app-route"] == "Accepted"
+    assert set(routes.values()) == {"Accepted"}
 
 
 def test_cluster_map_identity_is_read_only_without_secrets():

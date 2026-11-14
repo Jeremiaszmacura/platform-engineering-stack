@@ -1,16 +1,11 @@
-# Host port 80 goes to the control-plane node only; its ingress-ready label pins ingress-nginx there.
+# Host port 80 goes to node port 30080 of the control-plane container: the NodePort of the shared Gateway's Envoy
+# proxy (platform/gateway/envoyproxy.yaml). kube-proxy forwards it to the proxy pod on whichever node it runs.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
-    kubeadmConfigPatches:
-      - |
-        kind: InitConfiguration
-        nodeRegistration:
-          kubeletExtraArgs:
-            node-labels: "ingress-ready=true"
     extraPortMappings:
-      - containerPort: 80  # ingress-nginx controller
+      - containerPort: 30080  # NodePort of the shared-gateway-proxy Service
         hostPort: 80
         protocol: TCP
   - role: worker

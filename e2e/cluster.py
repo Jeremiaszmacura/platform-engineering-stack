@@ -1,4 +1,4 @@
-"""Service catalog and helpers for the e2e suite (everything is reached through ingress on *.localhost)."""
+"""Service catalog and helpers for the e2e suite (everything is reached through the Gateway on *.localhost)."""
 
 import time
 

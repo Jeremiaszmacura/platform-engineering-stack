@@ -13,13 +13,22 @@
   },
   "customManagers": [
     {
-      "description": "ingress-nginx manifest URL in its kustomization",
+      "description": "Envoy Gateway release manifest URL in its kustomization",
       "customType": "regex",
-      "managerFilePatterns": ["/^platform/ingress-nginx/kustomization\\.yaml$/"],
-      "matchStrings": ["ingress-nginx/controller-v(?<currentValue>\\d+\\.\\d+\\.\\d+)/"],
-      "depNameTemplate": "kubernetes/ingress-nginx",
+      "managerFilePatterns": ["/^platform/envoy-gateway/kustomization\\.yaml$/"],
+      "matchStrings": ["envoyproxy/gateway/releases/download/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/"],
+      "depNameTemplate": "envoyproxy/gateway",
       "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^controller-v(?<version>.+)$"
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "description": "kind version installed in the e2e workflow (it decides the Kubernetes version CI runs)",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/e2e\\.yaml$/"],
+      "matchStrings": ["kind-action@v\\d+\\s+with:\\s+version: v(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      "depNameTemplate": "kubernetes-sigs/kind",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
     },
     {
       "description": "golangci-lint version installed in CI",

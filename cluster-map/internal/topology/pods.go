@@ -196,11 +196,10 @@ func buildNodes(nodes []*corev1.Node, pods []Pod) []Node {
 	out := make([]Node, 0, len(nodes))
 	for _, n := range nodes {
 		node := Node{
-			Name:         n.Name,
-			PodCIDR:      n.Spec.PodCIDR,
-			Roles:        []string{},
-			Taints:       []string{},
-			IngressReady: n.Labels["ingress-ready"] == "true",
+			Name:    n.Name,
+			PodCIDR: n.Spec.PodCIDR,
+			Roles:   []string{},
+			Taints:  []string{},
 		}
 		for _, a := range n.Status.Addresses {
 			if a.Type == corev1.NodeInternalIP {

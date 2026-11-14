@@ -25,8 +25,9 @@ make test-e2e E2E_PYTEST_ARGS='-k stock'            # scope with -k
 ## CI
 
 Every pull request runs `go-qa`, `python-qa`, `frontend-qa`, `docs` and `e2e`
-(a real kind cluster with `STOCK_PROVIDER=fixture`, then `-m "not external"`, then a restart of ingress-nginx
-that must keep `*.localhost` answering).
+(a real kind cluster with `STOCK_PROVIDER=fixture`, then `-m "not external"`, then a restart of the Gateway's
+Envoy proxy that must keep `*.localhost` answering). The kind version is pinned in `e2e.yaml`; it decides the
+Kubernetes version.
 
 ## What to run after a change
 

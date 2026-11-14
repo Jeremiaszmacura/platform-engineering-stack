@@ -3,6 +3,7 @@ site_url: https://jeremiaszmacura.github.io/platform-engineering-stack/
 nav:
   - Home: index.md
   - Design: design.md
+  - Networking: networking.md
   - Tracing: tracing.md
   - Testing: testing.md
   - Adding a Service: adding-a-service.md
