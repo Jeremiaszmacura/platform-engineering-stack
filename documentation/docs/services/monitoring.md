@@ -12,9 +12,12 @@ both. All of them run in namespace `monitoring`.
   `endpoint` and `status_code`); stock-app adds `stock_*` metrics for its provider calls and cache hits.
 - **Stock App dashboard:** HTTP traffic (availability and latency SLIs, request rate, p95 latency, 4XX/5XX
   rates, health checks) and the cache-aside pipeline.
-- **Dashboards** are code: `monitoring/grafana/ansible/dashboards/*.json` (fixed `uid`, queries filtered by `job`),
-  uploaded with the datasource by `ansible-playbook monitoring/grafana/ansible/provision.yaml` at the end of
-  `./recreate-cluster.sh`. Save UI changes back to the JSON file, or they are lost on the next rebuild.
+- **Dashboards and datasources** are code in `monitoring/grafana/k8s/`: `dashboards/*.json` (fixed `uid`, queries
+  filtered by `job`) and `datasources.yaml`. `kustomization.yaml` turns them into ConfigMaps that Grafana loads on
+  every start, so a restarted pod gets them back. Provisioned dashboards are read-only in the UI: copy the JSON
+  (*Export → Export as JSON*) into the file and re-run `./recreate-cluster.sh`.
+- **Grafana storage:** its SQLite database (logins, preferences) is on an `emptyDir`, so it survives a container
+  restart but not a new pod. Memory limit 1Gi: Grafana 13 idles at about 330Mi.
 
 ## Tracing
 

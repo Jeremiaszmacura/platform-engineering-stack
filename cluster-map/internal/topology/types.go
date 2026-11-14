@@ -31,7 +31,7 @@ type Snapshot struct {
 	References          []Reference
 }
 
-// Reference is a Service address configured outside Kubernetes, e.g. Grafana's datasource set by Ansible.
+// Reference is a Service address the API objects don't show, e.g. Grafana's datasource in a provisioning file.
 type Reference struct {
 	App   string
 	Value string

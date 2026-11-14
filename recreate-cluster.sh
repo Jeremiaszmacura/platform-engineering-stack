@@ -128,11 +128,4 @@ for entry in "${URLS[@]}"; do
     wait_for_url "$name" "$url" 60
 done
 
-echo "📈 Provisioning Grafana datasource and dashboards..."
-if curl -sf -o /dev/null http://grafana.localhost/api/health; then
-    ansible-playbook monitoring/grafana/ansible/provision.yaml
-else
-    echo "⚠️  Grafana not reachable; run later: ansible-playbook monitoring/grafana/ansible/provision.yaml"
-fi
-
 echo "✅ Cluster ready. Grafana login: admin/admin, Vault token: root"

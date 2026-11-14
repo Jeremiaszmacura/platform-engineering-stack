@@ -1,0 +1,9 @@
+# Grafana loads this at startup (/etc/grafana/provisioning/dashboards): every JSON file in the
+# grafana-dashboards ConfigMap becomes a read-only dashboard; edits in the UI must be saved to the file.
+apiVersion: 1
+providers:
+  - name: dashboards
+    type: file
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards

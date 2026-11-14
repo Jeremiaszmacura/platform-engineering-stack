@@ -367,7 +367,7 @@ kubectl auth can-i list pods   --as=system:serviceaccount:apps:stock-app -n apps
       <p><b>WaitForFirstConsumer</b> (kind's default StorageClass) means the volume is created only after the scheduler picks a node for the pod. A local-path volume is a directory on that node, so from then on the pod can only run there. If that node goes down, the data can't move. Network storage (EBS, Ceph, NFS) avoids that.</p>
       <p>A PVC outlives its pod, so deleting the pod keeps the data. It does not outlive <code>kind delete cluster</code>, which <code>./recreate-cluster.sh</code> runs.</p>
       <p><b>emptyDir</b> volumes are scratch directories deleted with the pod. stock-app needs them because it runs with <code>readOnlyRootFilesystem: true</code>. <b>hostPath</b> volumes expose the node's own files: node-exporter reads <code>/proc</code>, <code>/sys</code> and <code>/</code> to report on the node.</p>
-      <div class="callout warn">Grafana and Vault have no volume at all. Grafana keeps dashboards and the datasource in a SQLite file inside the container, so a restarted pod loses them until you run the Ansible playbook again. Vault in dev mode keeps everything in memory, so a restart loses every secret and the <code>services/</code> and <code>infra/</code> mounts. The finished <code>vault-configure</code> Job does not run again by itself.</div>
+      <div class="callout warn">Grafana keeps its SQLite database on an emptyDir, and its datasources and dashboards come from ConfigMaps loaded on every start, so even a new pod loses only logins. Vault has no volume at all: in dev mode it keeps everything in memory, so a restart loses every secret and the <code>services/</code> and <code>infra/</code> mounts. The finished <code>vault-configure</code> Job does not run again by itself.</div>
     </div>
   </section>
 
@@ -447,7 +447,7 @@ const NOTES = {
   "traffic-generator": "Serves static files only. The JavaScript runs in your browser, and the browser calls stock.localhost itself, cross-origin, through ingress-nginx. This pod never calls the backend.",
   "stock-ui": "Static files only. Your browser calls http://stock.localhost for data; the pod itself never does.",
   "stock-app": "Also calls Yahoo Finance over the internet (pod → node SNAT → Docker → your machine). Readiness probe only: /health checks the DB, and a DB outage must not restart the app.",
-  "grafana": "Datasource access mode is \"proxy\": the Grafana server runs the queries, not your browser. Ansible configures it from your machine through grafana.localhost.",
+  "grafana": "Datasource access mode is \"proxy\": the Grafana server runs the queries, not your browser. Its datasources and dashboards are files mounted from ConfigMaps, loaded on every start.",
   "vault": "Dev mode: in-memory and auto-unsealed. Clients sign in with the root token, not with Kubernetes identity.",
   "vault-configure": "Enables the services/ and infra/ KV v2 mounts. It is idempotent, and recreate-cluster.sh waits for it.",
   "timescaledb": "Pinned to the node that holds its local-path volume (see Storage).",
@@ -809,9 +809,9 @@ function renderFindings(data) {
     ["var(--accent)", "Shared · secrets", "One root token for everything",
      "stock-app and the vault-configure Job use Vault's root token, so the per-service paths are separated only by convention: anything holding the token can read every path.",
      "Exercise: enable Vault's Kubernetes auth method with one policy per service, and let stock-app sign in with its own ServiceAccount token."],
-    ["var(--accent)", "Ephemeral · state", "Grafana and Vault lose everything on a restart",
-     "Neither has a volume (see Storage). A node restart or an OOM kill quietly resets them.",
-     "Exercise: add a PVC for Grafana or provision dashboards from ConfigMaps. Run Vault with file or Raft storage."],
+    ["var(--accent)", "Ephemeral · state", "Vault loses everything on a restart",
+     "It runs in dev mode with no volume (see Storage). A node restart or an OOM kill quietly resets it.",
+     "Exercise: run Vault with file or Raft storage on a PVC."],
     ["var(--accent)", "Single · availability", "One replica of everything",
      "Every app runs a single pod with no PodDisruptionBudget, so draining a node (<code>kubectl drain</code>) causes downtime, and a pod with a local-path volume can't move at all.",
      "Exercise: run 2 replicas of traffic-generator with a PDB (<code>minAvailable: 1</code>) and topology spread across workers, then drain a node and watch the map."]

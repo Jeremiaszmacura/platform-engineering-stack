@@ -1,7 +1,0 @@
----
-# Dev-only; must match monitoring/grafana/k8s/grafana-admin-secret.yaml.
-grafana_url: "http://grafana.localhost"
-grafana_user: "admin"
-grafana_password: "admin"
-prometheus_url: "http://prometheus-service:9090"
-tempo_url: "http://tempo-service:3200"
