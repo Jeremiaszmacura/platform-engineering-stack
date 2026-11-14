@@ -174,12 +174,20 @@ class TestServiceRoutes(RouteTestCase):
 
     def test_health_checks_are_counted_by_status_code(self):
         self.repository.healthy = False
-        labels = {"endpoint": "/health", "user_agent": "kube-probe", "status_code": "503"}
+        labels = {"endpoint": "/health", "status_code": "503"}
         before = REGISTRY.get_sample_value("monitoring_requests_total", labels) or 0
 
         self.client.get("/health", headers={"user-agent": "kube-probe/1.33"})
 
         self.assertEqual(REGISTRY.get_sample_value("monitoring_requests_total", labels), before + 1)
+
+    def test_non_standard_method_is_counted_as_other(self):
+        labels = {"method": "_OTHER", "endpoint": "/api/v1/instruments/{symbol}/bars", "status_code": "405"}
+        before = REGISTRY.get_sample_value("http_requests_total", labels) or 0
+
+        self.client.request("FOO", BARS_URL)
+
+        self.assertEqual(REGISTRY.get_sample_value("http_requests_total", labels), before + 1)
 
     def test_metrics_are_exposed(self):
         response = self.client.get("/metrics")

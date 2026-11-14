@@ -1,7 +1,7 @@
 """HTTP request instrumentation, recording per-request Prometheus metrics."""
 
 import time
-from http import HTTPStatus
+from http import HTTPMethod, HTTPStatus
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -40,13 +40,13 @@ def record_request(request: Request, status_code: int, duration: float) -> None:
     status = str(int(status_code))
 
     if endpoint in MONITORING_ENDPOINTS:
-        # Simplify the user agent (e.g. "Prometheus" from "Prometheus/2.x.x")
-        user_agent = request.headers.get("user-agent", "unknown")
-        MONITORING_REQUESTS.labels(endpoint=endpoint, user_agent=user_agent.split("/")[0], status_code=status).inc()
+        MONITORING_REQUESTS.labels(endpoint=endpoint, status_code=status).inc()
         return
 
-    REQUEST_COUNT.labels(method=request.method, endpoint=endpoint, status_code=status).inc()
-    REQUEST_DURATION.labels(method=request.method, endpoint=endpoint).observe(duration, exemplar=trace_exemplar())
+    # HTTP/2 lets a client send any method token; non-standard ones share OpenTelemetry's "_OTHER" label.
+    method = request.method if request.method in HTTPMethod else "_OTHER"
+    REQUEST_COUNT.labels(method=method, endpoint=endpoint, status_code=status).inc()
+    REQUEST_DURATION.labels(method=method, endpoint=endpoint).observe(duration, exemplar=trace_exemplar())
     RESPONSE_STATUS.labels(status_class=f"{status[0]}XX").inc()
 
 

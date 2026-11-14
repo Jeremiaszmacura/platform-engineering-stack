@@ -1,6 +1,7 @@
 """Prometheus metrics for stock-app.
 
-Never label by symbol: symbols come from untrusted requests and would create unbounded series.
+Label values must come from a small fixed set, never straight from a request (symbol, header, HTTP method):
+each new value is a series the app keeps until it restarts.
 """
 
 from enum import StrEnum
@@ -16,9 +17,7 @@ REQUEST_DURATION = Histogram(
 RESPONSE_STATUS = Counter("http_responses_by_status_total", "HTTP responses by status code", ["status_class"])
 
 MONITORING_REQUESTS = Counter(
-    "monitoring_requests_total",
-    "Total number of monitoring/metrics requests",
-    ["endpoint", "user_agent", "status_code"],
+    "monitoring_requests_total", "Total number of monitoring/metrics requests", ["endpoint", "status_code"]
 )
 
 # Service-specific instrumentation: the cache-aside pipeline.
