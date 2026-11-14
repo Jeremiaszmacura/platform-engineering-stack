@@ -188,6 +188,44 @@ class TestServiceRoutes(RouteTestCase):
         self.assertIn("stock_cache_lookups_total", response.text)
 
 
+class TestUnhandledErrors(RouteTestCase):
+    """A crash must still reach the HTTP metrics as a 500."""
+
+    def setUp(self):
+        super().setUp()
+        self.service.error = RuntimeError("unexpected bug")
+        self.client = TestClient(app, raise_server_exceptions=False)
+
+    def test_unhandled_exception_answers_500(self):
+        response = self.client.get(BARS_URL, params=PERIOD_PARAMS)
+
+        self.assertEqual(response.status_code, 500)
+
+    def test_unhandled_exception_is_counted_as_500(self):
+        labels = {"method": "GET", "endpoint": "/api/v1/instruments/{symbol}/bars", "status_code": "500"}
+        before = REGISTRY.get_sample_value("http_requests_total", labels) or 0
+
+        self.client.get(BARS_URL, params=PERIOD_PARAMS)
+
+        self.assertEqual(REGISTRY.get_sample_value("http_requests_total", labels), before + 1)
+
+    def test_unhandled_exception_is_counted_as_5xx(self):
+        labels = {"status_class": "5XX"}
+        before = REGISTRY.get_sample_value("http_responses_by_status_total", labels) or 0
+
+        self.client.get(BARS_URL, params=PERIOD_PARAMS)
+
+        self.assertEqual(REGISTRY.get_sample_value("http_responses_by_status_total", labels), before + 1)
+
+    def test_unhandled_exception_duration_is_observed(self):
+        labels = {"method": "GET", "endpoint": "/api/v1/instruments/{symbol}/bars"}
+        before = REGISTRY.get_sample_value("http_request_duration_seconds_count", labels) or 0
+
+        self.client.get(BARS_URL, params=PERIOD_PARAMS)
+
+        self.assertEqual(REGISTRY.get_sample_value("http_request_duration_seconds_count", labels), before + 1)
+
+
 class TestBarsEndpoint(RouteTestCase):
     """Tests for the cache-aside bars endpoint."""
 
