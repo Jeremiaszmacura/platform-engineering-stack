@@ -13,9 +13,9 @@
   },
   "customManagers": [
     {
-      "description": "ingress-nginx manifest URL in recreate-cluster.sh",
+      "description": "ingress-nginx manifest URL in its kustomization",
       "customType": "regex",
-      "managerFilePatterns": ["/^recreate-cluster\\.sh$/"],
+      "managerFilePatterns": ["/^platform/ingress-nginx/kustomization\\.yaml$/"],
       "matchStrings": ["ingress-nginx/controller-v(?<currentValue>\\d+\\.\\d+\\.\\d+)/"],
       "depNameTemplate": "kubernetes/ingress-nginx",
       "datasourceTemplate": "github-releases",

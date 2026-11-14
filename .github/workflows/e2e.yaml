@@ -37,6 +37,13 @@ jobs:
       - name: Run e2e tests
         run: make test-e2e E2E_PYTEST_ARGS='-m "not external"'
 
+      # A restarted controller must come back on the only node that maps host port 80.
+      - name: Restart ingress-nginx and check *.localhost still answers
+        run: |
+          kubectl rollout restart deployment/ingress-nginx-controller -n ingress-nginx
+          kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=120s
+          curl -sf --retry 15 --retry-delay 2 --retry-all-errors -o /dev/null http://stock.localhost/health
+
       - name: Dump cluster state on failure
         if: failure()
         run: |

@@ -1,4 +1,4 @@
-# Host port 80 goes to ingress-nginx on the control-plane node.
+# Host port 80 goes to the control-plane node only; its ingress-ready label pins ingress-nginx there.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:

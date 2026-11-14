@@ -797,7 +797,7 @@ function renderFindings(data) {
          `The controller has <code>nodeSelector: ingress-ready=true</code> and runs on ${nodesText(ing.running_on)}.`, ""]
       : ["var(--warn)", "Fragile · ingress", "The ingress controller isn't pinned to the node that owns port 80",
          `<code>kind-cluster.yaml</code> maps host port 80 only to ${nodesText(ing.ingress_ready_nodes)} and labels it <code>ingress-ready=true</code>. The controller has no matching nodeSelector. It runs on <b>${nodesText(ing.running_on)}</b> now, but if it gets rescheduled to another node, every <code>*.localhost</code> URL stops answering.`,
-         "Fix: patch the controller with <code>nodeSelector: {ingress-ready: \"true\"}</code> in <code>recreate-cluster.sh</code>."],
+         "Fix: patch the controller with <code>nodeSelector: {ingress-ready: \"true\"}</code> in <code>platform/ingress-nginx/kustomization.yaml</code>."],
     netpols.length
       ? ["var(--accent)", "Checked · network", `${netpols.length} NetworkPolicies are applied`, `Policies: ${netpols.map(code).join(", ")}. Check which pods they select with <code>kubectl describe networkpolicy -A</code>.`, ""]
       : ["var(--warn)", "Open · network", "No NetworkPolicies: every pod can reach every pod",
