@@ -52,5 +52,7 @@ flowchart LR
 - Deployment and `app` label = component name; Service `<component>-service`; HTTPRoute `<component>-route`.
 - Every workload has requests/limits and a readiness probe; own images run as non-root; images are pinned.
 - A config file a container reads (e.g. `prometheus.yml`) is a plain file in `k8s/`; a `kustomization.yaml` turns it
-  into a ConfigMap, and `./recreate-cluster.sh` applies such directories with `kubectl apply -k`.
+  into a ConfigMap, and `./recreate-cluster.sh` applies such directories with `kubectl apply -k`. Kustomize adds a
+  hash of the content to the ConfigMap's name, so a changed file rolls out new pods. Only `prometheus-config` keeps
+  a fixed name (cluster-map reads it by name); Prometheus re-reads it itself (`--config.auto-reload`).
 - `./recreate-cluster.sh` is the single entry point and stays idempotent.
