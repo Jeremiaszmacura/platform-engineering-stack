@@ -12,4 +12,3 @@ configMapGenerator:
     options:
       labels:
         app: tempo
-      disableNameSuffixHash: true  # Keep the plain name the Deployment mounts

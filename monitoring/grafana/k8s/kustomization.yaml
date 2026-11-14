@@ -9,7 +9,6 @@ resources:
 generatorOptions:
   labels:
     app: grafana
-  disableNameSuffixHash: true  # Keep the plain names the Deployment mounts
 configMapGenerator:
   - name: grafana-datasources
     namespace: monitoring

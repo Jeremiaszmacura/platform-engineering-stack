@@ -387,7 +387,7 @@ kubectl auth can-i list pods   --as=system:serviceaccount:apps:stock-app -n apps
       </table>
     </div>
     <div class="callout warn">These Secrets are written with <code>stringData</code> in plain text and committed to Git. That's fine for a dev cluster and never acceptable anywhere else. Kubernetes Secrets are only base64-encoded, and etcd stores them unencrypted unless you enable encryption at rest. In real clusters, use the External Secrets Operator, Sealed Secrets, or the Vault Agent / CSI driver.</div>
-    <div class="callout">Env vars filled from a Secret are read once, when the container starts. If the Secret changes, the pod keeps the old value until it restarts. A ConfigMap mounted as a volume does update inside the pod after a short delay, but Prometheus only reloads its config when told to (<code>/-/reload</code> with <code>--web.enable-lifecycle</code>, or a restart).</div>
+    <div class="callout">Env vars filled from a Secret are read once, when the container starts. If the Secret changes, the pod keeps the old value until it restarts. A ConfigMap mounted as a volume does update inside the pod after a short delay, but most programs read their config only at start. So Kustomize adds a hash of the content to the ConfigMap's name: a changed file means a new name, a changed pod template and a new pod. Prometheus is the exception: this page reads its ConfigMap by name, so the name stays fixed and Prometheus re-reads the file itself (<code>--config.auto-reload</code>).</div>
   </section>
 
   <section id="storage">
