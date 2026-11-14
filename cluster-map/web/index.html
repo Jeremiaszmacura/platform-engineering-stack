@@ -23,7 +23,7 @@
   --warn: #9a4b00;
   --warn-soft: #fbead6;
   /* namespace colours */
-  --ns-ingress: #c2410c;
+  --ns-gateway: #c2410c;
   --ns-apps: #2457c5;
   --ns-data: #7339d4;
   --ns-vault: #0d7a6f;
@@ -38,7 +38,7 @@
   :root:not([data-theme="light"]) {
     --bg: #0e171d; --surface: #15222a; --sunken: #1b2b34; --fg: #e3ecef; --muted: #98aab3; --line: #2b3d47;
     --accent: #5cc3db; --accent-soft: #163a45; --warn: #f0a85a; --warn-soft: #3a2a17;
-    --ns-ingress: #f2894f; --ns-apps: #7aa2ff; --ns-data: #b391ff; --ns-vault: #45c7b6;
+    --ns-gateway: #f2894f; --ns-apps: #7aa2ff; --ns-data: #b391ff; --ns-vault: #45c7b6;
     --ns-monitoring: #f075b4; --ns-docs: #a9cc4f; --ns-system: #9aabb6;
     color-scheme: dark;
   }
@@ -46,7 +46,7 @@
 :root[data-theme="dark"] {
   --bg: #0e171d; --surface: #15222a; --sunken: #1b2b34; --fg: #e3ecef; --muted: #98aab3; --line: #2b3d47;
   --accent: #5cc3db; --accent-soft: #163a45; --warn: #f0a85a; --warn-soft: #3a2a17;
-  --ns-ingress: #f2894f; --ns-apps: #7aa2ff; --ns-data: #b391ff; --ns-vault: #45c7b6;
+  --ns-gateway: #f2894f; --ns-apps: #7aa2ff; --ns-data: #b391ff; --ns-vault: #45c7b6;
   --ns-monitoring: #f075b4; --ns-docs: #a9cc4f; --ns-system: #9aabb6;
   color-scheme: dark;
 }
@@ -228,7 +228,7 @@ body { margin: 0; }
 
   <main id="content" hidden>
   <nav class="toc" aria-label="Sections">
-    <a href="#map">Map</a><a href="#addresses">Address ranges</a><a href="#journeys">Request journeys</a>
+    <a href="#map">Map</a><a href="#addresses">Address ranges</a><a href="#gateway">Gateway API</a><a href="#journeys">Request journeys</a>
     <a href="#services">Services &amp; DNS</a><a href="#identity">ServiceAccounts &amp; RBAC</a>
     <a href="#secrets">Secrets &amp; config</a><a href="#storage">Storage</a><a href="#workloads">Workload kinds</a>
     <a href="#gaps">Weak spots</a><a href="#explore">Explore it yourself</a>
@@ -269,6 +269,39 @@ body { margin: 0; }
     <div class="callout">A pod IP changes every time the pod is recreated. A Service's ClusterIP and DNS name stay the same for as long as the Service exists. Apps should always call the Service name, never a pod IP.</div>
   </section>
 
+  <section id="gateway">
+    <div class="head">
+      <span class="eyebrow">North-south traffic</span>
+      <h2>Gateway API: how traffic gets in</h2>
+      <p>Pods and Services are reachable only from inside the cluster. Your browser gets in through one shared Gateway. Gateway API describes it with three kinds of objects, each owned by a different role, and two programs act on them. This is the tree in your cluster right now:</p>
+    </div>
+    <div class="prose" style="display:grid; gap:12px">
+      <pre id="gateway-tree"></pre>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>HTTPRoute</th><th>Namespace</th><th>Hostnames</th><th>Backend Service</th><th>Filters</th><th>Status from the controller</th></tr></thead>
+          <tbody id="route-rows"></tbody>
+        </table>
+      </div>
+      <h3>Who owns what</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Object</th><th>Owner here</th><th>What it decides</th></tr></thead>
+          <tbody>
+            <tr><td><b>GatewayClass</b> <code>envoy-gateway</code></td><td>Whoever installs the implementation (<code>platform/gateway/</code>)</td><td>Which controller runs Gateways of this class. Its <code>controllerName</code> points to Envoy Gateway. With Istio or Cilium it would name their controller instead.</td></tr>
+            <tr><td><b>Gateway</b> <code>shared-gateway</code></td><td>The platform team (<code>platform/gateway/</code>)</td><td>Listeners: protocol, port, allowed hostnames, and which namespaces may attach routes. The infrastructure behind it comes from an Envoy Gateway <code>EnvoyProxy</code> object: the proxy Deployment and its NodePort Service.</td></tr>
+            <tr><td><b>HTTPRoute</b> <code>&lt;component&gt;-route</code></td><td>Each app team (<code>&lt;component&gt;/k8s/</code>)</td><td>Hostnames, path matches, filters (CORS, redirects, header changes) and the backend Services. The route names the Gateway it wants to attach to, and the Gateway decides whether to accept it.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Control plane and data plane</h3>
+      <p><b>Envoy Gateway</b> (the <code>envoy-gateway</code> pod) is the control plane. It watches Gateways, HTTPRoutes, Services and EndpointSlices through the API server. It turns them into Envoy configuration and streams that to the proxies over <b>xDS</b>, a gRPC API on port 18000. It also creates the proxy Deployment and Service for each Gateway, and writes status such as <code>Accepted</code> and <code>Programmed</code> back onto the objects. No request ever passes through it.</p>
+      <p><b>Envoy</b> (the <code>shared-gateway-proxy</code> pods) is the data plane. Every request from your browser passes through it. Envoy only knows what the controller sent it, so a new HTTPRoute starts working a moment after you apply it, without a restart.</p>
+      <div class="callout"><b>Who may attach routes.</b> The listener accepts HTTPRoutes only from namespaces labelled <code>shared-gateway-access: "true"</code> (<code>platform/namespaces.yaml</code>). The <code>data</code> namespace has no such label, so a route there is rejected with <code>NotAllowedByListeners</code>, and TimescaleDB stays internal. The platform team controls the door, and app teams control their own routes.</div>
+      <div class="callout"><b>Why Gateway API and not Ingress?</b> This cluster used ingress-nginx until it was retired in March 2026. The Ingress API is frozen: anything beyond host and path, such as CORS, needed controller-specific annotations like <code>nginx.ingress.kubernetes.io/enable-cors</code>. In Gateway API those features are typed, validated fields. A CORS filter is part of the standard, so the same HTTPRoute works with any conformant implementation (Envoy Gateway, Istio, Cilium, NGINX Gateway Fabric, …).</div>
+    </div>
+  </section>
+
   <section id="journeys">
     <div class="head">
       <span class="eyebrow">Packet by packet</span>
@@ -282,12 +315,12 @@ body { margin: 0; }
   <section id="services">
     <div class="head">
       <span class="eyebrow">Discovery</span>
-      <h2>Services, Ingress hosts and DNS names</h2>
-      <p>A Service of <code>type: ClusterIP</code> can only be reached from inside the cluster. It is reachable from your machine only if an Ingress routes to it. The DNS name works from any pod.</p>
+      <h2>Services, hostnames and DNS names</h2>
+      <p>A Service of <code>type: ClusterIP</code> can only be reached from inside the cluster. It is reachable from your machine only if an HTTPRoute accepted by the Gateway sends traffic to it. The DNS name works from any pod.</p>
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Service</th><th>Namespace</th><th>Type</th><th>ClusterIP</th><th>port → targetPort</th><th>Full DNS name</th><th>Ingress host</th><th>Ready pods</th><th>Scraped</th></tr></thead>
+        <thead><tr><th>Service</th><th>Namespace</th><th>Type</th><th>ClusterIP</th><th>port → targetPort</th><th>Full DNS name</th><th>Hostname (HTTPRoute)</th><th>Ready pods</th><th>Scraped</th></tr></thead>
         <tbody id="svc-rows"></tbody>
       </table>
     </div>
@@ -327,7 +360,7 @@ body { margin: 0; }
 ServiceAccount  monitoring/cluster-map           <span class="c"># token mounted on purpose</span>
 <span class="c"># platform/rbac/cluster-map.yaml</span>
 ClusterRole     cluster-map  get/list/watch  nodes, pods, services, serviceaccounts, PVCs, PVs,
-                                             ingresses, networkpolicies, roles, bindings
+                                             networkpolicies, gateways, httproutes, roles, bindings
                                              <span class="c"># no secrets</span>
 Role            kube-system/cluster-map-kube-proxy  get configmaps "kube-proxy"
 Role            monitoring/cluster-map-prometheus   get configmaps "prometheus-config"</pre>
@@ -431,20 +464,22 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "
 const code = s => `<code>${esc(s)}</code>`;
 
 const NS_COLORS = {
-  "ingress-nginx": "var(--ns-ingress)", apps: "var(--ns-apps)", data: "var(--ns-data)", vault: "var(--ns-vault)",
+  "envoy-gateway-system": "var(--ns-gateway)", apps: "var(--ns-apps)", data: "var(--ns-data)", vault: "var(--ns-vault)",
   monitoring: "var(--ns-monitoring)", docs: "var(--ns-docs)"
 };
 const nsColor = ns => NS_COLORS[ns] || "var(--ns-system)";
 
 // Hand-written explanations per component (app label); facts come from /api/map.
 const NOTES = {
-  "ingress-nginx": "The only door into the cluster. It reads the Host header, finds the matching Ingress rule, and proxies straight to the pod IPs in the Service's EndpointSlice. It skips the ClusterIP and kube-proxy.",
+  envoy: "The data plane of shared-gateway: every request from your browser passes through this Envoy. It matches the Host header against the attached HTTPRoutes and proxies straight to the pod IPs in the backend Service's EndpointSlice, skipping the ClusterIP. Its routing table arrives from the Envoy Gateway controller over xDS, not from a file.",
+  "gateway-helm": "Envoy Gateway, the control plane. It watches Gateways, HTTPRoutes, Services and EndpointSlices, translates them into Envoy configuration and streams it to the proxy pods over xDS (port 18000). It creates each Gateway's proxy Deployment and Service and writes status back. No request passes through it.",
+  certgen: "One-shot Job from the Envoy Gateway install. It creates the TLS certificates that the controller and the proxies use to secure their xDS connection.",
   "kube-dns": "CoreDNS: every pod's nameserver. It answers <service>.<namespace>.svc.cluster.local with the Service's ClusterIP.",
   "local-path-provisioner": "Backs the default StorageClass \"standard\". When a PVC needs a volume, it creates a directory on the node the pod was scheduled to.",
   "kube-apiserver": "Every kubectl command, every controller, Prometheus discovery and this page talk to it. Only identities with RBAC permissions get answers.",
   "node-exporter": "One per node (DaemonSet) on hostNetwork, so its endpoint IPs are the node IPs. Prometheus scrapes each one as its own target.",
   "cluster-map": "Serves this page. Informers keep a watched copy of the API objects in memory; each /api/map request turns that copy into the map. Its ClusterRole can list and watch, but not read Secrets.",
-  "traffic-generator": "Serves static files only. The JavaScript runs in your browser, and the browser calls stock.localhost itself, cross-origin, through ingress-nginx. This pod never calls the backend.",
+  "traffic-generator": "Serves static files only. The JavaScript runs in your browser, and the browser calls stock.localhost itself, cross-origin, through the Gateway. This pod never calls the backend.",
   "stock-ui": "Static files only. Your browser calls http://stock.localhost for data; the pod itself never does.",
   "stock-app": "Also calls Yahoo Finance over the internet (pod → node SNAT → Docker → your machine). Readiness probe only: /health checks the DB, and a DB outage must not restart the app.",
   "grafana": "Datasource access mode is \"proxy\": the Grafana server runs the queries, not your browser. Its datasources and dashboards are files mounted from ConfigMaps, loaded on every start.",
@@ -507,8 +542,11 @@ function buildView(data) {
     svc: (name, ns) => data.services.find(s => s.name === name && (!ns || s.namespace === ns)),
     workloadNs: [...new Set(pods.map(p => p.namespace).filter(ns => !system.has(ns)))].sort(),
     workloadSvcs: data.services.filter(s => !system.has(s.namespace)),
-    controller: pods.find(p => p.namespace === "ingress-nginx" && p.owner === "Deployment" && running(p)),
-    ingressNode: data.nodes.find(n => n.ingress_ready),
+    gateway: data.gateways[0],
+    proxy: pods.find(p => data.gateways.some(g => g.proxy_pods.includes(p.id))),
+    proxySvc: data.services.find(s => data.gateways.some(g => g.proxy_service === s.id)),
+    // platform/kind-cluster.yaml publishes host port 80 from the control-plane container only
+    entryNode: data.nodes.find(n => n.roles.includes("control-plane")),
     nodeOf: p => p ? data.nodes.find(n => n.name === p.node) : null
   };
 }
@@ -521,12 +559,13 @@ function render() {
   state.seenPods = new Set(v.pods.map(p => p.id));
   if (state.selected && !v.podById[state.selected]) state.selected = null;
   if (!state.seenPods.size) state.selected = null;
-  if (state.selected === null && !render.started && v.controller) state.selected = v.controller.id;
+  if (state.selected === null && !render.started && v.proxy) state.selected = v.proxy.id;
   render.started = true;
 
   renderHeader(data, v);
   renderMap(data, v, fresh);
   renderRanges(data, v);
+  renderGateway(data, v);
   showJourney(state.journey);
   renderTables(data, v);
   renderFindings(data);
@@ -535,20 +574,21 @@ function render() {
 }
 
 function renderHeader(data, v) {
-  const hosts = v.workloadSvcs.flatMap(s => s.ingress_hosts);
+  const hosts = v.workloadSvcs.flatMap(s => s.hostnames);
   $("#facts").innerHTML = [
     ["cluster", data.context || "?"], ["Kubernetes", data.version], ["nodes", data.nodes.length], ["pods", v.pods.length],
-    ["namespaces (workloads)", v.workloadNs.length], ["Ingress hosts", hosts.length],
+    ["namespaces (workloads)", v.workloadNs.length], ["hostnames (HTTPRoutes)", hosts.length],
     ["ServiceAccounts (workloads)", data.service_accounts.length], ["NetworkPolicies", data.network_policies.length]
   ].map(([k, val]) => `<span>${esc(k)} <b>${esc(val)}</b></span>`).join("") + `<span class="live" id="live"></span>`;
 }
 
 function renderMap(data, v, fresh) {
-  $("#legend").innerHTML = ["ingress-nginx", ...v.workloadNs].map(ns => `<span><i style="background:${nsColor(ns)}"></i>${esc(ns)}</span>`).join("")
+  $("#legend").innerHTML = ["envoy-gateway-system", ...v.workloadNs].map(ns => `<span><i style="background:${nsColor(ns)}"></i>${esc(ns)}</span>`).join("")
     + `<span><i style="background:var(--ns-system)"></i>kube-system / other</span>`;
-  $("#hostbar-port").textContent = v.ingressNode
-    ? `Docker publishes :80 → ${nodeShort(v.ingressNode.name)} container :80 (the node labelled ingress-ready)`
-    : "No node is labelled ingress-ready";
+  const nodePort = v.proxySvc && v.proxySvc.node_ports[0];
+  $("#hostbar-port").textContent = v.entryNode && nodePort
+    ? `Docker publishes :80 → ${nodeShort(v.entryNode.name)} container :${nodePort} (NodePort of ${v.proxySvc.name})`
+    : "No Gateway proxy Service with a NodePort found";
   const order = p => [v.system.has(p.namespace) ? 0 : 1, p.namespace, p.short].join("/");
   const drawn = v.pods.filter(p => !isAgent(p)).sort((a, b) => order(a).localeCompare(order(b)));
   $("#nodes").innerHTML = data.nodes.map(n => `
@@ -557,7 +597,7 @@ function renderMap(data, v, fresh) {
         <h3>${esc(nodeShort(n.name))}</h3>
         <span class="mono">${esc(n.ip)} · pods ${esc(n.pod_cidr)}</span>
         ${n.taints.length ? `<span class="mono">taint ${esc(n.taints.join(", "))}</span>` : ""}
-        ${n.ingress_ready ? `<span class="mono">label ingress-ready=true · host :80 lands here</span>` : ""}
+        ${v.entryNode && n.name === v.entryNode.name ? `<span class="mono">host :80 lands here (Docker port mapping)</span>` : ""}
       </header>
       <div class="chips">
         ${drawn.filter(p => p.node === n.name).map(p => `
@@ -587,7 +627,7 @@ function renderInspector(id) {
     <dl>
       ${row("Pod IP", p.ip + (p.host_network ? " (host network)" : ""))}${row("Node", nodeShort(p.node))}
       ${row("Service", svcs.map(s => `${s.name} ${s.cluster_ip} ${s.ports.join(", ")}`))}
-      ${row("Ingress", svcs.flatMap(s => s.ingress_hosts.map(h => h + (s.cors ? " (CORS on)" : ""))))}
+      ${row("Hostnames", svcs.flatMap(s => s.hostnames.map(h => h + (s.cors ? " (CORS on)" : ""))))}
       ${row("ServiceAccount", `${p.service_account} (${p.token_mounted ? "API token mounted" : "no API token"})`)}
       ${row("RBAC", sa ? sa.permissions : [])}
       ${row("Secrets", p.secrets)}${row("ConfigMaps", p.config_maps)}${row("Volumes", p.volumes)}${row("Probes", p.probes)}
@@ -604,7 +644,7 @@ function select(id) {
   const { podById } = state.view;
   if (!id || !podById[id]) {
     map.classList.remove("focus");
-    $("#inspector").innerHTML = `<p class="empty">Select a pod on the map. Start with <b>ingress-nginx-controller</b> to see every route into the cluster, or <b>cluster-map</b> to see this page's own identity.</p>`;
+    $("#inspector").innerHTML = `<p class="empty">Select a pod on the map. Start with <b>shared-gateway-proxy</b> to see every route into the cluster, or <b>cluster-map</b> to see this page's own identity.</p>`;
     drawWires(null);
     return;
   }
@@ -657,6 +697,35 @@ function renderRanges(data, v) {
     <ul>${items.map(i => `<li>${i}</li>`).join("")}</ul></div>`).join("");
 }
 
+// ---------- gateway ----------
+const routeOk = r => r.accepted && r.status === "Accepted";
+const backendName = (r, b) => b.service.startsWith(r.namespace + "/") ? b.service.split("/")[1] : b.service;
+
+function gatewayTree(data, v, g) {
+  const svc = data.services.find(s => s.id === g.proxy_service);
+  const proxies = g.proxy_pods.map(id => v.podById[id]).filter(Boolean);
+  const c = text => `   <span class="c"># ${esc(text)}</span>`;
+  return [
+    `GatewayClass ${esc(g.class)}${c("names the controller that runs it: Envoy Gateway")}`,
+    `└ Gateway ${esc(g.id)}${c(`${g.programmed ? "Programmed" : "NOT Programmed"} · addresses ${g.addresses.join(", ") || "none"}`)}`,
+    ...g.listeners.map(l => `  ├ listener ${esc(l.name)}: ${esc(l.protocol)} :${l.port}, ${esc(l.hostname)}${c(`routes from ${l.allowed_routes} · ${l.attached_routes} attached`)}`),
+    ...data.routes.filter(r => r.gateways.includes(g.id)).map(r =>
+      `  ├ HTTPRoute ${esc(r.id)}: ${esc(r.hostnames.join(", "))} → ${esc(r.backends.map(b => `${backendName(r, b)}:${b.port}`).join(", "))}${r.filters.length ? ` [${esc(r.filters.join(", "))}]` : ""}${routeOk(r) ? "" : c(r.status)}`),
+    `  └ proxy: ${proxies.length ? `${esc(proxies[0].short)}, ${proxies.length} Envoy pod(s) on ${esc(proxies.map(p => nodeShort(p.node)).join(", "))}` : "no running Envoy pod"}`,
+    `           Service ${esc(svc ? `${svc.name} ${svc.type} ${svc.ports.join(", ")}` : "not found")}`
+  ].join("\n");
+}
+
+function renderGateway(data, v) {
+  $("#gateway-tree").innerHTML = data.gateways.map(g => gatewayTree(data, v, g)).join("\n\n") || "No Gateway in the cluster.";
+  $("#route-rows").innerHTML = data.routes.map(r => `
+    <tr><td>${code(r.name)}</td><td><span class="ns" style="--c:${nsColor(r.namespace)}">${esc(r.namespace)}</span></td>
+    <td>${r.hostnames.map(code).join(" ")}</td><td>${r.backends.map(b => code(`${backendName(r, b)}:${b.port}`)).join(" ")}</td>
+    <td>${r.filters.length ? r.filters.map(code).join(" ") : `<span class="no">none</span>`}</td>
+    <td>${routeOk(r) ? `<span class="yes">Accepted</span>` : `<span class="no">${esc(r.status)}</span>`}</td></tr>`).join("")
+    || `<tr><td colspan="6" class="no">No HTTPRoutes in the cluster.</td></tr>`;
+}
+
 // ---------- journeys ----------
 function journeys(data, v) {
   const ip = p => p ? p.ip : "?";
@@ -664,34 +733,41 @@ function journeys(data, v) {
   const uiSvc = v.svc("stock-ui-service"), apiSvc = v.svc("stock-app-service"), dbSvc = v.svc("timescaledb-service");
   const kubeSvc = v.svc("kubernetes", "default"), dnsSvc = v.svc("kube-dns", "kube-system");
   const target = (svc, fallback) => svc && svc.target_ports.length ? svc.target_ports[0] : fallback;
-  const hop = (from, to) => {
-    const a = v.nodeOf(from), b = v.nodeOf(to);
+  // hop explains how kindnet carries a packet from node a to a pod on node b.
+  const hop = (a, b, source = "the sender's pod IP") => {
     if (!a || !b) return "Routed between nodes by kindnet.";
-    if (a.name === b.name) return `Both pods are on ${nodeShort(a.name)}, so the packet never leaves the node: it crosses the node's bridge.`;
-    return `${code(b.pod_cidr)} belongs to ${nodeShort(b.name)}, so ${nodeShort(a.name)}'s route table sends the packet to ${code(b.ip)}. No tunnel and no NAT: the receiver sees the sender's pod IP as the source.`;
+    if (a.name === b.name) return `Both ends are on ${nodeShort(a.name)}, so the packet never leaves the node: it crosses the node's bridge.`;
+    return `${code(b.pod_cidr)} belongs to ${nodeShort(b.name)}, so ${nodeShort(a.name)}'s route table sends the packet to ${code(b.ip)}. No tunnel and no NAT on the way: the receiver sees ${source} as the source.`;
   };
   const scrapes = data.links.filter(l => l.kind === "scrape");
-  const c = v.controller;
+  const { gateway: g, proxy, proxySvc, entryNode: entry } = v;
+  const proxyNode = v.nodeOf(proxy), nodePort = proxySvc && proxySvc.node_ports.length ? proxySvc.node_ports[0] : "?";
+  const routeTo = (svcName, fallback) => (data.routes.find(r => r.backends.some(b => b.service.endsWith("/" + svcName))) || { name: fallback }).name;
+  const snat = proxyNode && entry && proxyNode.name !== entry.name
+    ? `That pod runs on ${esc(nodeShort(proxyNode.name))}, so kube-proxy also SNATs the packet to this node's IP (<code>externalTrafficPolicy: Cluster</code>), and the reply comes back through here.`
+    : "That pod runs on this node.";
   return [
     { id: "north", tab: "Browser → stock-ui", kind: "north-south",
       summary: "You open http://stock-ui.localhost. These hops take the request from your browser to the stock-ui pod.",
       steps: [
         ["your machine", "<code>*.localhost</code> resolves to <code>127.0.0.1</code> without any DNS setup. The browser connects to port 80 and sends <code>Host: stock-ui.localhost</code>."],
-        ["Docker", `<code>extraPortMappings</code> in <code>platform/kind-cluster.yaml</code> published host port 80 to port 80 of the ${v.ingressNode ? `<b>${esc(nodeShort(v.ingressNode.name))}</b> container (${code(v.ingressNode.ip)})` : "ingress node"}.`],
-        [c ? nodeShort(c.node) : "node", `The ingress-nginx controller pod declares <code>hostPort: 80</code>. The CNI portmap rule DNATs node port 80 to the pod at ${code(ip(c) + ":80")}.`],
-        ["ingress-nginx", "nginx matches <code>Host: stock-ui.localhost</code> against every Ingress with <code>ingressClassName: nginx</code> and finds the rule pointing to <code>stock-ui-service</code>."],
-        ["ingress-nginx", `It does not use the ClusterIP${uiSvc ? ` (${code(uiSvc.cluster_ip)})` : ""}. It reads the Service's EndpointSlice (ready pods only) and connects to ${code(ip(ui) + ":" + target(uiSvc, "8080"))}, the Service's <code>targetPort</code>.`],
-        ["kindnet routes", hop(c, ui)],
+        ["Docker", `<code>extraPortMappings</code> in <code>platform/kind-cluster.yaml</code> publish host port 80 to port ${code(nodePort)} of the ${entry ? `<b>${esc(nodeShort(entry.name))}</b> container (${code(entry.ip)})` : "control-plane container"}.`],
+        [`${esc(entry ? nodeShort(entry.name) : "node")} (iptables)`, `${code(nodePort)} is the nodePort of Service ${code(proxySvc ? proxySvc.name : "?")} (<code>type: NodePort</code>). kube-proxy's <code>KUBE-NODEPORTS</code> rule DNATs the packet to a ready Envoy pod, ${code(ip(proxy) + ":" + target(proxySvc, "10080"))}. ${snat}`],
+        ["kindnet routes", hop(entry, proxyNode, "the node's IP (from the SNAT)")],
+        ["Envoy proxy", `Envoy runs as a non-root user, which can't listen on ports below 1024, so Envoy Gateway turned the Gateway's port 80 into container port ${code(target(proxySvc, "10080"))}. Envoy matches <code>Host: stock-ui.localhost</code> against the hostnames of the HTTPRoutes attached to ${code(g ? g.name : "the Gateway")} and picks ${code(routeTo("stock-ui-service", "stock-ui-route"))}.`],
+        ["Envoy proxy", `It does not use the ClusterIP${uiSvc ? ` (${code(uiSvc.cluster_ip)})` : ""}. Envoy Gateway watches the Service's EndpointSlice (ready pods only) and gave Envoy the pod addresses, so Envoy connects straight to ${code(ip(ui) + ":" + target(uiSvc, "8080"))}, the Service's <code>targetPort</code>.`],
+        ["kindnet routes", hop(proxyNode, v.nodeOf(ui))],
         ["stock-ui pod", "nginx-unprivileged (uid 101) serves <code>index.html</code> and the JS bundle. The response goes back along the same path."]
       ],
-      after: `<div class="callout">The ingress controller's Service is <code>type: LoadBalancer</code> with no external IP. On kind nothing hands out load-balancer IPs, which is why this setup uses a hostPort plus a Docker port mapping instead.</div>` },
+      after: `<div class="callout">Envoy Gateway set this route up in Envoy over xDS before your request arrived. The request itself only passes through Envoy, the kernel's NAT rules and the stock-ui pod.</div>
+<div class="callout">A cloud would give the Gateway's Service <code>type: LoadBalancer</code> and an external IP. kind has no load balancer, so <code>platform/gateway/envoyproxy.yaml</code> sets <code>type: NodePort</code> with a fixed nodePort, and kind publishes that one port from the control-plane container. A NodePort is open on every node, so the Envoy pod can be rescheduled anywhere and every <code>*.localhost</code> URL keeps answering.</div>` },
     { id: "cors", tab: "Chart → stock-app API", kind: "north-south, cross-origin",
       summary: "The stock-ui page needs prices. Who makes that call surprises most people.",
       steps: [
         ["your browser", "The stock-ui JavaScript calls <code>http://stock.localhost/api/v1/…</code> (<code>STOCK_API_URL</code> in <code>stock-ui/src/api/stockApi.js</code>). The browser makes this call, not the stock-ui pod."],
         ["your browser", "The page origin is <code>stock-ui.localhost</code> and the API is <code>stock.localhost</code>, so the request is cross-origin. The browser may send a CORS preflight (<code>OPTIONS</code>) first."],
-        ["ingress-nginx", "The stock-app Ingress has <code>nginx.ingress.kubernetes.io/enable-cors: \"true\"</code>, so nginx answers the preflight and adds <code>Access-Control-Allow-*</code> headers itself. The app has no CORS code."],
-        ["ingress-nginx → pod", `Proxied to stock-app at ${code(ip(api) + ":" + target(apiSvc, "8000"))} on ${esc(api ? nodeShort(api.node) : "?")}, using the same mechanism as the previous trace.`]
+        ["Envoy proxy", `${code(routeTo("stock-app-service", "stock-app-route"))} has a <code>CORS</code> filter, a standard HTTPRoute field since Gateway API v1.5, listing the two frontend origins. Envoy answers the preflight itself and adds <code>Access-Control-Allow-Origin</code> with the caller's origin when it is on the list. Other origins get no CORS headers, so the browser blocks them. The app has no CORS code.`],
+        ["Envoy → pod", `Proxied to stock-app at ${code(ip(api) + ":" + target(apiSvc, "8000"))} on ${esc(api ? nodeShort(api.node) : "?")}, using the same mechanism as the previous trace.`]
       ],
       after: `<div class="callout">traffic-generator works the same way: the browser calls <code>stock.localhost</code>. Its pods only serve static files, which is why they have no outgoing connections on the map.</div>` },
     { id: "east", tab: "stock-app → TimescaleDB", kind: "east-west",
@@ -700,7 +776,7 @@ function journeys(data, v) {
         ["stock-app pod", "The driver connects to <code>STOCK_DB_HOST=timescaledb-service.data</code>, port 5432."],
         ["resolver → CoreDNS", `The name has one dot, fewer than <code>ndots:5</code>, so the search list applies. <code>timescaledb-service.data.apps.svc.cluster.local</code> returns NXDOMAIN, then <code>timescaledb-service.data.svc.cluster.local</code> returns ${code(dbSvc ? dbSvc.cluster_ip : "?")}. The queries go to ${code(dnsSvc ? dnsSvc.cluster_ip : "?")}, which is itself a Service IP.`],
         [`${esc(api ? nodeShort(api.node) : "node")} (iptables)`, `The packet to ${code((dbSvc ? dbSvc.cluster_ip : "?") + ":5432")} leaves the pod. kube-proxy's NAT rules match the ClusterIP and DNAT it to a ready endpoint, ${code(ip(db) + ":5432")}. The packet never reaches a "Service" box.`],
-        ["kindnet routes", hop(api, db)],
+        ["kindnet routes", hop(v.nodeOf(api), v.nodeOf(db))],
         ["timescaledb-0", "Postgres checks the password, which matches because <code>stock-app-secret</code> and <code>timescaledb-secret</code> hold the same value. The reply is un-NATed on the way back, so stock-app sees it come from the ClusterIP."]
       ],
       after: `<p>The kube-proxy rules for <code>timescaledb-service</code> look like this (the hashes differ; see the real ones with the command under "Explore it yourself"):</p>
@@ -711,7 +787,7 @@ function journeys(data, v) {
     { id: "page", tab: "This page → API", kind: "north-south + control plane",
       summary: "Every 5 seconds this page asks for the map. The cluster-map service answers from memory; informers keep that memory current.",
       steps: [
-        ["your browser", `<code>fetch("api/map")</code> goes to cluster-map.localhost, through ingress-nginx, to the cluster-map pod at ${code(ip(map) + ":8080")}.`],
+        ["your browser", `<code>fetch("api/map")</code> goes to cluster-map.localhost, through the Gateway's Envoy proxy, to the cluster-map pod at ${code(ip(map) + ":8080")}.`],
         ["cluster-map pod", "It doesn't call the API for each request. It reads its informer caches: one in-memory copy per object kind (pods, Services, nodes, RBAC, …)."],
         ["informers → API server", "At start-up each informer sends one LIST, then keeps a WATCH open. The API server streams ADDED, MODIFIED and DELETED events, so the cache follows the cluster within about a second. Controllers and operators use the same mechanism."],
         ["authentication", `The client reads the ServiceAccount token from the projected <code>kube-api-access-*</code> volume and sends it as a Bearer token to <code>kubernetes.default.svc</code> (${code(kubeSvc ? kubeSvc.cluster_ip + ":443" : "?")}), trusting the mounted cluster CA.`],
@@ -748,7 +824,7 @@ function renderTables(data, v) {
   $("#svc-rows").innerHTML = v.workloadSvcs.map(s => `
     <tr><td>${code(s.name)}</td><td><span class="ns" style="--c:${nsColor(s.namespace)}">${esc(s.namespace)}</span></td><td>${esc(s.type)}</td>
     <td>${code(s.cluster_ip)}</td><td>${s.ports.map(code).join(" ")}</td><td>${code(s.dns)}</td>
-    <td>${s.ingress_hosts.length ? s.ingress_hosts.map(code).join(" ") : `<span class="no">none</span>`}</td>
+    <td>${s.hostnames.length ? s.hostnames.map(code).join(" ") : `<span class="no">none</span>`}</td>
     <td>${s.pods.length}</td><td>${s.scraped ? `yes (job ${esc(s.job)})` : `<span class="no">no</span>`}</td></tr>`).join("");
   $("#resolv").innerHTML = `search apps.svc.cluster.local svc.cluster.local cluster.local
 nameserver ${esc(dnsSvc ? dnsSvc.cluster_ip : "?")}      <span class="c"># CoreDNS Service (kube-dns)</span>
@@ -789,15 +865,15 @@ options ndots:5            <span class="c"># names with fewer than 5 dots try th
 
 // ---------- weak spots ----------
 function renderFindings(data) {
-  const ing = data.ingress, netpols = data.network_policies;
-  const nodesText = list => esc(list.map(nodeShort).join(", ") || "no node");
+  const netpols = data.network_policies;
+  const broken = data.routes.filter(r => !routeOk(r));
   const findings = [
-    ing.pinned
-      ? ["var(--ns-vault)", "Checked · ingress", "The ingress controller is pinned to the node that owns port 80",
-         `The controller has <code>nodeSelector: ingress-ready=true</code> and runs on ${nodesText(ing.running_on)}.`, ""]
-      : ["var(--warn)", "Fragile · ingress", "The ingress controller isn't pinned to the node that owns port 80",
-         `<code>kind-cluster.yaml</code> maps host port 80 only to ${nodesText(ing.ingress_ready_nodes)} and labels it <code>ingress-ready=true</code>. The controller has no matching nodeSelector. It runs on <b>${nodesText(ing.running_on)}</b> now, but if it gets rescheduled to another node, every <code>*.localhost</code> URL stops answering.`,
-         "Fix: patch the controller with <code>nodeSelector: {ingress-ready: \"true\"}</code> in <code>platform/ingress-nginx/kustomization.yaml</code>."],
+    broken.length
+      ? ["var(--warn)", "Broken · routes", `${broken.length} of ${data.routes.length} HTTPRoutes are not fully working`,
+         broken.map(r => `${code(r.id)}: ${esc(r.status)}`).join("<br>"),
+         "Fix: <code>kubectl describe httproute &lt;name&gt; -n &lt;namespace&gt;</code> shows each condition with its message. <code>NotAllowedByListeners</code> means the namespace lacks the <code>shared-gateway-access</code> label."]
+      : ["var(--ns-vault)", "Checked · routes", `The Gateway accepted all ${data.routes.length} HTTPRoutes`,
+         "Every route's status says <code>Accepted</code> and its backend Services resolve. Envoy Gateway writes these conditions. A route in a namespace without the <code>shared-gateway-access</code> label would show up here with <code>NotAllowedByListeners</code>.", ""],
     netpols.length
       ? ["var(--accent)", "Checked · network", `${netpols.length} NetworkPolicies are applied`, `Policies: ${netpols.map(code).join(", ")}. Check which pods they select with <code>kubectl describe networkpolicy -A</code>.`, ""]
       : ["var(--warn)", "Open · network", "No NetworkPolicies: every pod can reach every pod",
@@ -812,6 +888,9 @@ function renderFindings(data) {
     ["var(--accent)", "Ephemeral · state", "Vault loses everything on a restart",
      "It runs in dev mode with no volume (see Storage). A node restart or an OOM kill quietly resets it.",
      "Exercise: run Vault with file or Raft storage on a PVC."],
+    ["var(--accent)", "Open · TLS", "Everything is plain HTTP",
+     "The Gateway has a single HTTP listener, so Grafana logins and the Vault token cross the network unencrypted.",
+     "Exercise: add an HTTPS listener on port 443 to <code>shared-gateway</code> with a self-signed certificate Secret (<code>tls.certificateRefs</code>), publish its nodePort in <code>kind-cluster.yaml</code>, and send plain HTTP to HTTPS with a <code>RequestRedirect</code> filter."],
     ["var(--accent)", "Single · availability", "One replica of everything",
      "Every app runs a single pod with no PodDisruptionBudget, so draining a node (<code>kubectl drain</code>) causes downtime, and a pod with a local-path volume can't move at all.",
      "Exercise: run 2 replicas of traffic-generator with a PDB (<code>minAvailable: 1</code>) and topology spread across workers, then drain a node and watch the map."]
@@ -825,6 +904,11 @@ const CMDS = [
   ["See every pod with its IP and node", "kubectl get pods -A -o wide"],
   ["Services and the pod IPs behind them", "kubectl get svc -A\nkubectl get endpointslices -n apps"],
   ["Each node's pod range", "kubectl get nodes -o custom-columns=NAME:.metadata.name,CIDR:.spec.podCIDR"],
+  ["List the Gateway API objects and their status", "kubectl get gatewayclass,gateway,httproute -A\nkubectl describe httproute stock-app-route -n apps"],
+  ["Find the Envoy pods and the NodePort Service behind the Gateway", "kubectl get deploy,svc,pods -n envoy-gateway-system -o wide \\\n  -l gateway.networking.k8s.io/gateway-name=shared-gateway"],
+  ["Ask Envoy which pod IPs it sends stock.localhost to (its admin API, from the config Envoy Gateway pushed)", "kubectl port-forward -n envoy-gateway-system deploy/shared-gateway-proxy 19000:19000 &\ncurl -s localhost:19000/clusters | grep stock-app-route | grep hostname"],
+  ["Watch the Gateway reject a route from a namespace without the label", "kubectl create service clusterip demo -n data --tcp=80\nkubectl apply -f - <<'EOF'\napiVersion: gateway.networking.k8s.io/v1\nkind: HTTPRoute\nmetadata: {name: demo, namespace: data}\nspec:\n  parentRefs: [{name: shared-gateway, namespace: envoy-gateway-system}]\n  hostnames: [demo.localhost]\n  rules: [{backendRefs: [{name: demo, port: 80}]}]\nEOF\nkubectl get httproute demo -n data -o jsonpath='{.status.parents[0].conditions[0].reason}'   # NotAllowedByListeners\nkubectl delete httproute,service demo -n data"],
+  ["Read kube-proxy's NodePort rule that sends host port 80 to Envoy", "docker exec sample-cluster-control-plane iptables -t nat -S KUBE-NODEPORTS"],
   ["Run a throwaway debug pod in apps and test DNS and connectivity", "kubectl run netshoot -n apps --rm -it --image=nicolaka/netshoot -- bash\n# inside: nslookup timescaledb-service.data ; curl -s stock-app-service:8000/health ; nc -zv vault-service.vault 8200"],
   ["Read kube-proxy's rules on a node", "docker exec sample-cluster-worker iptables -t nat -S | grep -E 'KUBE-(SVC|SEP)' | head -30"],
   ["Read kindnet's routes between nodes", "docker exec sample-cluster-control-plane ip route"],

@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	gatewayclient "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 
 	"cluster-map/internal/cluster"
 	"cluster-map/internal/server"
@@ -34,11 +35,11 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	client, version, err := connect()
+	clients, version, err := connect()
 	if err != nil {
 		return err
 	}
-	watcher := cluster.NewWatcher(client, cluster.Options{
+	watcher := cluster.NewWatcher(clients, cluster.Options{
 		ClusterName: os.Getenv("CLUSTER_NAME"),
 		Version:     version,
 		References:  parseReferences(os.Getenv("REFERENCES")),
@@ -53,21 +54,25 @@ func run() error {
 	return serve(ctx, srv)
 }
 
-// connect builds an API client and returns it with the server's version.
-func connect() (client kubernetes.Interface, version string, err error) {
+// connect builds the API clients and returns them with the server's version.
+func connect() (clients cluster.Clients, version string, err error) {
 	config, err := restConfig()
 	if err != nil {
-		return nil, "", fmt.Errorf("load kubernetes config: %w", err)
+		return clients, "", fmt.Errorf("load kubernetes config: %w", err)
 	}
-	clientset, err := kubernetes.NewForConfig(config)
+	core, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, "", fmt.Errorf("create client: %w", err)
+		return clients, "", fmt.Errorf("create client: %w", err)
 	}
-	info, err := clientset.Discovery().ServerVersion()
+	gateway, err := gatewayclient.NewForConfig(config)
 	if err != nil {
-		return nil, "", fmt.Errorf("read server version: %w", err)
+		return clients, "", fmt.Errorf("create gateway api client: %w", err)
 	}
-	return clientset, info.GitVersion, nil
+	info, err := core.Discovery().ServerVersion()
+	if err != nil {
+		return clients, "", fmt.Errorf("read server version: %w", err)
+	}
+	return cluster.Clients{Core: core, Gateway: gateway}, info.GitVersion, nil
 }
 
 // serve runs srv until it fails or ctx is cancelled, then shuts it down gracefully.

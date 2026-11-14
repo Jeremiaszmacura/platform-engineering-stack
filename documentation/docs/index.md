@@ -18,7 +18,7 @@ deploy services, collect metrics, build dashboards, keep secrets, run a stateful
 
 ## Run
 
-Needs Docker, kind, kubectl and Python 3.14 (Go 1.26 and Node.js 24 for development).
+Needs Docker, kind v0.33 (Kubernetes 1.37, as in CI), kubectl and Python 3.14 (Go 1.26 and Node.js 24 for development).
 
 ```sh
 ./recreate-cluster.sh                          # (re)create the cluster with everything
@@ -35,4 +35,4 @@ make lint        # linters + repo-wide pre-commit hooks
 make test-e2e    # end-to-end tests against the running cluster
 ```
 
-More in [Testing](testing.md). How it fits together: [Design](design.md).
+More in [Testing](testing.md). How it fits together: [Design](design.md) and [Networking](networking.md).

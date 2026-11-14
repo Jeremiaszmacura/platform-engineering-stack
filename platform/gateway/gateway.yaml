@@ -1,0 +1,25 @@
+# The single entry point for traffic from the host: every http://*.localhost request arrives here.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: shared-gateway
+  namespace: envoy-gateway-system
+spec:
+  gatewayClassName: envoy-gateway
+  infrastructure:
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: shared-gateway
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: "*.localhost"
+      allowedRoutes:
+        namespaces:
+          # Only namespaces labelled in platform/namespaces.yaml may attach HTTPRoutes
+          from: Selector
+          selector:
+            matchLabels:
+              shared-gateway-access: "true"

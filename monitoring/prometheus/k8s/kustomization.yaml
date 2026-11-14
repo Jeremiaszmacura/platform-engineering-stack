@@ -4,7 +4,7 @@ kind: Kustomization
 resources:
   - node-exporter.yaml
   - prometheus-deployment.yaml
-  - prometheus-ingress.yaml
+  - prometheus-route.yaml
   - prometheus-serviceaccount.yaml
 configMapGenerator:
   - name: prometheus-config

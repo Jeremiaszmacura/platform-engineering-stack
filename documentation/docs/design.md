@@ -2,14 +2,14 @@
 
 ## Traffic
 
-Everything from your machine enters through ingress-nginx on host port 80 and is routed by host name
-(`<component>.localhost`) to the component's Service. The frontends call stock-app cross-origin;
-stock-app's Ingress enables CORS. Metrics and traces stay inside the cluster.
+Everything from your machine enters through one Gateway API Gateway on host port 80 and is routed by host name
+(`<component>.localhost`) to the component's Service. The frontends call stock-app cross-origin; stock-app's
+HTTPRoute has a CORS filter. Metrics and traces stay inside the cluster. Step by step: [Networking](networking.md).
 
 ```mermaid
 flowchart LR
-    B[Browser] -->|"*.localhost :80"| IC[ingress-nginx]
-    IC --> SUI[stock-ui] & TG[traffic-generator] & ST[stock-app] & CM[cluster-map] & OTHER["Vault · Prometheus · Grafana · docs"]
+    B[Browser] -->|"*.localhost :80"| GW["Gateway (Envoy)"]
+    GW --> SUI[stock-ui] & TG[traffic-generator] & ST[stock-app] & CM[cluster-map] & OTHER["Vault · Prometheus · Grafana · docs"]
     ST --> TS[(TimescaleDB)]
     ST --> VA[Vault]
     PR[Prometheus] -.scrapes.-> ST & CM
@@ -20,9 +20,12 @@ flowchart LR
 ## Decisions
 
 - **Ownership:** a resource owned by one component lives in `<component>/k8s/`; cluster-wide resources
-  (kind config, ingress controller, namespaces, RBAC) live in `platform/` and are applied first.
-- **Ingress placement:** only the control-plane node maps host port 80, so the ingress controller is pinned there
-  with `nodeSelector: ingress-ready=true` (`platform/ingress-nginx/`). Any replacement controller needs the same pin.
+  (kind config, Gateway API controller and the shared Gateway, namespaces, RBAC) live in `platform/` and are applied
+  first.
+- **Entry point:** Gateway API, implemented by Envoy Gateway (`platform/envoy-gateway/`), replaced the retired
+  ingress-nginx. The platform owns the GatewayClass and the one shared Gateway (`platform/gateway/`); each component
+  owns its HTTPRoute. Only namespaces labelled `shared-gateway-access: "true"` may attach routes. kind maps host port
+  80 to the fixed NodePort 30080 of the Gateway's Envoy Service, so the proxy needs no node pinning.
 - **Namespaces:** `apps` (stock-app, traffic-generator, stock-ui), `monitoring` (+ cluster-map), `vault`, `data`
   (TimescaleDB), `docs`. Every manifest sets its namespace; cross-namespace calls use `<service>.<namespace>`.
 - **Least privilege:** each workload has its own ServiceAccount with no API token. Only Prometheus (service
@@ -46,7 +49,7 @@ flowchart LR
 
 ## Conventions
 
-- Deployment and `app` label = component name; Service `<component>-service`; Ingress `<component>-ingress`.
+- Deployment and `app` label = component name; Service `<component>-service`; HTTPRoute `<component>-route`.
 - Every workload has requests/limits and a readiness probe; own images run as non-root; images are pinned.
 - A config file a container reads (e.g. `prometheus.yml`) is a plain file in `k8s/`; a `kustomization.yaml` turns it
   into a ConfigMap, and `./recreate-cluster.sh` applies such directories with `kubectl apply -k`.

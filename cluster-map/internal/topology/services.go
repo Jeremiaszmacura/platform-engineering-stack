@@ -8,35 +8,10 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 var sdNamespacesPattern = regexp.MustCompile(`names:\s*\[([^\]]*)\]`)
-
-type route struct {
-	host string
-	cors bool
-}
-
-func ingressRoutes(ingresses []*networkingv1.Ingress) map[string][]route {
-	routes := map[string][]route{}
-	for _, ing := range ingresses {
-		cors := ing.Annotations["nginx.ingress.kubernetes.io/enable-cors"] == "true"
-		for _, rule := range ing.Spec.Rules {
-			if rule.HTTP == nil {
-				continue
-			}
-			for _, path := range rule.HTTP.Paths {
-				if path.Backend.Service == nil {
-					continue
-				}
-				id := podID(ing.Namespace, path.Backend.Service.Name)
-				routes[id] = append(routes[id], route{rule.Host, cors})
-			}
-		}
-	}
-	return routes
-}
 
 func selects(selector, labels map[string]string) bool {
 	if len(selector) == 0 {
@@ -50,27 +25,21 @@ func selects(selector, labels map[string]string) bool {
 	return true
 }
 
-func buildServices(services []*corev1.Service, pods []*corev1.Pod, ingresses []*networkingv1.Ingress) []Service {
-	routes := ingressRoutes(ingresses)
+func buildServices(services []*corev1.Service, pods []*corev1.Pod, routes []Route) []Service {
 	out := make([]Service, 0, len(services))
 	for _, s := range services {
-		id := podID(s.Namespace, s.Name)
 		svc := Service{
-			ID:           id,
-			Name:         s.Name,
-			Namespace:    s.Namespace,
-			Type:         string(s.Spec.Type),
-			ClusterIP:    s.Spec.ClusterIP,
-			DNS:          fmt.Sprintf("%s.%s.svc.cluster.local", s.Name, s.Namespace),
-			Scraped:      s.Annotations["prometheus.io/scrape"] == "true",
-			Job:          s.Annotations["prometheus.io/job"],
-			IngressHosts: []string{},
+			ID:        podID(s.Namespace, s.Name),
+			Name:      s.Name,
+			Namespace: s.Namespace,
+			Type:      string(s.Spec.Type),
+			ClusterIP: s.Spec.ClusterIP,
+			DNS:       fmt.Sprintf("%s.%s.svc.cluster.local", s.Name, s.Namespace),
+			Scraped:   s.Annotations["prometheus.io/scrape"] == "true",
+			Job:       s.Annotations["prometheus.io/job"],
 		}
-		svc.Ports, svc.TargetPorts = servicePorts(s)
-		for _, r := range routes[id] {
-			svc.IngressHosts = append(svc.IngressHosts, r.host)
-			svc.CORS = svc.CORS || r.cors
-		}
+		svc.Ports, svc.TargetPorts, svc.NodePorts = servicePorts(s)
+		svc.Hostnames, svc.CORS = routedHostnames(svc.ID, routes)
 		svc.Pods = selectedPods(s, pods)
 		out = append(out, svc)
 	}
@@ -78,17 +47,37 @@ func buildServices(services []*corev1.Service, pods []*corev1.Pod, ingresses []*
 	return out
 }
 
-func servicePorts(s *corev1.Service) (ports, targets []string) {
-	ports, targets = []string{}, []string{}
+// routedHostnames returns the hostnames accepted routes send to a Service, and whether one of them adds CORS.
+func routedHostnames(serviceID string, routes []Route) (hostnames []string, cors bool) {
+	hostnames = []string{}
+	for _, r := range routes {
+		targeted := slices.ContainsFunc(r.Backends, func(b Backend) bool { return b.Service == serviceID })
+		if !r.Accepted || !targeted {
+			continue
+		}
+		hostnames = append(hostnames, r.Hostnames...)
+		cors = cors || slices.Contains(r.Filters, string(gatewayv1.HTTPRouteFilterCORS))
+	}
+	return hostnames, cors
+}
+
+// servicePorts describes each port as "port → targetPort/protocol", plus the ports a NodePort Service opens on nodes.
+func servicePorts(s *corev1.Service) (ports, targets, nodePorts []string) {
+	ports, targets, nodePorts = []string{}, []string{}, []string{}
 	for _, p := range s.Spec.Ports {
 		target := p.TargetPort.String()
 		if p.TargetPort.IntValue() == 0 && p.TargetPort.StrVal == "" {
 			target = fmt.Sprint(p.Port)
 		}
-		ports = append(ports, fmt.Sprintf("%d → %s/%s", p.Port, target, p.Protocol))
+		port := fmt.Sprintf("%d → %s/%s", p.Port, target, p.Protocol)
+		if p.NodePort != 0 {
+			port += fmt.Sprintf(" (nodePort %d)", p.NodePort)
+			nodePorts = append(nodePorts, fmt.Sprint(p.NodePort))
+		}
+		ports = append(ports, port)
 		targets = append(targets, target)
 	}
-	return ports, targets
+	return ports, targets, nodePorts
 }
 
 func selectedPods(s *corev1.Service, pods []*corev1.Pod) []string {
@@ -143,23 +132,6 @@ func serviceLinks(source, value, namespace string, services map[string]Service) 
 	for _, target := range svc.Pods {
 		if target != source {
 			links = append(links, Link{source, target, label, "call"})
-		}
-	}
-	return links
-}
-
-func ingressLinks(pods []Pod, services []Service) []Link {
-	var links []Link
-	for _, c := range pods {
-		if c.Namespace != "ingress-nginx" || c.Owner != "Deployment" || c.Phase != string(corev1.PodRunning) {
-			continue
-		}
-		for _, svc := range services {
-			for _, host := range svc.IngressHosts {
-				for _, target := range svc.Pods {
-					links = append(links, Link{c.ID, target, host, "ingress"})
-				}
-			}
 		}
 	}
 	return links

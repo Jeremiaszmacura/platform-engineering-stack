@@ -10,7 +10,9 @@ import (
 )
 
 // SystemNamespaces hold cluster infrastructure; the page's tables cover every other namespace.
-var SystemNamespaces = []string{"default", "ingress-nginx", "kube-node-lease", "kube-public", "kube-system", "local-path-storage"}
+var SystemNamespaces = []string{
+	"default", "envoy-gateway-system", "kube-node-lease", "kube-public", "kube-system", "local-path-storage",
+}
 
 var clusterCIDRPattern = regexp.MustCompile(`clusterCIDR:\s*"?([^"\s]+)`)
 
@@ -20,25 +22,26 @@ func Build(s Snapshot) Map {
 		return cmp.Compare(podID(a.Namespace, a.Name), podID(b.Namespace, b.Name))
 	})
 	pods, refs := buildPods(s.Pods)
-	services := buildServices(s.Services, s.Pods, s.Ingresses)
+	routes := buildRoutes(s.HTTPRoutes)
 	perms := permissions(s)
-	nodes := buildNodes(s.Nodes, pods)
-	return Map{
+	m := Map{
 		GeneratedAt:      s.TakenAt,
 		Context:          s.ClusterName,
 		Version:          s.Version,
 		SystemNamespaces: SystemNamespaces,
 		Ranges:           Ranges{Pods: clusterCIDR(s.ProxyConfig), Services: serviceRange(pods, s.Pods)},
-		Nodes:            nodes,
+		Nodes:            buildNodes(s.Nodes, pods),
 		Pods:             pods,
-		Services:         services,
+		Services:         buildServices(s.Services, s.Pods, routes),
+		Gateways:         buildGateways(s.Gateways, s.Pods, s.Services),
+		Routes:           routes,
 		ServiceAccounts:  buildServiceAccounts(s.ServiceAccounts, pods, perms),
 		Config:           buildConfigUses(pods, refs),
 		Volumes:          buildVolumes(s.Claims, s.Volumes, s.Pods),
-		Links:            buildLinks(s, pods, services, perms),
 		NetworkPolicies:  policyIDs(s),
-		Ingress:          ingressPlacement(pods, s.Pods, nodes),
 	}
+	m.Links = buildLinks(s, m, perms)
+	return m
 }
 
 func buildPods(raw []*corev1.Pod) (pods []Pod, refs map[string][]configRef) {
@@ -52,16 +55,17 @@ func buildPods(raw []*corev1.Pod) (pods []Pod, refs map[string][]configRef) {
 	return pods, refs
 }
 
-func buildLinks(s Snapshot, pods []Pod, services []Service, perms map[string][]string) []Link {
+// buildLinks finds every connection between pods, from the map built so far and the raw pod specs.
+func buildLinks(s Snapshot, m Map, perms map[string][]string) []Link {
 	byID := map[string]Service{}
-	for _, svc := range services {
+	for _, svc := range m.Services {
 		byID[svc.ID] = svc
 	}
 	return uniqueLinks(slices.Concat(
-		ingressLinks(pods, services),
-		configLinks(s.Pods, pods, s.References, byID),
-		scrapeLinks(pods, services, s.PrometheusConfig),
-		apiLinks(pods, perms),
+		gatewayLinks(m.Gateways, m.Routes, byID),
+		configLinks(s.Pods, m.Pods, s.References, byID),
+		scrapeLinks(m.Pods, m.Services, s.PrometheusConfig),
+		apiLinks(m.Pods, perms),
 	))
 }
 
@@ -121,22 +125,4 @@ func serviceRange(pods []Pod, raw []*corev1.Pod) string {
 		}
 	}
 	return ""
-}
-
-func ingressPlacement(pods []Pod, raw []*corev1.Pod, nodes []Node) IngressPlacement {
-	placement := IngressPlacement{RunningOn: []string{}, IngressReadyNodes: []string{}}
-	for _, n := range nodes {
-		if n.IngressReady {
-			placement.IngressReadyNodes = append(placement.IngressReadyNodes, n.Name)
-		}
-	}
-	pinned := true
-	for i, p := range pods {
-		if p.Namespace == "ingress-nginx" && p.Owner == "Deployment" && p.Phase == string(corev1.PodRunning) {
-			placement.RunningOn = append(placement.RunningOn, p.Node)
-			pinned = pinned && raw[i].Spec.NodeSelector["ingress-ready"] == "true"
-		}
-	}
-	placement.Pinned = pinned && len(placement.RunningOn) > 0
-	return placement
 }

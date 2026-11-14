@@ -22,6 +22,7 @@ jobs:
       - name: Install kind
         uses: helm/kind-action@v1
         with:
+          version: v0.33.0  # each kind release creates nodes of one Kubernetes version (v0.33: 1.37)
           install_only: true
 
       - name: Set up Python
@@ -37,11 +38,11 @@ jobs:
       - name: Run e2e tests
         run: make test-e2e E2E_PYTEST_ARGS='-m "not external"'
 
-      # A restarted controller must come back on the only node that maps host port 80.
-      - name: Restart ingress-nginx and check *.localhost still answers
+      # A restarted proxy may land on any node; host port 80 must still reach it through the NodePort.
+      - name: Restart the gateway proxy and check *.localhost still answers
         run: |
-          kubectl rollout restart deployment/ingress-nginx-controller -n ingress-nginx
-          kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=120s
+          kubectl rollout restart deployment/shared-gateway-proxy -n envoy-gateway-system
+          kubectl rollout status deployment/shared-gateway-proxy -n envoy-gateway-system --timeout=120s
           curl -sf --retry 15 --retry-delay 2 --retry-all-errors -o /dev/null http://stock.localhost/health
 
       - name: Dump cluster state on failure
@@ -50,7 +51,9 @@ jobs:
           kubectl get pods -A -o wide || true
           kubectl get events -A --sort-by=.lastTimestamp | tail -n 50 || true
           kubectl get statefulsets,pvc -n data -o wide || true
-          for ns in apps monitoring vault docs data; do
+          kubectl get gateways,httproutes -A -o wide || true
+          kubectl describe gateway shared-gateway -n envoy-gateway-system || true
+          for ns in envoy-gateway-system apps monitoring vault docs data; do
             for deployment in $(kubectl get deployments -n "$ns" -o name); do
               echo "--- logs: $ns/$deployment ---"
               kubectl logs "$deployment" -n "$ns" --tail=50 || true

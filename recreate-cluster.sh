@@ -34,7 +34,7 @@ COMPONENTS=(
 # Namespaces whose Deployments must become available
 NAMESPACES=(apps monitoring vault docs)
 
-# Ingress URLs printed and checked at the end: <name> <url>
+# URLs (all through the shared Gateway) printed and checked at the end: <name> <url>
 URLS=(
     "Traffic-generator http://traffic-generator.localhost"
     "Stock-UI http://stock-ui.localhost"
@@ -65,9 +65,10 @@ echo "🔄 Recreating kind cluster..."
 kind delete cluster --name "$CLUSTER_NAME" || true
 kind create cluster --config platform/kind-cluster.yaml --name "$CLUSTER_NAME"
 
-# Install the ingress controller early so it starts while images build
-echo "🌐 Installing ingress-nginx controller..."
-kubectl apply -k platform/ingress-nginx
+# Install the Gateway API controller early so it starts while images build.
+# Server-side apply: the bundled Gateway API CRDs are too large for client-side apply.
+echo "🌐 Installing Envoy Gateway (Gateway API controller)..."
+kubectl apply --server-side -k platform/envoy-gateway
 
 # Namespaces and cluster-scoped RBAC must exist before any component applies
 echo "🏗️  Applying platform resources (namespaces, RBAC)..."
@@ -81,9 +82,11 @@ for entry in "${IMAGES[@]}"; do
     kind load docker-image "$image" --name "$CLUSTER_NAME"
 done
 
-# The controller's admission webhook must be up before Ingress resources apply
-echo "⏳ Waiting for ingress-nginx controller..."
-kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=180s
+# The shared Gateway every *.localhost URL enters through; Programmed means its Envoy proxy is running
+echo "🚪 Creating the shared Gateway..."
+kubectl rollout status deployment/envoy-gateway -n envoy-gateway-system --timeout=180s
+kubectl apply -f platform/gateway/
+kubectl wait --for=condition=Programmed gateway/shared-gateway -n envoy-gateway-system --timeout=180s
 
 echo "🚀 Deploying components..."
 for dir in "${COMPONENTS[@]}"; do
@@ -122,7 +125,7 @@ if [ -n "$not_running" ]; then
     done
 fi
 
-echo "⏳ Checking ingress URLs..."
+echo "⏳ Checking *.localhost URLs..."
 for entry in "${URLS[@]}"; do
     read -r name url <<< "$entry"
     wait_for_url "$name" "$url" 60

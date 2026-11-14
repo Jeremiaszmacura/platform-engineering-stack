@@ -5,7 +5,8 @@ Copy an existing component (e.g. `stock-app/` or `cluster-map/`) and then:
 1. **Code:** a `Dockerfile` (pinned base image, non-root). Go needs `go.mod`, Python needs `tox.ini` — the
    Makefile finds them. A Vite frontend goes into `FRONTENDS` in the `Makefile`.
 2. **Kubernetes** (`my-service/k8s/`, namespace `apps`): Deployment `my-service`, Service `my-service-service`,
-   Ingress `my-service-ingress` for `my-service.localhost`, ServiceAccount `my-service` with
+   HTTPRoute `my-service-route` for `my-service.localhost` ([template](networking.md#exposing-a-service)),
+   ServiceAccount `my-service` with
    `automountServiceAccountToken: false`; requests/limits, readiness probe, non-root `securityContext`.
 3. **Cluster script:** add it to `IMAGES`, `COMPONENTS` and `URLS` in `recreate-cluster.sh`.
 4. **Metrics** (if any): annotate the Service with `prometheus.io/scrape: "true"` and `prometheus.io/job`;
