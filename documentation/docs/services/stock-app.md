@@ -23,7 +23,8 @@ Serves daily stock prices (OHLCV bars) at http://stock.localhost/api/v1 — Fast
 - **Tracing:** each request is an OpenTelemetry trace in Tempo, with spans for SQL, Vault and the provider
   ([Monitoring](monitoring.md#tracing)).
 - **Providers** (`STOCK_PROVIDER`): `yahoo` (default, live) or `fixture` (replays
-  `fixtures/market-data.json`, used by CI; re-record with `tox -e record`). No metric is labeled by symbol.
+  `fixtures/market-data.json`, used by CI; re-record with `tox -e record`). No metric label comes straight
+  from a request (symbol, header, method).
 
 ## Run and test
 
