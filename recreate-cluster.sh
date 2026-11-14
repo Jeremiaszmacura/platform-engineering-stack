@@ -67,7 +67,7 @@ kind create cluster --config platform/kind-cluster.yaml --name "$CLUSTER_NAME"
 
 # Install the ingress controller early so it starts while images build
 echo "🌐 Installing ingress-nginx controller..."
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.13.1/deploy/static/provider/kind/deploy.yaml
+kubectl apply -k platform/ingress-nginx
 
 # Namespaces and cluster-scoped RBAC must exist before any component applies
 echo "🏗️  Applying platform resources (namespaces, RBAC)..."

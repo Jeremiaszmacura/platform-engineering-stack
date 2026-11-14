@@ -20,7 +20,9 @@ flowchart LR
 ## Decisions
 
 - **Ownership:** a resource owned by one component lives in `<component>/k8s/`; cluster-wide resources
-  (kind config, namespaces, RBAC) live in `platform/` and are applied first.
+  (kind config, ingress controller, namespaces, RBAC) live in `platform/` and are applied first.
+- **Ingress placement:** only the control-plane node maps host port 80, so the ingress controller is pinned there
+  with `nodeSelector: ingress-ready=true` (`platform/ingress-nginx/`). Any replacement controller needs the same pin.
 - **Namespaces:** `apps` (stock-app, traffic-generator, stock-ui), `monitoring` (+ cluster-map), `vault`, `data`
   (TimescaleDB), `docs`. Every manifest sets its namespace; cross-namespace calls use `<service>.<namespace>`.
 - **Least privilege:** each workload has its own ServiceAccount with no API token. Only Prometheus (service
