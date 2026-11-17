@@ -66,11 +66,14 @@ make test-e2e E2E_PYTEST_ARGS='-k stock'            # scope with -k</pre></div>
   <div class="table-wrap"><table>
     <thead><tr><th>Change</th><th>Run</th></tr></thead>
     <tbody>
-      <tr><td>Go or Python code</td><td><code>make lint test-unit</code> (Claude Code's hooks run them when Go or Python files change)</td></tr>
+      <tr><td>Go or Python code</td><td><code>make lint test-unit</code></td></tr>
       <tr><td><code>stock-app/openapi.yaml</code></td><td><code>cd stock-app &amp;&amp; tox -e api</code>, then <code>make lint test-unit</code></td></tr>
       <tr><td>A frontend, or this site</td><td><code>make build-frontend test-unit-frontend</code>, and for the site <code>cd documentation &amp;&amp; go test ./...</code></td></tr>
       <tr><td>Manifests, <code>recreate-cluster.sh</code>, monitoring, Vault</td><td><code>./recreate-cluster.sh &amp;&amp; make test-e2e</code></td></tr>
     </tbody></table></div>
+  <p>Claude Code runs this table for you: when it stops, <code>.claude/hooks/stop-checks.sh</code> runs the
+    rows that match the files it edited and sends it back to fix any failure. For cluster files it asks Claude
+    to run the end-to-end tests instead, since they need a fresh cluster.</p>
 </section>
 
 <section class="chapter" id="ci">
