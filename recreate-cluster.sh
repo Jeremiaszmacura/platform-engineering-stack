@@ -4,7 +4,7 @@ set -euo pipefail
 
 CLUSTER_NAME=sample-cluster
 
-# `yahoo` calls the live API; `fixture` replays recorded prices (used by CI).
+# `yahoo` calls the live API; `synthetic` generates prices without a network (used by CI).
 STOCK_PROVIDER="${STOCK_PROVIDER:-yahoo}"
 
 # <image> <build context>

@@ -15,7 +15,7 @@ from src.adapters.inbound.http.routes import router
 from src.adapters.inbound.http.spec import load_contract, serve_contract
 from src.adapters.persistence.engine import create_database_engine
 from src.adapters.persistence.repository import TimescalePriceBarRepository
-from src.adapters.providers.fixture import PROVIDER_NAME as FIXTURE, FixtureMarketDataProvider
+from src.adapters.providers.synthetic import PROVIDER_NAME as SYNTHETIC, SyntheticMarketDataProvider
 from src.adapters.providers.traced import TracedMarketDataProvider
 from src.adapters.providers.yahoo import PROVIDER_NAME as YAHOO, YahooMarketDataProvider
 from src.adapters.secrets.vault import VaultSecretStore
@@ -33,8 +33,8 @@ def build_provider(name: str) -> MarketDataProvider:
     """Return the provider named by STOCK_PROVIDER; raise ValueError for an unknown name."""
     if name == YAHOO:
         return YahooMarketDataProvider()
-    if name == FIXTURE:
-        return FixtureMarketDataProvider()
+    if name == SYNTHETIC:
+        return SyntheticMarketDataProvider()
     raise ValueError(f"unknown market data provider: {name!r}")
 
 

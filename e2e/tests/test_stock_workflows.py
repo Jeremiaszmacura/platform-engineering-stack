@@ -1,6 +1,6 @@
 """stock-app's cache-aside behaviour: what reaches the provider, what is cached, and the metrics.
 
-Tests marked external call Yahoo Finance; CI skips them.
+They hold for any provider: Yahoo Finance by default, generated prices in CI (STOCK_PROVIDER=synthetic).
 """
 
 from dataclasses import dataclass
@@ -91,7 +91,6 @@ def test_no_metric_is_labeled_by_symbol():
     assert "symbol=" not in fetch_metrics()
 
 
-@pytest.mark.external
 def test_cold_request_comes_from_the_provider(cold_then_cached):
     """The first request for a symbol fills the store from the provider."""
     cold, _ = cold_then_cached
@@ -101,7 +100,6 @@ def test_cold_request_comes_from_the_provider(cold_then_cached):
     assert cold["count"] > 0
 
 
-@pytest.mark.external
 def test_repeat_request_is_served_from_cache(cold_then_cached):
     """An immediate repeat is served from the store with identical bars."""
     cold, cached = cold_then_cached
@@ -109,10 +107,9 @@ def test_repeat_request_is_served_from_cache(cold_then_cached):
     assert cached["bars"] == cold["bars"]
 
 
-@pytest.mark.external
 def test_cached_request_makes_no_provider_call(cold_then_cached, unsynced_period):
     """The cached path must not increment the provider call counter."""
-    labels = {"provider": "yahoo", "outcome": "success"}
+    labels = {"outcome": "success"}
     before = read_counter(fetch_metrics(), "stock_provider_requests_total", labels)
 
     response = requests.get(bars_url(SYMBOL), params=unsynced_period.params, timeout=PROVIDER_TIMEOUT_SECONDS)
@@ -121,7 +118,6 @@ def test_cached_request_makes_no_provider_call(cold_then_cached, unsynced_period
     assert read_counter(fetch_metrics(), "stock_provider_requests_total", labels) == before
 
 
-@pytest.mark.external
 def test_cache_hits_are_counted(cold_then_cached, unsynced_period):
     """A cached request increments the cache hit counter."""
     labels = {"outcome": "hit"}
@@ -132,7 +128,6 @@ def test_cache_hits_are_counted(cold_then_cached, unsynced_period):
     assert read_counter(fetch_metrics(), "stock_cache_lookups_total", labels) > before
 
 
-@pytest.mark.external
 def test_bars_are_ordered_and_internally_consistent(cold_then_cached):
     """Every returned bar satisfies the OHLC invariants and dates ascend."""
     cold, _ = cold_then_cached
@@ -146,14 +141,12 @@ def test_bars_are_ordered_and_internally_consistent(cold_then_cached):
         assert bar["adjClose"] is not None
 
 
-@pytest.mark.external
 def test_calendar_window_holds_fewer_bars_than_days(cold_then_cached):
     """Markets close on weekends, so a 30 day window cannot hold 30 sessions."""
     cold, _ = cold_then_cached
     assert cold["count"] < PERIOD_DAYS
 
 
-@pytest.mark.external
 def test_summary_agrees_with_the_bars_it_summarizes(cold_then_cached, unsynced_period):
     """The Timescale aggregates match the bars returned for the same period."""
     cold, _ = cold_then_cached
@@ -170,7 +163,6 @@ def test_summary_agrees_with_the_bars_it_summarizes(cold_then_cached, unsynced_p
     assert summary["periodLow"] == pytest.approx(min(bar["low"] for bar in bars))
 
 
-@pytest.mark.external
 def test_fetched_symbol_appears_in_the_instrument_list(cold_then_cached, unsynced_period):
     """The fetched symbol is listed with a synced window covering at least the request."""
     ledger = fetch_ledger(SYMBOL)
@@ -178,4 +170,3 @@ def test_fetched_symbol_appears_in_the_instrument_list(cold_then_cached, unsynce
     assert ledger is not None
     assert date.fromisoformat(ledger["firstSyncedDate"]) <= unsynced_period.start
     assert date.fromisoformat(ledger["lastSyncedDate"]) >= unsynced_period.end
-    assert ledger["source"] == "yahoo"

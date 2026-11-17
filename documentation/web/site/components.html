@@ -41,8 +41,9 @@
       drift. The running service publishes it at <a href="http://stock.localhost/openapi.yaml">/openapi.yaml</a>, with
       Swagger UI at <a href="http://stock.localhost/docs">/docs</a>, and the e2e tests validate every response against it.</p></div>
     <div class="card"><h3>Providers</h3><p><code>STOCK_PROVIDER=yahoo</code> (the default) calls Yahoo Finance;
-      <code>fixture</code> replays <code>fixtures/market-data.json</code>, which CI uses because Yahoo rate-limits its
-      runners. Re-record with <code>tox -e record</code>. How the cache decides what to fetch:
+      <code>synthetic</code> generates prices for AAPL, MSFT, NVDA, AMZN and GOOGL without a network, which CI uses
+      because Yahoo rate-limits its runners. Each symbol's prices are a random walk seeded by the symbol, so a date always
+      gets the same bar and nothing expires; they are not real prices. How the cache decides what to fetch:
       <a href="state.html#cache-aside">State &amp; storage</a>.</p></div>
   </div>
   <figure class="figure"><div class="scroll-x" id="hexagon"></div>

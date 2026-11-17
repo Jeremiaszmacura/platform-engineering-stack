@@ -38,7 +38,7 @@ graph(document.getElementById("hexagon")).render({
     layer("ports", 272, 180, "ports", "typing.Protocol, no imports out"),
     layer("domain", 518, 124, "models, errors", "pure Python, no I/O"),
     layer("repo", 764, 48, "TimescaleDB repository", "adapters/persistence"),
-    layer("provider", 764, 124, "Yahoo · fixture provider", "adapters/providers, traced"),
+    layer("provider", 764, 124, "Yahoo · synthetic", "adapters/providers, traced"),
     layer("vault", 764, 200, "Vault secret store", "adapters/secrets · hvac"),
   ],
   // Arrows are imports. Outbound adapters satisfy the ports structurally (Protocols), so they never import them.

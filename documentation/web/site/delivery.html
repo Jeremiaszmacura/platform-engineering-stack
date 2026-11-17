@@ -60,10 +60,10 @@
     Vault secrets (also after Vault restarts), CORS for both frontends, every stock-app endpoint validated against its
     published <code>/openapi.yaml</code>, the cache-aside flow, the Prometheus and Grafana pipeline, and request traces in
     Tempo.
-    stock-app calls Yahoo Finance by default; to test without it, deploy with <code>STOCK_PROVIDER=fixture</code> and skip
-    the tests marked <code>external</code>:</p>
-  <div class="cmd"><pre>make test-e2e E2E_PYTEST_ARGS='-m "not external"'   # what CI runs
-make test-e2e E2E_PYTEST_ARGS='-k stock'            # scope with -k</pre></div>
+    The suite passes with either stock-app provider: Yahoo Finance by default, generated prices in CI
+    (<code>STOCK_PROVIDER=synthetic</code>).</p>
+  <div class="cmd"><pre>make test-e2e                              # what CI runs
+make test-e2e E2E_PYTEST_ARGS='-k stock'   # scope with -k</pre></div>
   <h3>What to run after a change</h3>
   <div class="table-wrap"><table>
     <thead><tr><th>Change</th><th>Run</th></tr></thead>
@@ -83,7 +83,7 @@ make test-e2e E2E_PYTEST_ARGS='-k stock'            # scope with -k</pre></div>
     <span class="eyebrow">CI</span>
     <h2>What runs on every pull request</h2>
     <p>Four GitHub Actions workflows run on every pull request and on <code>main</code>. The e2e job builds a real kind
-      cluster with recorded prices, runs the suite, then restarts the Gateway's Envoy proxy and checks that
+      cluster with generated prices, runs the suite, then restarts the Gateway's Envoy proxy and checks that
       <code>*.localhost</code> still answers, wherever the new pod lands. Pushes to <code>main</code> that touch this site
       publish it to GitHub Pages, where it shows a recorded snapshot.</p>
   </div>

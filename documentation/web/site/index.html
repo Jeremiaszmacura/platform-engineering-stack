@@ -83,8 +83,8 @@
   <div class="try">
     <div><p>Delete and recreate the cluster with every component. Safe to re-run.</p>
       <div class="cmd"><pre>./recreate-cluster.sh</pre></div></div>
-    <div><p>The same, but stock-app replays recorded prices instead of calling Yahoo Finance: works offline, and it is what CI runs.</p>
-      <div class="cmd"><pre>STOCK_PROVIDER=fixture ./recreate-cluster.sh</pre></div></div>
+    <div><p>The same, but stock-app generates its prices instead of calling Yahoo Finance: works offline, and it is what CI runs.</p>
+      <div class="cmd"><pre>STOCK_PROVIDER=synthetic ./recreate-cluster.sh</pre></div></div>
   </div>
   <p class="prose">It builds the four local images, deploys everything and waits until every <code>*.localhost</code> URL
     answers; <a href="delivery.html#pipeline">Build &amp; ship</a> shows each step. <code>*.localhost</code> resolves to

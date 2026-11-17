@@ -75,7 +75,7 @@ sequence(document.getElementById("cache-seq"), {
     { id: "b", label: "Your browser", sub: "stock-ui chart", color: nsColor("outside") },
     { id: "s", label: "stock-app", sub: "PriceHistoryService", color: nsColor("apps") },
     { id: "d", label: "TimescaleDB", sub: "instruments + price_bars", color: nsColor("data") },
-    { id: "y", label: "Yahoo Finance", sub: "or recorded fixtures", color: nsColor("outside") },
+    { id: "y", label: "Yahoo Finance", sub: "or synthetic prices", color: nsColor("outside") },
   ],
   steps: [
     { from: "b", to: "s", label: "GET /api/v1/instruments/MSFT/bars?start=…&end=…" },

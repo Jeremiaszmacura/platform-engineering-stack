@@ -10,5 +10,4 @@ k8s
 pyproject.toml
 requirements-dev.txt
 tests
-tools
 tox.ini

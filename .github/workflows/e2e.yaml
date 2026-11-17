@@ -30,13 +30,12 @@ jobs:
         with:
           python-version: '3.14'
 
-      # Yahoo rate-limits CI runners, so stock-app replays its recorded prices.
+      # Yahoo rate-limits CI runners, so stock-app generates its prices.
       - name: Create cluster and deploy all components
-        run: STOCK_PROVIDER=fixture ./recreate-cluster.sh
+        run: STOCK_PROVIDER=synthetic ./recreate-cluster.sh
 
-      # `external` tests need live Yahoo data.
       - name: Run e2e tests
-        run: make test-e2e E2E_PYTEST_ARGS='-m "not external"'
+        run: make test-e2e
 
       # A restarted proxy may land on any node; host port 80 must still reach it through the NodePort.
       - name: Restart the gateway proxy and check *.localhost still answers
