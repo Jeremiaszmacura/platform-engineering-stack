@@ -31,7 +31,7 @@ COMPONENTS=(
     documentation/k8s
 )
 
-# Namespaces whose Deployments must become available
+# Namespaces whose Deployments, StatefulSets and DaemonSets must finish rolling out
 NAMESPACES=(apps monitoring vault docs)
 
 # URLs (all through the shared Gateway) printed and checked at the end: <name> <url>
@@ -46,18 +46,39 @@ URLS=(
     "Documentation http://docs.localhost"
 )
 
-# Poll url every 2s until curl -f succeeds; warn (never fail) after timeout seconds.
+# Poll url every 2s until curl -f succeeds; return 1 after timeout seconds.
 wait_for_url() {
     local name=$1 url=$2 timeout=$3
     until curl -sf -o /dev/null "$url"; do
         if [ "$timeout" -le 0 ]; then
-            echo "⚠️  ${name} not reachable at ${url} (check: kubectl get pods -A)"
-            return 0
+            return 1
         fi
         sleep 2
         timeout=$((timeout - 2))
     done
     echo "✅ ${name}: ${url}"
+}
+
+# Print the names of pods in namespace $1 with an unready container, except completed Job pods.
+unready_pods() {
+    kubectl get pods -n "$1" --no-headers \
+        | awk '{ split($2, ready, "/"); if (ready[1] != ready[2] && $3 != "Completed") print $1 }'
+}
+
+# Print message $1, then recent events and unready pod logs of each namespace in $2..., and exit 1.
+fail() {
+    local message=$1 ns pod
+    shift
+    echo "❌ ${message}"
+    for ns in "$@"; do
+        echo "--- events: ${ns} ---"
+        kubectl get events -n "$ns" --sort-by=.lastTimestamp | tail -n 20 || true
+        for pod in $(unready_pods "$ns"); do
+            echo "--- logs: ${ns}/${pod} ---"
+            kubectl logs "$pod" -n "$ns" --all-containers --tail=30 || true
+        done
+    done
+    exit 1
 }
 
 echo "🔄 Recreating kind cluster..."
@@ -107,28 +128,23 @@ done
 echo "📈 stock-app market data provider: ${STOCK_PROVIDER}"
 kubectl set env deployment/stock-app -n apps "STOCK_PROVIDER=${STOCK_PROVIDER}"
 
-echo "⏳ Waiting for deployments and the Vault setup job..."
+# Rollout status waits for every new pod to be ready, so a crashing new pod fails
+# even while an old pod still serves (the Available condition would stay true).
+echo "⏳ Waiting for rollouts and the Vault setup job..."
 for ns in "${NAMESPACES[@]}"; do
-    kubectl wait --for=condition=available --timeout=300s deployment --all -n "$ns" \
-        || echo "⚠️  Some deployments in ${ns} were not ready within 300s"
+    for workload in $(kubectl get deployments,statefulsets,daemonsets -n "$ns" -o name); do
+        kubectl rollout status "$workload" -n "$ns" --timeout=300s \
+            || fail "${workload} in ${ns} did not finish rolling out within 300s" "$ns"
+    done
 done
 kubectl wait --for=condition=complete --timeout=60s job/vault-configure -n vault \
-    || echo "⚠️  vault-configure job did not complete within 60s"
-
-# Completed Job pods are "Succeeded", which is expected
-not_running=$(kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded \
-    -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}{"\n"}{end}')
-if [ -n "$not_running" ]; then
-    echo "⚠️  Pods not running:"
-    for pod in $not_running; do
-        kubectl describe pod "${pod##*/}" -n "${pod%%/*}" | grep -A 10 "Events:" || true
-    done
-fi
+    || fail "vault-configure job did not complete within 60s" vault
 
 echo "⏳ Checking *.localhost URLs..."
 for entry in "${URLS[@]}"; do
     read -r name url <<< "$entry"
-    wait_for_url "$name" "$url" 60
+    wait_for_url "$name" "$url" 60 \
+        || fail "${name} not reachable at ${url} within 60s" "${NAMESPACES[@]}"
 done
 
 echo "✅ Cluster ready. Grafana login: admin/admin, Vault token: root"
