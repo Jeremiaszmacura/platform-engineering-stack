@@ -57,8 +57,9 @@
       token and the database password are declared in both namespaces that need them. Vault (dev mode) holds the apps'
       secrets, one path per service (<code>services/&lt;service&gt;/</code>).</li>
     <li><b>Stateful data.</b> TimescaleDB uses a PVC; it is empty after every <code>./recreate-cluster.sh</code>, which is fine
-      because stock-app refills it from the provider. Grafana's dashboards and datasources are files in ConfigMaps that it
-      loads on every start; its database (logins, preferences) is on an <code>emptyDir</code>.</li>
+      because stock-app refills it from the provider. Setup that a restart can wipe runs on every start, never once in a
+      Job: Grafana loads its dashboards and datasources from ConfigMaps, and Vault (dev mode, in memory) enables its KV
+      mounts in a <code>postStart</code> hook. Grafana's database (logins, preferences) is on an <code>emptyDir</code>.</li>
     <li><b>API contract.</b> stock-app's <code>openapi.yaml</code> is the source of truth; its models are generated from it.</li>
     <li><b>Documentation.</b> This site is the only documentation: the root <code>README.md</code> just points here. One Go
       service, <code>documentation/</code>, serves the pages and their live data: the cluster map from the Kubernetes API

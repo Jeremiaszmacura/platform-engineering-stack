@@ -1180,40 +1180,6 @@
         "host_access": [],
         "limits": true
       }
-    },
-    {
-      "id": "vault/vault-configure-q56zz",
-      "name": "vault-configure-q56zz",
-      "namespace": "vault",
-      "app": "vault-configure",
-      "ip": "10.244.2.5",
-      "node": "sample-cluster-worker2",
-      "host_network": false,
-      "phase": "Succeeded",
-      "ready": false,
-      "restarts": 0,
-      "owner": "Job",
-      "images": [
-        "hashicorp/vault:1.20.4"
-      ],
-      "service_account": "vault-configure",
-      "token_mounted": false,
-      "secrets": [
-        "vault-dev-token/token → VAULT_TOKEN"
-      ],
-      "config_maps": [],
-      "volumes": [],
-      "probes": [],
-      "hardening": {
-        "non_root": false,
-        "read_only_root": false,
-        "no_privilege_escalation": false,
-        "drops_all_capabilities": false,
-        "added_capabilities": [],
-        "seccomp": false,
-        "host_access": [],
-        "limits": false
-      }
     }
   ],
   "services": [
@@ -1905,16 +1871,6 @@
       ],
       "token_mounted": false,
       "permissions": []
-    },
-    {
-      "name": "vault-configure",
-      "namespace": "vault",
-      "automount": "false",
-      "used_by": [
-        "vault-configure-q56zz"
-      ],
-      "token_mounted": false,
-      "permissions": []
     }
   ],
   "config": [
@@ -2049,8 +2005,7 @@
         "token"
       ],
       "used_by": [
-        "vault-6c864bf7bf-jhh9w",
-        "vault-configure-q56zz"
+        "vault-6c864bf7bf-jhh9w"
       ]
     }
   ],
@@ -2136,12 +2091,6 @@
       "source": "docs/documentation-cb855b4f5-wjfn2",
       "target": "monitoring/prometheus-79cdd9d885-cw8vd",
       "label": "prometheus-service.monitoring:9090",
-      "kind": "call"
-    },
-    {
-      "source": "vault/vault-configure-q56zz",
-      "target": "vault/vault-6c864bf7bf-jhh9w",
-      "label": "vault-service.vault:8200",
       "kind": "call"
     },
     {

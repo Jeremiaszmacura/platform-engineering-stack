@@ -127,15 +127,13 @@ kubectl set env deployment/stock-app -n apps "STOCK_PROVIDER=${STOCK_PROVIDER}"
 
 # Rollout status waits for every new pod to be ready, so a crashing new pod fails
 # even while an old pod still serves (the Available condition would stay true).
-echo "⏳ Waiting for rollouts and the Vault setup job..."
+echo "⏳ Waiting for rollouts..."
 for ns in "${NAMESPACES[@]}"; do
     for workload in $(kubectl get deployments,statefulsets,daemonsets -n "$ns" -o name); do
         kubectl rollout status "$workload" -n "$ns" --timeout=300s \
             || fail "${workload} in ${ns} did not finish rolling out within 300s" "$ns"
     done
 done
-kubectl wait --for=condition=complete --timeout=60s job/vault-configure -n vault \
-    || fail "vault-configure job did not complete within 60s" vault
 
 echo "⏳ Checking *.localhost URLs..."
 for entry in "${URLS[@]}"; do

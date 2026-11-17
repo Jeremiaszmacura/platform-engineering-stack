@@ -1,4 +1,4 @@
-"""Service catalog and helpers for the e2e suite (everything is reached through the Gateway on *.localhost)."""
+"""Service catalog and helpers for the e2e suite (services are reached through the Gateway on *.localhost)."""
 
 import time
 
@@ -18,6 +18,9 @@ VAULT_URL = "http://vault.localhost"
 
 GRAFANA_CREDENTIALS = ("admin", "admin")
 VAULT_TOKEN = "root"  # nosec B105 - dev-mode root token
+
+# The cluster ./recreate-cluster.sh creates; tests that restart pods never use the current context.
+KUBE_CONTEXT = "kind-sample-cluster"
 
 
 STOCK_APP_URL = "http://stock.localhost"

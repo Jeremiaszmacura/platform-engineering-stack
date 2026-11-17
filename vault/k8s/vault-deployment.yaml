@@ -40,6 +40,33 @@ spec:
             httpGet: {path: /v1/sys/health, port: 8200}
             initialDelaySeconds: 3
             periodSeconds: 5
+          # Dev mode starts empty, so every container start (new pod, crash, OOM kill) enables the KV v2 mounts again.
+          # The container counts as running, and can become ready, only after this exits; a failure restarts it.
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    set -e
+                    # Hook output isn't logged; send it to the container's log
+                    exec >/proc/1/fd/1 2>&1
+                    export VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN="$VAULT_DEV_ROOT_TOKEN_ID"
+                    # The server starts alongside this hook
+                    waited=0
+                    until vault status >/dev/null 2>&1; do
+                      if [ "$waited" -ge 60 ]; then echo "postStart: Vault did not answer within 60s"; exit 1; fi
+                      sleep 2
+                      waited=$((waited + 2))
+                    done
+                    for mount in services infra; do
+                      if vault secrets list | grep -q "^${mount}/"; then
+                        echo "postStart: KV mount ${mount}/ already enabled"
+                      else
+                        vault secrets enable -path="${mount}" kv-v2
+                      fi
+                    done
 ---
 apiVersion: v1
 kind: Service

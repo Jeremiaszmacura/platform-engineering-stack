@@ -100,12 +100,13 @@ npm ci &amp;&amp; npm run dev    # or npm run build, into dist/</pre></div>
 <section class="chapter" id="vault" style="--c:var(--ns-vault)">
   <div class="head"><span class="eyebrow">vault · secrets</span><h2>Vault</h2>
     <p>HashiCorp Vault in <b>dev mode</b> at <a href="http://vault.localhost">vault.localhost</a>, token <code>root</code>:
-      in memory and auto-unsealed, a playground only. The <code>vault-configure</code> Job enables the KV v2 mounts
-      <code>services/</code> (one path per service, ready for per-service policies) and <code>infra/</code> (reserved).
-      Prometheus scrapes <code>/v1/sys/metrics</code>. How it's used and how it should be:
-      <a href="security.html#vault">Identity &amp; secrets</a>.</p></div>
+      in memory and auto-unsealed, a playground only. Every restart (a new pod, a crash, an OOM kill) empties it, mounts
+      included, so a <a href="workloads.html#startup"><code>postStart</code> hook</a> enables the KV v2 mounts
+      <code>services/</code> (one path per service, ready for per-service policies) and <code>infra/</code> (reserved) on
+      every start, before the pod turns ready. The secrets themselves are gone
+      (<a href="state.html#survival">what survives what</a>). Prometheus scrapes <code>/v1/sys/metrics</code>. How it's used
+      and how it should be: <a href="security.html#vault">Identity &amp; secrets</a>.</p></div>
   <dl class="spec" data-app="vault"></dl>
-  <dl class="spec" data-app="vault-configure"></dl>
 </section>
 
 <section class="chapter" id="prometheus" style="--c:var(--ns-monitoring)">

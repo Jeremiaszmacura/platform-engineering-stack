@@ -9,7 +9,7 @@ from requests.exceptions import RequestException
 
 from src.domain.errors import SecretNotFoundError, SecretStoreError
 
-# KV v2 mount created by the vault-configure Job.
+# KV v2 mount that Vault's postStart hook enables on every start.
 MOUNT_POINT = "services"
 
 

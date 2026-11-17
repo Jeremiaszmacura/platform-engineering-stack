@@ -17,11 +17,7 @@ export const APPS = {
   },
   vault: {
     purpose: "Secret store, in dev mode",
-    note: "In memory and auto-unsealed. Clients sign in with the root token, not with their Kubernetes identity. A restart loses every secret.",
-  },
-  "vault-configure": {
-    purpose: "One-shot Job: enables Vault's KV mounts",
-    note: "Enables the services/ and infra/ KV v2 mounts, idempotently. recreate-cluster.sh waits for it to complete.",
+    note: "In memory and auto-unsealed. Clients sign in with the root token, not with their Kubernetes identity. A restart loses every secret; a postStart hook enables the services/ and infra/ KV mounts again before the pod is ready.",
   },
   prometheus: {
     purpose: "Finds and scrapes metrics",
@@ -74,7 +70,7 @@ export const APPS = {
 };
 
 // Apps documented in another app's section of the Components page.
-const SECTION_OF = { "vault-configure": "vault", envoy: "platform", "gateway-helm": "platform", certgen: "platform" };
+const SECTION_OF = { envoy: "platform", "gateway-helm": "platform", certgen: "platform" };
 
 /** The link to an app's section on the Components page; kube-system internals have none, so null. */
 export const componentHref = (app, namespace = "") =>
