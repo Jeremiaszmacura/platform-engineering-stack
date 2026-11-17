@@ -24,7 +24,7 @@ def test_backend_allows_traffic_generator_origin():
 
 
 def test_backend_answers_cors_preflight():
-    """OPTIONS preflight from the traffic-generator origin is accepted by stock-app's ingress."""
+    """OPTIONS preflight from the traffic-generator origin is accepted by stock-app's HTTPRoute."""
     response = requests.options(
         f"{STOCK_APP_URL}/health",
         headers={"Origin": TRAFFIC_GENERATOR_URL, "Access-Control-Request-Method": "GET"},

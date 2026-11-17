@@ -5,9 +5,11 @@ stock-app's request traces and passes them to Tempo, and Grafana (http://grafana
 both. All of them run in namespace `monitoring`.
 
 - **Scraping:** Services annotated `prometheus.io/scrape: "true"` + `prometheus.io/job: <name>` in namespaces
-  `apps` and `monitoring` are discovered automatically, one target per pod (jobs: `stock-app`,
-  `cluster-map`, `node-exporter`, plus `self`). Each series names where it came from: `namespace`, `pod`,
-  `service` and `node` labels (the names trace spans carry as `k8s.namespace.name`, `k8s.pod.name`, …).
+  `apps`, `monitoring`, `vault` and `data` are discovered automatically, one target per pod (jobs: `stock-app`,
+  `cluster-map`, `node-exporter`, `otel-collector`, `tempo`, `grafana`, `vault`, `timescaledb`, plus `self`).
+  `prometheus.io/port` picks the metrics port of a multi-port Service, `prometheus.io/path` replaces `/metrics`.
+  Each series names where it came from: `namespace`, `pod`, `service` and `node` labels (the names trace spans
+  carry as `k8s.namespace.name`, `k8s.pod.name`, …).
 - **App metrics:** stock-app exposes `http_requests_total`, `http_request_duration_seconds`,
   `http_responses_by_status_total` (probes and scrapes excluded; those go to `monitoring_requests_total` by
   `endpoint` and `status_code`); stock-app adds `stock_*` metrics for its provider calls and cache hits.
@@ -41,7 +43,7 @@ traces, and tables of recent, slow and failed requests), or **Explore → Tempo*
   `k8s.namespace.name`, `k8s.pod.name`, `k8s.deployment.name`, `k8s.node.name`) → `otlp_http` exporter to Tempo.
   `k8s_attributes` reads pods through a Role limited to namespace `apps` (`platform/rbac/otel-collector.yaml`).
 - **Tempo** (`monitoring/tempo/`) runs as a single binary with local storage on an `emptyDir`, so traces are lost
-  when the pod restarts. It has no Ingress: Grafana is its UI. Search finds a new trace after about 30 s; opening
+  when the pod restarts. It has no HTTPRoute: Grafana is its UI. Search finds a new trace after about 30 s; opening
   it by id works at once.
 - **Metrics → traces:** the latency histogram carries the request's `trace_id` as an exemplar (Prometheus runs with
   `--enable-feature=exemplar-storage`). On the *p95 Latency* panel each dot opens its trace.

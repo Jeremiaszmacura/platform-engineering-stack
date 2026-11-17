@@ -79,6 +79,9 @@ metadata:
   namespace: monitoring
   labels:
     app: grafana
+  annotations:
+    prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
+    prometheus.io/job: grafana
 spec:
   type: ClusterIP
   selector:

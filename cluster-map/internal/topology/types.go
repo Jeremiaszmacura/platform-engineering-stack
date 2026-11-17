@@ -107,6 +107,8 @@ type Service struct {
 	DNS         string   `json:"dns"`
 	Scraped     bool     `json:"scraped"`
 	Job         string   `json:"job"`
+	MetricsPort string   `json:"metrics_port"`
+	MetricsPath string   `json:"metrics_path"`
 	Hostnames   []string `json:"hostnames"`
 	CORS        bool     `json:"cors"`
 	Pods        []string `json:"pods"`

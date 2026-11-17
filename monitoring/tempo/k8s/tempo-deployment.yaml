@@ -54,7 +54,6 @@ spec:
         - name: data
           emptyDir: {}
 ---
-# Not annotated for Prometheus: the scrape config would also scrape the OTLP port.
 apiVersion: v1
 kind: Service
 metadata:
@@ -62,6 +61,10 @@ metadata:
   namespace: monitoring
   labels:
     app: tempo
+  annotations:
+    prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
+    prometheus.io/job: tempo
+    prometheus.io/port: "3200"  # Not the OTLP port
 spec:
   type: ClusterIP
   selector:

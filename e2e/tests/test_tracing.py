@@ -1,6 +1,6 @@
 """End-to-end tests of request tracing: stock-app -> OpenTelemetry Collector -> Tempo -> Grafana, and exemplars.
 
-Each test sends its own W3C traceparent, so it knows the trace id to look up. Tempo has no Ingress; it is
+Each test sends its own W3C traceparent, so it knows the trace id to look up. Tempo has no HTTPRoute; it is
 queried through Grafana's datasource proxy, which also proves the datasource is wired.
 """
 

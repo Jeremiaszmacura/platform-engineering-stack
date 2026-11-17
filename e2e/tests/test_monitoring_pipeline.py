@@ -14,7 +14,17 @@ from cluster import (
     wait_until,
 )
 
-EXPECTED_PROMETHEUS_JOBS = {"self", "node-exporter", "stock-app", "cluster-map"}
+EXPECTED_PROMETHEUS_JOBS = {
+    "self",
+    "node-exporter",
+    "stock-app",
+    "cluster-map",
+    "otel-collector",
+    "tempo",
+    "grafana",
+    "vault",
+    "timescaledb",
+}
 EXPECTED_DASHBOARD_TITLES = {
     "Infrastructure Overview",
     "Stock App Metrics",
