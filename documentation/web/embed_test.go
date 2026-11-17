@@ -48,8 +48,6 @@ func TestEveryPageHasTheSharedFrame(t *testing.T) {
 	}
 }
 
-// TestLinksBetweenPagesResolve: every relative link must reach a file,
-// and every #fragment an element id on the target page.
 func TestLinksBetweenPagesResolve(t *testing.T) {
 	site, err := Site()
 	if err != nil {

@@ -1,5 +1,3 @@
-// Workloads: controller kinds, probes, start-up, config rollouts, images and single-replica components.
-
 import "../site.js";
 import { code, esc, fill, nsColor, nsTag, rows } from "../util.js";
 import { onMap } from "../live.js";

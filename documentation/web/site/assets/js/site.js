@@ -1,5 +1,4 @@
-// The frame every page shares: top bar, navigation, live status, theme, page contents, pager and copy buttons.
-// Every page imports this module; the navigation below is the only list of pages.
+// PAGES below is the only list of pages: documentation/web/embed_test.go checks it against the files.
 
 import { $, $$, esc } from "./util.js";
 import { live, onMap, onStatus } from "./live.js";
@@ -68,7 +67,6 @@ function sidebar() {
     ${g.items.map((p) => `<a href="${p.href}"${p.href === page ? ' aria-current="page"' : ""}>${esc(p.title)}<small>${esc(p.note)}</small></a>`).join("")}</div>`).join("")}
     <div class="hosts" id="hosts"><span class="eyebrow">Open in the cluster</span></div></nav>`;
   // The hostnames the Gateway accepted right now, so the list never offers a route that isn't there.
-  // They open in a new tab, so the reader keeps their place in the docs.
   onMap((map) => {
     const hosts = map.routes.filter((r) => r.accepted).flatMap((r) => r.hostnames).sort();
     $("#hosts").innerHTML = `<span class="eyebrow">Open in the cluster</span>${hosts.map((h) => `<a href="http://${esc(h)}" target="_blank" rel="noopener">${esc(h)}</a>`).join("")}`;

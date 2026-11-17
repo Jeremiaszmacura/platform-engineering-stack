@@ -1,5 +1,4 @@
-// Live data: the cluster map from /api/map, and PromQL through this site's Prometheus proxy.
-// Without the API (GitHub Pages, or the service is down) the pages render assets/snapshot.json instead.
+// Without the API (e.g. on GitHub Pages) the pages render assets/snapshot.json instead.
 
 const POLL_MS = 5000;
 const TIMEOUT_MS = 8000;
@@ -90,7 +89,6 @@ function start() {
   loop();
 }
 
-// ---------- Prometheus ----------
 
 /** Whether live queries can work: only with the live API behind this page. */
 export const canQuery = () => live.source === "live" || live.source === "stale";

@@ -1,5 +1,3 @@
-// Cluster map: nodes as columns, pods as chips, wires to whoever a pod talks to, and an inspector.
-
 import "../site.js";
 import { $, $$, esc, fill, nsColor, rows } from "../util.js";
 import { onMap } from "../live.js";

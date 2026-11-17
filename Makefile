@@ -9,7 +9,6 @@ E2E_PYTEST_ARGS ?=
 
 # Frontends built with Vite (npm ci + npm run build)
 FRONTENDS := traffic-generator stock-ui
-# The documentation site's JavaScript has no build step; Node's own test runner tests it
 DOCS_JS_TESTS := documentation/web/test
 
 .PHONY: help all build build-go build-frontend test test-unit test-unit-go test-unit-python test-unit-frontend test-e2e tidy tidy-go lint lint-go lint-python

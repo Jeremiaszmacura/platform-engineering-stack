@@ -1,5 +1,3 @@
-// Components: a live spec sheet per component, and stock-app's hexagonal layout.
-
 import "../site.js";
 import { $$, esc, nsColor } from "../util.js";
 import { onMap, watchQueries } from "../live.js";

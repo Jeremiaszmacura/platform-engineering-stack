@@ -1,5 +1,3 @@
-// A component's live facts as definition-list rows: pods, Service, DNS, route, identity, config, metrics, links.
-
 import { appLinks, nodeShort, podsOf, servicesOf } from "./model.js";
 import { code, esc } from "./util.js";
 

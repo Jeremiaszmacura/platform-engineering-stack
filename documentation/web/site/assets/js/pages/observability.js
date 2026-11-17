@@ -1,5 +1,3 @@
-// Observability: live stock-app tiles, scrape targets, the scrape and trace pipelines, a waterfall and correlation.
-
 import "../site.js";
 import { code, esc, fill, nsColor, nsTag, num, rows } from "../util.js";
 import { canQuery, onStatus, promLink, queryRange, watchQueries } from "../live.js";

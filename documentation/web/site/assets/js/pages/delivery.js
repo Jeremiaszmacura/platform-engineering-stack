@@ -1,5 +1,3 @@
-// Build and ship: recreate-cluster.sh as a pipeline checked against the live cluster, and the CI workflows.
-
 import "../site.js";
 import { esc, fill, nsColor } from "../util.js";
 import { onMap } from "../live.js";

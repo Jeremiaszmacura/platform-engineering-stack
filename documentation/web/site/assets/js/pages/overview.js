@@ -1,5 +1,3 @@
-// Overview: the live architecture diagram, the cluster's vital signs and the component catalog.
-
 import "../site.js";
 import { $, esc, fill, nsColor, num, plural } from "../util.js";
 import { onMap, watchQueries } from "../live.js";

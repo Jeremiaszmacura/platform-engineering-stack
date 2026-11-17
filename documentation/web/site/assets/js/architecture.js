@@ -1,6 +1,3 @@
-// The overview diagram: every component in its namespace, the connections the map found between them, and live
-// traffic from Prometheus. Positions are fixed by hand; components the layout doesn't know are listed below it.
-
 import { appLinks, health, podsOf } from "./model.js";
 import { num, nsColor } from "./util.js";
 

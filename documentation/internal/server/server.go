@@ -34,7 +34,6 @@ func New(source mapSource, site fs.FS, prometheus *url.URL) http.Handler {
 	mux.Handle("GET /metrics", promhttp.Handler())
 	mux.HandleFunc("GET /health", health(source))
 	mux.HandleFunc("GET /api/map", clusterMap(source))
-	// Read-only: the two query endpoints, nothing that changes Prometheus or reveals its config.
 	queries := http.StripPrefix("/api/prometheus", prometheusProxy(prometheus))
 	mux.Handle("GET /api/prometheus/api/v1/query", queries)
 	mux.Handle("GET /api/prometheus/api/v1/query_range", queries)

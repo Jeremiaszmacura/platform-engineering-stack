@@ -1,5 +1,3 @@
-// Identity and secrets: the RBAC graph, ServiceAccounts, Secrets and ConfigMaps, Vault, pod hardening, NetworkPolicy.
-
 import "../site.js";
 import { code, esc, fill, mark, nsColor, nsTag, rows } from "../util.js";
 import { onMap } from "../live.js";

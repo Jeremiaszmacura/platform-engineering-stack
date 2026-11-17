@@ -20,7 +20,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 65532  # distroless "nonroot"
         seccompProfile:
-          type: RuntimeDefault  # The only pod here that passes the Pod Security Standards' restricted profile
+          type: RuntimeDefault
       containers:
         - name: documentation
           image: documentation:dev  # built locally and loaded into kind
@@ -33,9 +33,8 @@ spec:
             # Service addresses that live in config files, not in env vars, so the map can't see them otherwise
             - name: REFERENCES
               value: grafana=http://prometheus-service:9090,grafana=http://tempo-service:3200,otel-collector=http://tempo-service:4318
-            # The page's live traffic numbers: read-only PromQL, forwarded from the browser
             - name: PROMETHEUS_URL
-              value: http://prometheus-service.monitoring:9090  # Cross-namespace: Prometheus runs in monitoring
+              value: http://prometheus-service.monitoring:9090
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

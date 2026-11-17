@@ -1,12 +1,8 @@
-// SVG diagrams drawn from plain data, coloured by CSS variables so both themes work:
-// graph() boxes and arrows with live traffic, sequence() message diagrams, journey() a packet moving hop by hop.
-
 import { esc } from "./util.js";
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const fit = (text, chars) => (String(text).length > chars ? String(text).slice(0, Math.max(1, chars - 1)) + "…" : String(text));
 
-// ---------- geometry ----------
 
 // Point on side s ("l", "r", "t", "b") of box n at fraction t, with the side's outward normal.
 function anchor(n, s, t) {
@@ -93,7 +89,6 @@ export function flowSeconds(rate) {
   return clamp(2.4 / Math.sqrt(rate), 0.35, 5);
 }
 
-// ---------- boxes and arrows ----------
 
 function groupSvg(g) {
   return `<g class="grp" style="--c:${g.color}"><rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="12"/>
@@ -180,7 +175,6 @@ export function graph(container, onSelect = () => {}) {
   };
 }
 
-// ---------- sequence diagrams ----------
 
 /**
  * A sequence diagram: actors [{id,label,sub,color}] side by side, steps [{from,to,label,note,dashed}] top to bottom.
@@ -226,7 +220,6 @@ export function sequence(container, { actors, steps, width = 880, label }) {
     ${head.join("")}${msgs.join("")}</svg>`;
 }
 
-// ---------- step-through journeys ----------
 
 function journeySvg(hops, at) {
   const width = 920;

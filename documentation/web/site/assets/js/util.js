@@ -1,5 +1,3 @@
-// Small DOM and formatting helpers shared by every page.
-
 export const $ = (selector, root = document) => root.querySelector(selector);
 export const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 

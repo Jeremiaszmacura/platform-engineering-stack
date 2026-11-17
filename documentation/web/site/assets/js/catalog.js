@@ -1,5 +1,3 @@
-// What each app (pod "app" label) is, in one line, plus a note for the inspectors. Facts about it come live from the map.
-
 export const APPS = {
   "stock-app": {
     purpose: "The real backend: daily stock prices, cached in TimescaleDB",

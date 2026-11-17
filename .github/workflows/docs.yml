@@ -1,7 +1,5 @@
 name: deploy-documentation
 
-# The site has no build step: its pages are published as they are. Without a cluster behind it,
-# the live sections render documentation/web/site/assets/snapshot.json, a recorded copy of /api/map.
 on:
   push:
     branches:

@@ -1,5 +1,3 @@
-// Networking: address ranges, the two request journeys, the Gateway API tree, CORS, kube-proxy and DNS.
-
 import "../site.js";
 import { code, esc, fill, nsColor, nsTag, rows } from "../util.js";
 import { onMap } from "../live.js";

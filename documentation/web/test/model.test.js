@@ -1,5 +1,3 @@
-// Unit tests for the site's pure model functions; run with `node --test documentation/web/test/`.
-
 import assert from "node:assert/strict";
 import { test } from "node:test";
 

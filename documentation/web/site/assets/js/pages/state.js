@@ -1,5 +1,3 @@
-// State and storage: the PVC chain, stock-app's cache-aside, its synced window and the pods' scratch volumes.
-
 import "../site.js";
 import { code, esc, fill, nsColor, nsTag, num, rows } from "../util.js";
 import { onMap, watchQueries } from "../live.js";
