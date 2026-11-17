@@ -20,6 +20,11 @@ spec:
         name: shared-gateway-proxy
         type: NodePort
         externalTrafficPolicy: Cluster  # Local would drop traffic reaching a node without a proxy pod
+        annotations:
+          prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
+          prometheus.io/job: shared-gateway
+          prometheus.io/port: "19001"  # Envoy's metrics port on the pod; the Service only exposes 80
+          prometheus.io/path: /stats/prometheus
         patch:
           type: StrategicMerge
           value:

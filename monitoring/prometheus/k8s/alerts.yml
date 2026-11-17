@@ -1,0 +1,25 @@
+# Alert rules, loaded by rule_files in prometheus.yml. Firing alerts show at prometheus.localhost/alerts;
+# no Alertmanager runs, so nothing sends them on.
+groups:
+  - name: monitoring
+    rules:
+      # A Service scaled to zero has no target at all, so this can't see it; SpansQueued covers Tempo.
+      - alert: TargetDown
+        expr: up == 0
+        for: 1m
+        annotations:
+          summary: "Prometheus can't scrape {{ $labels.job }} on {{ $labels.pod }}."
+      # While Tempo is unreachable the exporter retries each batch for about 5 minutes, and the queue (which counts
+      # the batches being retried too) never empties. A busy but healthy Collector empties it within milliseconds.
+      - alert: SpansQueued
+        expr: sum by (exporter) (min_over_time(otelcol_exporter_queue_size[1m])) > 0
+        annotations:
+          summary: "The Collector can't send spans to {{ $labels.exporter }}; they wait in its queue."
+      # Retries gave up: these spans are lost. The counter only appears with the first drop, which increase() can't
+      # see, so a counter that didn't exist 5 minutes ago fires too.
+      - alert: SpansDropped
+        expr: >-
+          sum by (exporter) (increase(otelcol_exporter_send_failed_spans[5m])) > 0
+          or sum by (exporter) (otelcol_exporter_send_failed_spans unless otelcol_exporter_send_failed_spans offset 5m)
+        annotations:
+          summary: "The Collector dropped spans it couldn't send to {{ $labels.exporter }}."

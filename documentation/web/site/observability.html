@@ -74,6 +74,19 @@
   <div class="table-wrap"><table>
     <thead><tr><th>Job</th><th>Namespace</th><th>Pod</th><th>Node</th><th>Target</th><th>Up</th></tr></thead>
     <tbody id="target-rows"></tbody></table></div>
+  <p class="prose" id="alerts">Prometheus also evaluates the alert rules in <code>monitoring/prometheus/k8s/alerts.yml</code>
+    and lists them at <a href="http://prometheus.localhost/alerts">prometheus.localhost/alerts</a>. No Alertmanager runs, so
+    a firing alert notifies no one.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Alert</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr><td><code>TargetDown</code></td><td>a target's scrape has failed for 1 minute (<code>up == 0</code>). A Service
+        scaled to zero has no target, so this alert can't see it</td></tr>
+      <tr><td><code>SpansQueued</code></td><td>the Collector's queue for Tempo hasn't emptied for a whole minute: Tempo is
+        unreachable and the exporter is retrying</td></tr>
+      <tr><td><code>SpansDropped</code></td><td>the Collector gave up retrying (after about 5 minutes) and dropped spans;
+        those traces are lost</td></tr>
+    </tbody></table></div>
 </section>
 
 <section class="chapter" id="app-metrics">
@@ -107,9 +120,10 @@
     <a class="comp" href="http://grafana.localhost/d/stock-app" style="--c:var(--ns-monitoring)"><b>Stock App Metrics</b>
       <p>Availability and latency SLIs, request rate, p95, 4XX and 5XX rates, health checks and the cache-aside pipeline.</p></a>
     <a class="comp" href="http://grafana.localhost/d/tracing" style="--c:var(--ns-monitoring)"><b>Tracing</b>
-      <p>Rate and duration per route measured from traces, and tables of recent, slow and failed requests.</p></a>
+      <p>Rate and duration per route measured from traces, tables of recent, slow and failed requests, and whether the
+        Collector delivers spans to Tempo.</p></a>
     <a class="comp" href="http://grafana.localhost/d/infrastructure" style="--c:var(--ns-monitoring)"><b>Infrastructure Overview</b>
-      <p>CPU and memory per node, from node-exporter.</p></a>
+      <p>CPU and memory per node, from node-exporter, and how many scrape targets are down.</p></a>
   </div>
   <p class="prose">Provisioned dashboards are read-only in the UI: change one there, <i>Export → Export as JSON</i>, save it
     over the file and apply it. Logins and preferences live in Grafana's SQLite database on an <code>emptyDir</code>, so a
@@ -198,15 +212,11 @@ curl -s localhost:8000/metrics | grep -E '^(http_requests_total|stock_cache_look
 <section class="chapter" id="practice">
   <div class="head"><span class="eyebrow">Weak spots</span><h2>What to fix next</h2></div>
   <div class="findings">
-    <div class="finding"><span class="sev">Blind · edge</span><h3>The Gateway's Envoy is not scraped</h3>
-      <p>Every request enters through Envoy, yet nothing measures it: no rate, error or latency per route at the edge.</p>
-      <p class="fix">Exercise: add <code>prometheus.io/*</code> annotations for port 19001 and path <code>/stats/prometheus</code>
-        through the <code>EnvoyProxy</code>'s <code>envoyService</code>, add <code>envoy-gateway-system</code> to the scrape
-        namespaces, and graph <code>envoy_cluster_upstream_rq</code> per route.</p></div>
     <div class="finding"><span class="sev">Silent · alerts</span><h3>Nothing pages anyone</h3>
-      <p>Dashboards show the SLIs, but no rule fires when availability drops or a target goes down.</p>
-      <p class="fix">Exercise: add <code>rule_files</code> with an alert on <code>up == 0</code> and on the availability SLI
-        burning too fast, and run Alertmanager.</p></div>
+      <p><a href="#alerts">Alerts</a> fire only on Prometheus' own page, and none watches the SLIs: availability can drop
+        without a single alert.</p>
+      <p class="fix">Exercise: run Alertmanager and point <code>alerting</code> in <code>prometheus.yml</code> at it, then add
+        an alert on the availability SLI burning its error budget too fast.</p></div>
     <div class="finding"><span class="sev">Ephemeral · history</span><h3>Metrics and traces die with their pods</h3>
       <p>Prometheus keeps its database in the container's filesystem and Tempo on an <code>emptyDir</code>.</p>
       <p class="fix">Exercise: give Prometheus a PVC and a retention size, and think about what it costs.</p></div>
