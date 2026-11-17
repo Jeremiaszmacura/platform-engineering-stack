@@ -25,6 +25,8 @@ spec:
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
             - "--enable-feature=exemplar-storage"  # Keeps the trace ids attached to latency samples
+            # Its ConfigMap keeps a fixed name, so a change starts no rollout: re-read the file every 30s instead
+            - "--config.auto-reload"
           ports:
             - containerPort: 9090
           securityContext:

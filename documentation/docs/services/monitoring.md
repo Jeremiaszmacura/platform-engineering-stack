@@ -15,9 +15,13 @@ both. All of them run in namespace `monitoring`.
 - **Dashboards and datasources** are code in `monitoring/grafana/k8s/`: `dashboards/*.json` (fixed `uid`, queries
   filtered by `job`) and `datasources.yaml`. `kustomization.yaml` turns them into ConfigMaps that Grafana loads on
   every start, so a restarted pod gets them back. Provisioned dashboards are read-only in the UI: copy the JSON
-  (*Export → Export as JSON*) into the file and re-run `./recreate-cluster.sh`.
+  (*Export → Export as JSON*) into the file and apply it (see *Config changes*).
 - **Grafana storage:** its SQLite database (logins, preferences) is on an `emptyDir`, so it survives a container
   restart but not a new pod. Memory limit 1Gi: Grafana 13 idles at about 330Mi.
+- **Config changes:** `kubectl apply -k monitoring/<tool>/k8s` applies an edited config file. Grafana, Tempo and
+  the Collector get a new pod, because their ConfigMap names carry a hash of the content (Grafana logs you out,
+  Tempo loses its traces). Prometheus keeps running and reloads `prometheus.yml` within about two minutes; it skips
+  a broken file (`prometheus_config_last_reload_successful` drops to 0), which then fails its next start.
 
 ## Tracing
 
