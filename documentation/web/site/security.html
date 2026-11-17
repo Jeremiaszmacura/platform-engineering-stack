@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Identity &amp; secrets · Platform Engineering Stack</title>
+<meta name="description" content="ServiceAccounts, RBAC, Secrets, ConfigMaps, Vault, Pod Security Standards and NetworkPolicy in the running cluster.">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script>try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<script type="module" src="assets/js/pages/security.js"></script>
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<div class="frame">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content">
+<article class="page">
+
+<header class="page-head">
+  <span class="eyebrow">Learn · identity and secrets</span>
+  <h1>Who may do what, and with which secret</h1>
+  <p class="lede">Every pod runs as an identity, reads configuration and maybe a secret, and can reach other pods. Least
+    privilege means each of those is as small as the job allows. This chapter shows how small they are here, live, and
+    where they are not.</p>
+  <div class="facts" id="facts"></div>
+  <nav class="toc" id="toc" aria-label="On this page"></nav>
+</header>
+
+<section class="chapter" id="api-access">
+  <div class="head">
+    <span class="eyebrow">ServiceAccounts and RBAC</span>
+    <h2>Who may talk to the Kubernetes API</h2>
+    <p>A ServiceAccount is a pod's identity towards the API, the way your kubeconfig is yours. RBAC decides what it may do.
+      Every workload here has its own ServiceAccount with <code>automountServiceAccountToken: false</code>, so it gets no
+      token at all. Only the identities on the left of this diagram mount one, each for a reason.</p>
+  </div>
+  <figure class="figure">
+    <div class="scroll-x" id="rbac"></div>
+    <figcaption>ServiceAccount → the Role or ClusterRole it is bound to → what that allows, from the live RBAC objects.
+      Hover a grant for the full rules.</figcaption>
+  </figure>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ServiceAccount</th><th>Namespace</th><th>Used by</th><th>automount</th><th>Token</th><th>Permissions</th></tr></thead>
+    <tbody id="sa-rows"></tbody></table></div>
+  <div class="grid-2">
+    <div class="card"><h3>Two ways to switch the token off</h3><p>Set <code>automountServiceAccountToken: false</code> on the
+      ServiceAccount (this repo's default, so every pod using it starts without a token), or on the pod spec, which wins.
+      Without either, even a pod with no RBAC permissions carries a token an attacker could use to explore the API.</p></div>
+    <div class="card"><h3>Least privilege, by design</h3><p>The OpenTelemetry Collector gets a <b>Role</b> in <code>apps</code>,
+      not a ClusterRole: it can't see any other namespace. This site's two extra Roles use <code>resourceNames</code>, so
+      each allows reading exactly one ConfigMap. And nobody here may read Secrets.</p></div>
+  </div>
+</section>
+
+<section class="chapter" id="this-site">
+  <div class="head">
+    <span class="eyebrow">An API client</span>
+    <h2>How this site reads the cluster</h2>
+    <p>Every diagram on this site comes from the <code>documentation</code> service. It doesn't call the API for each page
+      view: client-go <b>informers</b> list each kind of object once, then keep a watch open, so an in-memory copy follows
+      the cluster within about a second. Controllers and operators use the same mechanism.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="informer-seq"></div>
+    <figcaption>Polling the API every 5 seconds would cost a dozen LIST calls per open tab. Watching costs one long-lived
+      connection per kind of object, however many tabs are open.</figcaption></figure>
+  <pre><span class="c"># documentation/k8s/documentation-serviceaccount.yaml: token mounted on purpose</span>
+ServiceAccount  docs/documentation
+<span class="c"># platform/rbac/documentation.yaml</span>
+ClusterRole     documentation  get/list/watch  nodes, pods, services, serviceaccounts, PVCs, PVs,
+                                               networkpolicies, gateways, httproutes, roles, bindings   <span class="c"># no secrets</span>
+Role            kube-system/documentation-kube-proxy   get configmaps "kube-proxy"          <span class="c"># the pod range</span>
+Role            monitoring/documentation-prometheus    get configmaps "prometheus-config"   <span class="c"># the scrape namespaces</span></pre>
+  <p class="callout"><b>Least privilege shaped this service.</b> The Secrets table below comes from pod specs:
+    <code>secretKeyRef</code> names the Secret and the key, so the site never needs to read a Secret. Granting
+    <code>list secrets</code> would hand every secret value in the cluster to a pod that serves a public web page.</p>
+</section>
+
+<section class="chapter" id="secrets">
+  <div class="head">
+    <span class="eyebrow">Configuration</span>
+    <h2>Secrets and ConfigMaps</h2>
+    <p>A pod can only reference Secrets in its own namespace, which is why the same value appears twice: once for the
+      server and once for its client (the database password in <code>data</code> and in <code>apps</code>). Only key names
+      are shown here, never values.</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Object</th><th>Namespace</th><th>Keys used</th><th>Consumed by</th><th>How</th></tr></thead>
+    <tbody id="config-rows"></tbody></table></div>
+  <div class="grid-2">
+    <p class="callout warn">These Secrets are written with <code>stringData</code> in plain text and committed to Git. Fine for
+      a laptop cluster, never anywhere else: Secrets are only base64-encoded, and etcd stores them unencrypted unless
+      encryption at rest is on. Real clusters use the External Secrets Operator, Sealed Secrets or the Vault Agent / CSI
+      driver.</p>
+    <p class="callout">An environment variable filled from a Secret is read once, when the container starts: a changed
+      Secret needs a restart. A mounted ConfigMap does update in the pod, but most programs read config only at start,
+      so Kustomize puts a hash of the content in the ConfigMap's name and a change rolls out new pods
+      (<a href="workloads.html#config">Workloads</a>).</p>
+  </div>
+</section>
+
+<section class="chapter" id="vault">
+  <div class="head">
+    <span class="eyebrow">Vault</span>
+    <h2>Secrets outside Kubernetes</h2>
+    <p>HashiCorp Vault in dev mode holds the apps' own secrets. The <code>vault-configure</code> Job enables two KV v2
+      mounts: <code>services/</code>, one path per service, and <code>infra/</code>, reserved. stock-app reads and writes
+      under <code>services/stock-app/</code> through <code>POST /secret</code> and <code>GET /secret/{key}</code>.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="vault-seq"></div>
+    <figcaption>Today: one root token, from the Kubernetes Secret <code>vault-dev-token</code>, opens every path.</figcaption></figure>
+  <figure class="figure"><div class="scroll-x" id="vault-k8s-seq"></div>
+    <figcaption>The production pattern: Vault's Kubernetes auth method trusts the pod's ServiceAccount token and returns a
+      short-lived token that can only read that service's path. No secret is stored in Kubernetes at all.</figcaption></figure>
+  <div class="try">
+    <div><p>Write a secret through stock-app, then read it back.</p>
+      <div class="cmd"><pre>curl -X POST http://stock.localhost/secret -H 'Content-Type: application/json' -d '{"key":"demo","value":"x"}'
+curl http://stock.localhost/secret/demo</pre></div></div>
+  </div>
+</section>
+
+<section class="chapter" id="hardening">
+  <div class="head">
+    <span class="eyebrow">Pod security</span>
+    <h2>How locked down each pod is</h2>
+    <p>The Pod Security Standards define three levels: <b>privileged</b> (anything goes), <b>baseline</b> (no host
+      namespaces, no privileged containers, no dangerous capabilities) and <b>restricted</b> (non-root, no privilege
+      escalation, all capabilities dropped, a seccomp profile). Kubernetes enforces them per namespace with a label. This
+      scorecard checks every workload pod against restricted, plus two habits this repo cares about: a read-only root
+      filesystem and resource limits.</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Pod</th><th>Namespace</th><th>Non-root</th><th>No escalation</th><th>Drops ALL</th><th>Seccomp</th><th>Host access</th><th>Read-only root</th><th>Limits</th><th>Restricted</th></tr></thead>
+    <tbody id="hardening-rows"></tbody></table></div>
+  <p class="prose">Most failures are one missing line: <code>seccompProfile: {type: RuntimeDefault}</code> on the pod. The
+    others are real trade-offs: TimescaleDB's image starts as root and drops to <code>postgres</code> itself; Vault adds
+    <code>IPC_LOCK</code>; node-exporter needs the host's network and process table to report on the node.</p>
+</section>
+
+<section class="chapter" id="network-policy">
+  <div class="head">
+    <span class="eyebrow">Network isolation</span>
+    <h2>Who may connect to whom</h2>
+    <p>Without a NetworkPolicy every pod can open a connection to every other pod: stock-ui could reach TimescaleDB on 5432,
+      and only the password stands in the way. kindnet enforces NetworkPolicy, so you can practise here.</p>
+  </div>
+  <div class="findings"><div class="finding" id="netpol-check"></div>
+  <div class="card"><h3>Exercise: lock down the database</h3><p>Deny all ingress in <code>data</code>, then allow only stock-app
+    from <code>apps</code> on 5432. Remember Prometheus scrapes the exporter on 9187, so allow that too, or the
+    <code>timescaledb</code> target goes down.</p></div></div>
+  <pre><span class="c"># Example, not applied. Two selectors in one list item mean AND.</span>
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: timescaledb-ingress, namespace: data}
+spec:
+  podSelector: {matchLabels: {app: timescaledb}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: apps}}
+          podSelector: {matchLabels: {app: stock-app}}
+      ports: [{port: 5432, protocol: TCP}]
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+          podSelector: {matchLabels: {app: prometheus}}
+      ports: [{port: 9187, protocol: TCP}]</pre>
+</section>
+
+<section class="chapter" id="try">
+  <div class="head"><span class="eyebrow">Hands on</span><h2>Try it</h2></div>
+  <div class="try">
+    <div><p>Ask the API what an identity may do: this site may watch pods, may not read Secrets; stock-app may do nothing.</p>
+      <div class="cmd"><pre>kubectl auth can-i watch pods  --as=system:serviceaccount:docs:documentation -A   # yes
+kubectl auth can-i get secrets --as=system:serviceaccount:docs:documentation -A   # no
+kubectl auth can-i list pods   --as=system:serviceaccount:apps:stock-app -n apps  # no
+kubectl auth can-i --list      --as=system:serviceaccount:monitoring:prometheus</pre></div></div>
+    <div><p>Confirm a ServiceAccount hands out no token, and that the pod has no token volume.</p>
+      <div class="cmd"><pre>kubectl get sa stock-app -n apps -o yaml
+kubectl get pod -n apps -l app=stock-app -o jsonpath='{.items[0].spec.volumes[*].name}'</pre></div></div>
+    <div><p>Ask the API server which pods the restricted profile would reject, without enforcing anything (a server-side dry run prints warnings).</p>
+      <div class="cmd"><pre>kubectl label --dry-run=server --overwrite ns apps data vault monitoring docs pod-security.kubernetes.io/enforce=restricted</pre></div></div>
+  </div>
+</section>
+
+<section class="chapter" id="practice">
+  <div class="head"><span class="eyebrow">Weak spots</span><h2>What to fix next</h2>
+    <p>The first two are checked live.</p></div>
+  <div class="findings">
+    <div class="finding" id="pss-check"></div>
+    <div class="finding" id="token-check"></div>
+    <div class="finding"><span class="sev">Shared · secrets</span><h3>One root token for everything</h3>
+      <p>stock-app and the vault-configure Job use Vault's root token, so the per-service paths are separated only by
+        convention: anything holding the token reads every path.</p>
+      <p class="fix">Exercise: enable Vault's Kubernetes auth method with one policy per service, and let stock-app sign in
+        with its own ServiceAccount token (the second diagram above).</p></div>
+    <div class="finding"><span class="sev">Broad · RBAC</span><h3>Prometheus can read more than it uses</h3>
+      <p>Discovery looks at five namespaces, but the ClusterRole allows reading pods, Services and Endpoints everywhere,
+        plus nodes, which the config never uses. <code>v1 Endpoints</code> is also deprecated in favour of EndpointSlices.</p>
+      <p class="fix">Exercise: one Role and RoleBinding per scraped namespace, and <code>role: endpointslice</code>.</p></div>
+  </div>
+</section>
+
+<section class="chapter" id="interview">
+  <div class="head"><span class="eyebrow">Interview check</span><h2>Questions to answer from this chapter</h2></div>
+  <div class="qa-list">
+    <details class="qa"><summary>How does a pod authenticate to the Kubernetes API, and how would you stop it from being able to?</summary><div>
+      <p>The kubelet mounts a short-lived, audience-bound ServiceAccount token (a projected volume,
+      <code>kube-api-access-*</code>) plus the cluster CA; the client sends it as a Bearer token and RBAC authorizes the
+      <code>system:serviceaccount:&lt;ns&gt;:&lt;name&gt;</code> user. Stop it with
+      <code>automountServiceAccountToken: false</code> on the ServiceAccount or the pod, and by binding no roles.</p></div></details>
+    <details class="qa"><summary>Role versus ClusterRole, RoleBinding versus ClusterRoleBinding: which combinations exist?</summary><div>
+      <p>A Role grants within one namespace; a ClusterRole defines rules that can be cluster-wide. A RoleBinding grants a Role
+      or a ClusterRole <i>inside its namespace</i>; a ClusterRoleBinding grants a ClusterRole everywhere. Binding a
+      ClusterRole with RoleBindings is the usual way to reuse one set of rules in a few namespaces.</p></div></details>
+    <details class="qa"><summary>Why are Kubernetes Secrets "not secret", and what do you use instead?</summary><div>
+      <p>They are base64, readable by anyone with <code>get secrets</code> in the namespace (or who can create a pod
+      there and mount it), and stored in etcd in the clear unless encryption at rest is configured. Use an external
+      store (Vault, a cloud secret manager) with the External Secrets Operator or a CSI driver, keep RBAC on Secrets
+      tight, and turn on etcd encryption with a KMS provider.</p></div></details>
+    <details class="qa"><summary>What do the Pod Security Standards' restricted profile require, and how are they enforced?</summary><div>
+      <p>Run as non-root, <code>allowPrivilegeEscalation: false</code>, drop ALL capabilities (only NET_BIND_SERVICE may be
+      added back), a RuntimeDefault or Localhost seccomp profile, no host namespaces or hostPath, and only safe volume types.
+      The built-in Pod Security Admission enforces a level per namespace through
+      <code>pod-security.kubernetes.io/enforce</code>, with <code>warn</code> and <code>audit</code> modes to roll it out gently.</p></div></details>
+    <details class="qa"><summary>Two NetworkPolicy <code>from</code> entries: when is it AND, when is it OR?</summary><div>
+      <p>Selectors in the <i>same</i> list item (a namespaceSelector and a podSelector together) must both match: AND.
+      Separate list items are alternatives: OR. Policies are additive allow-lists; once any policy selects a pod for
+      ingress, everything not allowed is denied.</p></div></details>
+  </div>
+</section>
+
+</article>
+</main>
+</div>
+</body>
+</html>

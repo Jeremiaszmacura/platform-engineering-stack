@@ -5,10 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'documentation/**'
+      - 'documentation/web/site/**'
       - '.github/workflows/docs.yml'
-      # The docs render this contract.
-      - 'stock-app/openapi.yaml'
   workflow_dispatch:
 
 permissions:
@@ -28,21 +26,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.14'
-
-      - name: Install documentation deps
-        run: pip install -r documentation/requirements.txt
-
-      - name: Build documentation
-        run: mkdocs build --strict -f documentation/mkdocs.yml
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: documentation/site
+          path: documentation/web/site
 
   deploy:
     needs: build

@@ -1,22 +1,18 @@
 # Platform Engineering Stack
 
-A small Kubernetes cluster that runs on your laptop, for learning platform engineering.
-It has a real stock-data service (Python + TimescaleDB) with a chart UI, a live cluster
-map (Go) for learning Kubernetes, a traffic generator for testing, Vault for secrets, and Prometheus + Grafana to watch the traffic.
+A small Kubernetes cluster that runs on your laptop, for learning platform engineering: a real stock-data service
+(Python + TimescaleDB) with a chart UI, one Gateway for all traffic, Vault for secrets, and Prometheus, Grafana and
+tracing watching it all.
 
 ## Start
 
-You need Docker, kind and kubectl. Then:
+You need Docker, kind v0.33 and kubectl. Then:
 
 ```sh
 ./recreate-cluster.sh
 ```
 
-Open http://stock-ui.localhost for stock charts, or http://traffic-generator.localhost to send test requests,
-and watch the traffic at http://grafana.localhost (`admin` / `admin`).
+and open **http://docs.localhost**: the documentation, drawn live from your cluster. It shows how every component
+works and connects, with diagrams, exercises and how to run, test and extend it.
 
-## Learn more
-
-- Docs: https://jeremiaszmacura.github.io/platform-engineering-stack/ (also at http://docs.localhost)
-- Commands: `make help`
-- Adding a component: [documentation/docs/adding-a-service.md](documentation/docs/adding-a-service.md)
+Without a cluster, the same site shows a recorded snapshot: https://jeremiaszmacura.github.io/platform-engineering-stack/

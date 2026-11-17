@@ -18,7 +18,7 @@ EXPECTED_PROMETHEUS_JOBS = {
     "self",
     "node-exporter",
     "stock-app",
-    "cluster-map",
+    "documentation",
     "otel-collector",
     "tempo",
     "grafana",

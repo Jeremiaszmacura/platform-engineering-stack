@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview · Platform Engineering Stack</title>
+<meta name="description" content="A live field guide to a three-node Kubernetes cluster on your laptop: architecture, networking, identity, observability and state, drawn from the running cluster.">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script>try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<script type="module" src="assets/js/pages/overview.js"></script>
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<div class="frame">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content">
+<article class="page">
+
+<header class="page-head hero">
+  <span class="eyebrow">Start here · a live field guide</span>
+  <h1>Your cluster, explained while it runs</h1>
+  <p class="lede">A three-node Kubernetes cluster on your laptop: a real stock-price service with its database and UI, one
+    Gateway for all traffic, secrets in Vault, and Prometheus, Grafana and tracing watching it all. Every diagram on this site
+    is drawn from the running cluster, so what you read is what is there right now.</p>
+  <div class="facts" id="facts"></div>
+  <nav class="toc" id="toc" aria-label="On this page"></nav>
+</header>
+
+<section class="chapter" id="architecture">
+  <div class="head">
+    <span class="eyebrow">Architecture</span>
+    <h2>How it all fits together</h2>
+    <p>Boxes are workloads, grouped and coloured by namespace; the dot is their readiness. Lines are what the cluster itself
+      says connects them: HTTPRoutes, Service addresses in environment variables, Prometheus annotations and RBAC bindings.
+      Moving dashes are real traffic, measured by Prometheus. Select a box to see its live details.</p>
+  </div>
+  <figure class="figure">
+    <div class="bar">
+      <div class="seg" id="layers" role="group" aria-label="Which connections to show"></div>
+      <div class="legend">
+        <span><i class="line" style="--c:var(--ns-gateway)"></i>request or call</span>
+        <span><i class="dash" style="--c:var(--ns-monitoring)"></i>scrape, watch or xDS</span>
+        <span><i style="--c:var(--ok)"></i>ready</span><span><i style="--c:var(--warn)"></i>partly ready</span><span><i style="--c:var(--bad)"></i>down</span>
+      </div>
+    </div>
+    <div class="scroll-x" id="arch"></div>
+    <aside class="inspector below" id="arch-inspector" aria-live="polite"></aside>
+    <figcaption id="arch-extra">Loading the cluster…</figcaption>
+  </figure>
+  <div class="grid-3">
+    <div class="card"><h3>Requests: the data plane</h3><p>What your browser and the apps send each other. Every request from
+      outside enters through one Envoy proxy; inside the cluster, pods call Services by DNS name.</p></div>
+    <div class="card"><h3>Telemetry</h3><p>What the cluster says about itself. Prometheus pulls metrics from every annotated
+      Service; stock-app pushes traces to the OpenTelemetry Collector, which forwards them to Tempo.</p></div>
+    <div class="card"><h3>Control plane</h3><p>Who watches the Kubernetes API. Controllers turn objects into running config:
+      Envoy Gateway turns HTTPRoutes into Envoy routes, and this site turns pods into these diagrams.</p></div>
+  </div>
+  <p class="callout"><b>Make it move.</b> Open <a href="http://traffic-generator.localhost">traffic-generator</a>, pick
+    <i>Get bars</i>, send 50 requests and watch the Requests layer: Envoy → stock-app speeds up, then stock-app →
+    TimescaleDB. Switch to Telemetry to see the same requests leave as spans.</p>
+</section>
+
+<section class="chapter" id="components">
+  <div class="head">
+    <span class="eyebrow">Inventory</span>
+    <h2>What runs here</h2>
+    <p>Every workload outside the system namespaces, as the API lists it right now. Each card opens the component's page.</p>
+  </div>
+  <div class="catalog" id="catalog"></div>
+</section>
+
+<section class="chapter" id="run">
+  <div class="head">
+    <span class="eyebrow">Get going</span>
+    <h2>Run it</h2>
+    <p>You need Docker, kind v0.33 (it creates Kubernetes 1.37 nodes, as in CI) and kubectl. Go 1.26, Node.js 24 and
+      Python 3.14 are only needed to change the code.</p>
+  </div>
+  <div class="try">
+    <div><p>Delete and recreate the cluster with every component. Safe to re-run.</p>
+      <div class="cmd"><pre>./recreate-cluster.sh</pre></div></div>
+    <div><p>The same, but stock-app replays recorded prices instead of calling Yahoo Finance: works offline, and it is what CI runs.</p>
+      <div class="cmd"><pre>STOCK_PROVIDER=fixture ./recreate-cluster.sh</pre></div></div>
+  </div>
+  <p class="prose">It builds the four local images, deploys everything and waits until every <code>*.localhost</code> URL
+    answers; <a href="delivery.html#pipeline">Build &amp; ship</a> shows each step. <code>*.localhost</code> resolves to
+    <code>127.0.0.1</code> on macOS and most Linux systems, so there is no DNS to set up.</p>
+</section>
+
+<section class="chapter" id="path">
+  <div class="head">
+    <span class="eyebrow">Learning path</span>
+    <h2>Read it in this order</h2>
+    <p>Each chapter pairs a live diagram of your cluster with commands to check it yourself, exercises that break or
+      harden something, and the questions a platform engineering interview asks about it. Break things on purpose:
+      delete a pod, scale a Deployment, remove a route, and the pages change within five seconds.</p>
+  </div>
+  <div class="path">
+    <a href="map.html"><b>Cluster map</b><span>Nodes, pods and IPs: the physical view, and how to read it.</span></a>
+    <a href="networking.html"><b>Networking</b><span>A request from your browser to a pod, packet by packet: Gateway API, kube-proxy, DNS, CORS.</span></a>
+    <a href="security.html"><b>Identity &amp; secrets</b><span>ServiceAccounts, RBAC, Secrets and Vault, and how locked down each pod is.</span></a>
+    <a href="observability.html"><b>Observability</b><span>How Prometheus finds its targets, and how one request becomes a trace.</span></a>
+    <a href="state.html"><b>State &amp; storage</b><span>What survives a restart: PVCs, StatefulSets, emptyDirs and a cache-aside service.</span></a>
+    <a href="workloads.html"><b>Workloads</b><span>Controllers, probes, init containers, limits and how a config change rolls out.</span></a>
+  </div>
+</section>
+
+</article>
+</main>
+</div>
+</body>
+</html>

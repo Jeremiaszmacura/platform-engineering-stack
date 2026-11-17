@@ -18,24 +18,38 @@ spec:
       serviceAccountName: documentation
       securityContext:
         runAsNonRoot: true
-        runAsUser: 101  # nginx-unprivileged's default user
+        runAsUser: 65532  # distroless "nonroot"
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: documentation
           image: documentation:dev  # built locally and loaded into kind
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
+          env:
+            - name: CLUSTER_NAME
+              value: sample-cluster
+            # Service addresses that live in config files, not in env vars, so the map can't see them otherwise
+            - name: REFERENCES
+              value: grafana=http://prometheus-service:9090,grafana=http://tempo-service:3200,otel-collector=http://tempo-service:4318
+            - name: PROMETHEUS_URL
+              value: http://prometheus-service.monitoring:9090
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           resources:
-            requests: {cpu: 25m, memory: 32Mi}
-            limits: {cpu: 200m, memory: 128Mi}
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 256Mi}
+          # Ready once the informers have finished their first list
           readinessProbe:
-            httpGet: {path: /, port: 8080}
-            initialDelaySeconds: 3
+            httpGet: {path: /health, port: 8080}
             periodSeconds: 5
           livenessProbe:
-            httpGet: {path: /, port: 8080}
+            httpGet: {path: /health, port: 8080}
+            initialDelaySeconds: 30
             periodSeconds: 20
 ---
 apiVersion: v1
@@ -45,6 +59,9 @@ metadata:
   namespace: docs
   labels:
     app: documentation
+  annotations:
+    prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
+    prometheus.io/job: documentation
 spec:
   type: ClusterIP
   selector:

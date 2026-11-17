@@ -22,10 +22,10 @@ If no target is given, ask for a package/dir or offer "review my current changes
 ## Workflow
 
 **1. Read the design of record.** Don't judge from memory or from this file - the rules live in the docs:
-- `documentation/docs/design.md` - its architecture section with the decisions the code must not silently break.
+- `documentation/web/site/design.html` - the decisions and conventions the code must not silently break.
 - `.claude/rules/clean-code.md` and `.claude/rules/go.md` - the architecture-relevant rules only (YAGNI; interfaces defined by the consumer; return concrete types).
 
-Pull other `documentation/docs/*.md` in only when a finding needs them. If the docs are *silent* on something, that's a question - not a rule you invent.
+Pull other pages of `documentation/web/site/` in only when a finding needs them. If the docs are *silent* on something, that's a question - not a rule you invent.
 
 **2. Resolve scope.** Find the module root (nearest `go.mod`). Inside a git tree with uncommitted or branch-vs-base `.go` changes and no explicit target -> **changeset mode** (review those files, read neighbours for context); otherwise **whole-target mode**. Say which in one sentence.
 
@@ -47,7 +47,7 @@ Write the full report to `<module-root>/.architecture-review/review.md` (create 
 
 ```
 # Architecture Review - <target> (<mode>)
-**Date:** <iso>   **Design of record:** documentation/docs/design.md (+ ADRs)
+**Date:** <iso>   **Design of record:** documentation/web/site/design.html (+ ADRs)
 **Verdict:** <Aligned | Aligned with concerns | Diverges from design>
 
 ## Alignment (what the code gets right, structurally)

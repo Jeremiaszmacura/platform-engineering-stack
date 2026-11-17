@@ -14,4 +14,4 @@ configMapGenerator:
     options:
       labels:
         app: prometheus
-      disableNameSuffixHash: true  # cluster-map reads this ConfigMap by name (platform/rbac/cluster-map.yaml)
+      disableNameSuffixHash: true  # the documentation site reads it by name (platform/rbac/documentation.yaml)

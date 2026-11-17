@@ -7,12 +7,12 @@ Programming rules live in `.claude/rules/`: `clean-code.md` always applies, `go.
 - `recreate-cluster.sh` is the single entry point that deploys the kind cluster. It must stay idempotent: running it again must not break anything.
 - Each top-level directory is one cluster component. Its Kubernetes manifests live in `<component>/k8s/`; cluster-scoped resources (namespaces, RBAC, kind config) live in `platform/`.
 - stock-app is the real backend: it serves daily stock prices (OHLCV bars) from TimescaleDB, fetching missing data from a market data provider. stock-ui is the web UI that charts that data.
-- cluster-map (Go) serves a live, interactive map of the cluster for learning Kubernetes; it reads the API with its own read-only ServiceAccount.
+- documentation (Go) serves the interactive documentation site at docs.localhost with its live data: a map of the cluster read from the Kubernetes API with its own read-only ServiceAccount, and read-only PromQL proxied to Prometheus.
 - traffic-generator is a simple UI that simulates traffic to stock-app (bursts of concurrent requests) for observability and testing, and shows the results. Backend traffic is scraped by Prometheus and shown in Grafana.
 - Grafana dashboards live in `monitoring/grafana/k8s/dashboards/`, one JSON file per dashboard, each with a fixed `uid`.
-- Documentation lives in MkDocs (`documentation/docs/`). Keep it short, clear and up to date. Every component has one page in `documentation/docs/services/`; component READMEs only link to it.
-- When adding a component, follow `documentation/docs/adding-a-service.md`.
-- Before modifying the project's source code, always read and follow the service design described in @documentation/docs/design.md. If the design is unclear, ask for clarification before proceeding.
+- All documentation is the site in `documentation/web/site/`: hand-written HTML pages, shared JS and CSS, no build step. Keep it short, clear and up to date; write each fact on one page and link to it from the others. Every component has a section on `components.html`. No other Markdown docs: the root README only points to the site.
+- When adding a component, follow "Add a component" in `documentation/web/site/delivery.html`.
+- Before modifying the project's source code, always read and follow the design decisions in @documentation/web/site/design.html. If the design is unclear, ask for clarification before proceeding.
 
 ## Planning
 

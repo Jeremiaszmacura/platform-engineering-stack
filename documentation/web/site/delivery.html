@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build &amp; ship · Platform Engineering Stack</title>
+<meta name="description" content="How the cluster is built, tested and kept up to date: recreate-cluster.sh step by step, the tests, CI, Renovate and adding a component.">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script>try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<script type="module" src="assets/js/pages/delivery.js"></script>
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<div class="frame">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content">
+<article class="page">
+
+<header class="page-head">
+  <span class="eyebrow">Reference · build and ship</span>
+  <h1>From a clean laptop to a tested cluster</h1>
+  <p class="lede">One script builds the whole cluster, three layers of tests check it, and CI runs the same steps on every
+    pull request, including a real kind cluster. Renovate keeps every pinned version moving.</p>
+  <nav class="toc" id="toc" aria-label="On this page"></nav>
+</header>
+
+<section class="chapter" id="pipeline">
+  <div class="head">
+    <span class="eyebrow">Deploy</span>
+    <h2>What <code>./recreate-cluster.sh</code> does</h2>
+    <p>The single entry point. It deletes the cluster, recreates it, deploys every component in dependency order and fails
+      loudly, printing events and the logs of unready pods, if anything doesn't come up. Running it again is always safe.
+      Each step below is checked against the cluster as it is now.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="pipeline-flow"></div></figure>
+  <ol class="steps" id="pipeline-steps"></ol>
+  <p class="callout">Your <code>kind</code> decides the Kubernetes version: kind v0.33 creates 1.37 nodes, as CI does. An older
+    kind silently creates an older cluster, and can't load images into a newer one.</p>
+</section>
+
+<section class="chapter" id="tests">
+  <div class="head">
+    <span class="eyebrow">Tests</span>
+    <h2>Three layers of checks</h2>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Command</th><th>Runs</th></tr></thead>
+    <tbody>
+      <tr><td><code>make test-unit</code></td><td>Go (<code>go test</code>) and Python (<code>tox -e tests</code>) unit tests, found by <code>go.mod</code> and <code>tox.ini</code>; for this site that includes a check of every link between pages</td></tr>
+      <tr><td><code>make lint</code></td><td>golangci-lint, then pre-commit (black, bandit, YAML and JSON checks), stock-app's import rules and API-model drift check</td></tr>
+      <tr><td><code>make build-frontend test-unit-frontend</code></td><td>both Vite frontends, their Vitest tests, and this site's JavaScript tests (<code>node --test</code>)</td></tr>
+      <tr><td><code>make test-e2e</code></td><td>pytest in <code>e2e/</code> against the running cluster, over HTTP only</td></tr>
+    </tbody></table></div>
+  <p class="prose">The end-to-end tests cover every <code>*.localhost</code> URL, this site's map, RBAC and Prometheus proxy,
+    Vault secrets, CORS for both frontends, every stock-app endpoint validated against its published
+    <code>/openapi.yaml</code>, the cache-aside flow, the Prometheus and Grafana pipeline, and request traces in Tempo.
+    stock-app calls Yahoo Finance by default; to test without it, deploy with <code>STOCK_PROVIDER=fixture</code> and skip
+    the tests marked <code>external</code>:</p>
+  <div class="cmd"><pre>make test-e2e E2E_PYTEST_ARGS='-m "not external"'   # what CI runs
+make test-e2e E2E_PYTEST_ARGS='-k stock'            # scope with -k</pre></div>
+  <h3>What to run after a change</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Change</th><th>Run</th></tr></thead>
+    <tbody>
+      <tr><td>Go or Python code</td><td><code>make lint test-unit</code> (Claude Code's hooks run them when Go or Python files change)</td></tr>
+      <tr><td><code>stock-app/openapi.yaml</code></td><td><code>cd stock-app &amp;&amp; tox -e api</code>, then <code>make lint test-unit</code></td></tr>
+      <tr><td>A frontend, or this site</td><td><code>make build-frontend test-unit-frontend</code>, and for the site <code>cd documentation &amp;&amp; go test ./...</code></td></tr>
+      <tr><td>Manifests, <code>recreate-cluster.sh</code>, monitoring, Vault</td><td><code>./recreate-cluster.sh &amp;&amp; make test-e2e</code></td></tr>
+    </tbody></table></div>
+</section>
+
+<section class="chapter" id="ci">
+  <div class="head">
+    <span class="eyebrow">CI</span>
+    <h2>What runs on every pull request</h2>
+    <p>Four GitHub Actions workflows run on every pull request and on <code>main</code>. The e2e job builds a real kind
+      cluster with recorded prices, runs the suite, then restarts the Gateway's Envoy proxy and checks that
+      <code>*.localhost</code> still answers, wherever the new pod lands. Pushes to <code>main</code> that touch this site
+      publish it to GitHub Pages, where it shows a recorded snapshot.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="ci-flow"></div></figure>
+</section>
+
+<section class="chapter" id="renovate">
+  <div class="head">
+    <span class="eyebrow">Dependencies</span>
+    <h2>Every version pinned, every pin updated</h2>
+    <p>Images, Go modules, Python and npm packages, pre-commit hooks, the Envoy Gateway release, kind in CI and
+      golangci-lint are all pinned. Renovate (<code>renovate.json</code>) opens update pull requests every day.</p>
+  </div>
+  <ul class="prose">
+    <li>Minor, patch and digest updates merge automatically once CI is green; the e2e job deploys the whole cluster, so a
+      broken image can't sneak in.</li>
+    <li>Major updates and language runtimes (Python, Go, Node) wait for a human, because their versions are also set in the
+      workflows.</li>
+    <li>A release must be three days old; the local <code>:dev</code> images are ignored.</li>
+    <li>Renovate runs as the Mend Renovate GitHub App: Mend, the company behind Renovate, hosts it for free, so no workflow
+      is needed. Run logs: <a href="https://developer.mend.io/github/Jeremiaszmacura">developer.mend.io</a>.</li>
+  </ul>
+</section>
+
+<section class="chapter" id="add">
+  <div class="head">
+    <span class="eyebrow">Extend</span>
+    <h2>Add a component</h2>
+    <p>Copy an existing component (<code>stock-app/</code> for a Python service, <code>documentation/</code> for Go), then:</p>
+  </div>
+  <ol class="steps">
+    <li><div><span class="where">code</span>A <code>Dockerfile</code> with a pinned base image that runs as non-root. Go needs
+      <code>go.mod</code>, Python needs <code>tox.ini</code>: the Makefile finds them. A Vite frontend goes into
+      <code>FRONTENDS</code> in the Makefile.</div></li>
+    <li><div><span class="where">kubernetes</span>In <code>my-service/k8s/</code> (namespace <code>apps</code>): Deployment
+      <code>my-service</code>, Service <code>my-service-service</code>, HTTPRoute <code>my-service-route</code> for
+      <code>my-service.localhost</code>, and ServiceAccount <code>my-service</code> with
+      <code>automountServiceAccountToken: false</code>; requests and limits, a readiness probe and a non-root
+      <code>securityContext</code> (<a href="design.html#conventions">conventions</a>).</div></li>
+    <li><div><span class="where">cluster script</span>Add it to <code>IMAGES</code>, <code>COMPONENTS</code> and
+      <code>URLS</code> in <code>recreate-cluster.sh</code>.</div></li>
+    <li><div><span class="where">metrics</span>Annotate the Service with <code>prometheus.io/scrape: "true"</code> and
+      <code>prometheus.io/job</code> (plus <code>port</code> or <code>path</code> when needed); add a dashboard JSON with a fixed
+      <code>uid</code> to <code>monitoring/grafana/k8s/dashboards/</code> and list it in that directory's
+      <code>kustomization.yaml</code>.</div></li>
+    <li><div><span class="where">tests</span>Add its URL to <code>SERVICE_URLS</code> in <code>e2e/cluster.py</code>, and e2e
+      tests for what it does.</div></li>
+    <li><div><span class="where">docs</span>A section on <a href="components.html">Components</a> with a live spec sheet
+      (<code>&lt;dl class="spec" data-app="my-service"&gt;</code>), a one-line purpose in
+      <code>assets/js/catalog.js</code>, and a place in the architecture diagram (<code>assets/js/architecture.js</code>).
+      Until it has one, the Overview lists it under the diagram.</div></li>
+    <li><div><span class="where">verify</span><code>make lint test-unit &amp;&amp; ./recreate-cluster.sh &amp;&amp; make test-e2e</code></div></li>
+  </ol>
+</section>
+
+</article>
+</main>
+</div>
+</body>
+</html>

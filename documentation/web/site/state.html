@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>State &amp; storage · Platform Engineering Stack</title>
+<meta name="description" content="Where the cluster keeps state and what survives a restart: PVCs, StatefulSets, emptyDirs, in-memory stores and stock-app's cache-aside.">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script>try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<script type="module" src="assets/js/pages/state.js"></script>
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<div class="frame">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content">
+<article class="page">
+
+<header class="page-head">
+  <span class="eyebrow">Learn · state and storage</span>
+  <h1>What survives a restart</h1>
+  <p class="lede">Pods are disposable; data is not. Every component here keeps its state somewhere different, from a
+    persistent volume to plain memory, and each choice decides what is lost when a container restarts, a pod is replaced
+    or the cluster is rebuilt.</p>
+  <nav class="toc" id="toc" aria-label="On this page"></nav>
+</header>
+
+<section class="chapter" id="survival">
+  <div class="head">
+    <span class="eyebrow">The matrix</span>
+    <h2>Where each piece of state lives</h2>
+    <p>A container restart (crash, OOM kill, failed liveness probe) keeps the pod and its volumes. A deleted pod gets a
+      replacement with fresh <code>emptyDir</code>s. <code>./recreate-cluster.sh</code> deletes the whole cluster: only
+      what is in Git comes back.</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>State</th><th>Lives in</th><th>Container restart</th><th>Pod replaced</th><th>Cluster recreated</th></tr></thead>
+    <tbody>
+      <tr><td>Stock prices (TimescaleDB)</td><td>PVC <code>data-timescaledb-0</code>, a directory on one node</td><td><span class="mark y">✓ kept</span></td><td><span class="mark y">✓ kept</span></td><td><span class="mark n">✗ lost, refetched on demand</span></td></tr>
+      <tr><td>Grafana dashboards, datasources</td><td>ConfigMaps built from files in Git</td><td><span class="mark y">✓ kept</span></td><td><span class="mark y">✓ kept</span></td><td><span class="mark y">✓ re-applied</span></td></tr>
+      <tr><td>Grafana logins, preferences</td><td>SQLite on an <code>emptyDir</code></td><td><span class="mark y">✓ kept</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
+      <tr><td>Traces (Tempo)</td><td><code>emptyDir</code></td><td><span class="mark y">✓ kept</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
+      <tr><td>Metrics (Prometheus)</td><td>the image's <code>/prometheus</code> volume, which containerd creates per container</td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
+      <tr><td>Vault secrets and KV mounts</td><td>memory (dev mode)</td><td><span class="mark n">✗ lost, mounts too</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
+      <tr><td>Manifests, dashboards, code</td><td>this Git repository</td><td><span class="mark y">✓</span></td><td><span class="mark y">✓</span></td><td><span class="mark y">✓ the source of truth</span></td></tr>
+    </tbody></table></div>
+  <p class="callout warn">Vault is the sharp edge: an OOM kill or a node restart quietly empties it, including the
+    <code>services/</code> and <code>infra/</code> mounts, and the finished <code>vault-configure</code> Job doesn't run
+    again by itself. Re-run <code>./recreate-cluster.sh</code>, or delete the Job and re-apply <code>vault/k8s</code>.</p>
+</section>
+
+<section class="chapter" id="volumes">
+  <div class="head">
+    <span class="eyebrow">Persistent volumes</span>
+    <h2>From a claim to a directory on a node</h2>
+    <p>A pod asks for storage with a PersistentVolumeClaim. The StorageClass decides how a PersistentVolume is made to
+      satisfy it. kind's default class, <code>standard</code>, uses the local-path provisioner: the volume is a directory
+      on one node. This is the chain in your cluster:</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="pvc-chain"></div>
+    <figcaption id="pvc-caption">PersistentVolumeClaims, live.</figcaption></figure>
+  <div class="grid-2">
+    <div class="card"><h3>WaitForFirstConsumer</h3><p>The class creates the volume only after the scheduler has picked a
+      node for the pod, so the directory lands where the pod runs. From then on the PV's node affinity pins the pod to that
+      node. If the node goes away, the data can't follow. Network storage (EBS, Ceph, NFS) doesn't have that limit.</p></div>
+    <div class="card"><h3>Reclaim policy and retention</h3><p>The class's reclaim policy is <code>Delete</code>: deleting the
+      PVC deletes the directory. The StatefulSet's PVC retention policy is <code>Retain</code>: deleting or scaling down the
+      StatefulSet keeps the claim, so recreating it finds the same data.</p></div>
+  </div>
+</section>
+
+<section class="chapter" id="statefulset">
+  <div class="head">
+    <span class="eyebrow">Controllers</span>
+    <h2>Why TimescaleDB is a StatefulSet</h2>
+  </div>
+  <div class="grid-3">
+    <div class="card"><h3>Stable name</h3><p>The pod is always <code>timescaledb-0</code>, not a random hash, and keeps
+      that name across restarts. With a headless governing Service (<code>clusterIP: None</code>) each replica would also get
+      its own DNS name; <code>timescaledb-service</code> is a normal ClusterIP Service, because one replica needs no more.</p></div>
+    <div class="card"><h3>Its own volume</h3><p><code>volumeClaimTemplates</code> gives each replica its own PVC
+      (<code>data-timescaledb-0</code>) that follows the pod across restarts. A Deployment's replicas would all share one claim.</p></div>
+    <div class="card"><h3>Order</h3><p>Replicas start one after another and stop in reverse, which clustered databases
+      need. A second replica would not make PostgreSQL highly available by itself: replication is the database's job.</p></div>
+  </div>
+</section>
+
+<section class="chapter" id="cache-aside">
+  <div class="head">
+    <span class="eyebrow">Application state</span>
+    <h2>stock-app's cache-aside</h2>
+    <p>stock-app answers from TimescaleDB and fetches from Yahoo Finance only the part of a request it has never been asked
+      for, at most one provider call per request. TimescaleDB is a cache that can be thrown away: an empty database after
+      <code>./recreate-cluster.sh</code> just means the first requests are slower.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="cache-seq"></div>
+    <figcaption>A cold request for MSFT. Ask again and steps 3 to 5 disappear.</figcaption></figure>
+  <figure class="figure"><div class="scroll-x" id="window"></div>
+    <figcaption>The <code>instruments</code> table records which dates were <i>requested</i>, not which bars came back.
+      Weekends and holidays have no bars, so a ledger of bar dates would refetch them forever. The window is one contiguous
+      range: a request beyond it also fetches the gap in between. Today's bar keeps moving, so the trailing edge refetches
+      after an hour (<code>STOCK_STALE_AFTER_SECONDS</code>).</figcaption></figure>
+  <div class="tiles" id="cache-tiles"></div>
+</section>
+
+<section class="chapter" id="scratch">
+  <div class="head">
+    <span class="eyebrow">Scratch space</span>
+    <h2>emptyDir and hostPath</h2>
+    <p>An <code>emptyDir</code> is a scratch directory that lives as long as the pod. stock-app needs two because it runs
+      with <code>readOnlyRootFilesystem: true</code>: <code>/tmp</code>, and a home directory where yfinance caches time
+      zones. A <code>hostPath</code> exposes the node's own files: node-exporter reads <code>/proc</code>, <code>/sys</code>
+      and <code>/</code> to report on the node, which is also why it fails the restricted pod security profile.</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Pod</th><th>Namespace</th><th>Volumes</th></tr></thead>
+    <tbody id="volume-rows"></tbody></table></div>
+</section>
+
+<section class="chapter" id="try">
+  <div class="head"><span class="eyebrow">Hands on</span><h2>Try it</h2></div>
+  <div class="try">
+    <div><p>Follow the chain yourself: claim, volume, and the node it is pinned to.</p>
+      <div class="cmd"><pre>kubectl get pvc,pv -A
+kubectl get pv -o jsonpath='{.items[0].spec.nodeAffinity}'</pre></div></div>
+    <div><p>Delete the database pod: it comes back with the same name, on the same node, with the same data.</p>
+      <div class="cmd"><pre>kubectl delete pod timescaledb-0 -n data
+kubectl get pod timescaledb-0 -n data -o wide --watch</pre></div></div>
+    <div><p>Look inside the cache: one row per symbol with the window it has synced.</p>
+      <div class="cmd"><pre>kubectl exec -it timescaledb-0 -n data -c timescaledb -- psql -U stockapp -d stockdata \
+  -c 'SELECT symbol, first_synced_date, last_synced_date FROM instruments;'</pre></div></div>
+  </div>
+</section>
+
+<section class="chapter" id="practice">
+  <div class="head"><span class="eyebrow">Weak spots</span><h2>What to fix next</h2></div>
+  <div class="findings">
+    <div class="finding"><span class="sev">Ephemeral · secrets</span><h3>Vault keeps everything in memory</h3>
+      <p>Dev mode has no storage, so a restart loses every secret and both KV mounts.</p>
+      <p class="fix">Exercise: run Vault with Raft storage on a PVC, initialise and unseal it once, and make
+        <code>vault-configure</code> safe to rerun after a restart.</p></div>
+    <div class="finding"><span class="sev">No backups · data</span><h3>Nothing backs up TimescaleDB</h3>
+      <p>The data can be refetched, but a real database would need backups and a tested restore.</p>
+      <p class="fix">Exercise: a CronJob that runs <code>pg_dump</code> to a second PVC every night, then restore it into a
+        fresh cluster. Time how long the restore takes: that is your recovery time.</p></div>
+    <div class="finding"><span class="sev">Pinned · node</span><h3>The database can only run on one node</h3>
+      <p>Its local-path volume pins it. Drain that node and TimescaleDB stays <code>Pending</code>.</p>
+      <p class="fix">Exercise: <code>kubectl drain</code> the node (see <a href="map.html">Cluster map</a>), watch the pod
+        hang, then uncordon. Explain what a CSI driver with network storage would change.</p></div>
+  </div>
+</section>
+
+<section class="chapter" id="interview">
+  <div class="head"><span class="eyebrow">Interview check</span><h2>Questions to answer from this chapter</h2></div>
+  <div class="qa-list">
+    <details class="qa"><summary>PV, PVC, StorageClass: who creates which, and when?</summary><div>
+      <p>The app team writes the PVC (or a StatefulSet's <code>volumeClaimTemplates</code>). A provisioner, chosen by the
+      StorageClass, creates a PV to match it: here when the first pod using the claim is scheduled
+      (<code>WaitForFirstConsumer</code>). The cluster admin owns the StorageClass: provisioner, parameters, reclaim policy,
+      binding mode and whether volumes can grow.</p></div></details>
+    <details class="qa"><summary>Deployment or StatefulSet for a database, and why?</summary><div>
+      <p>A StatefulSet: stable names and network identities, one PVC per replica that follows the pod, and ordered start and
+      stop. Even then, high availability comes from the database's own replication (or an operator such as CloudNativePG),
+      not from the StatefulSet.</p></div></details>
+    <details class="qa"><summary>What happens to an emptyDir when the container crashes? When the pod is evicted?</summary><div>
+      <p>A crashed container restarts in the same pod and finds the emptyDir intact. An evicted or deleted pod is replaced by
+      a new pod with new, empty emptyDirs. Use an emptyDir with <code>medium: Memory</code> for fast scratch space, and count
+      it against the memory limit.</p></div></details>
+    <details class="qa"><summary>What is cache-aside, and what can go wrong with it?</summary><div>
+      <p>The app reads the cache first and, on a miss, loads from the source and fills the cache. Risks: stale data (here
+      bounded by the staleness window for today's bar), a thundering herd of misses for the same key, and a slow source
+      making every miss slow, which the traces show as the Yahoo span.</p></div></details>
+  </div>
+</section>
+
+</article>
+</main>
+</div>
+</body>
+</html>

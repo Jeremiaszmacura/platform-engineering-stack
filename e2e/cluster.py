@@ -21,16 +21,15 @@ VAULT_TOKEN = "root"  # nosec B105 - dev-mode root token
 
 
 STOCK_APP_URL = "http://stock.localhost"
-CLUSTER_MAP_URL = "http://cluster-map.localhost"
+DOCS_URL = "http://docs.localhost"
 
 SERVICE_URLS = {
     "stock-app": STOCK_APP_URL,
-    "cluster-map": CLUSTER_MAP_URL,
     "traffic-generator": TRAFFIC_GENERATOR_URL,
     "stock-ui": STOCK_UI_URL,
     "prometheus": PROMETHEUS_URL,
     "grafana": GRAFANA_URL,
-    "documentation": "http://docs.localhost",
+    "documentation": DOCS_URL,
     "vault": VAULT_URL,
 }
 

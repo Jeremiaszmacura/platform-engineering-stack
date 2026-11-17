@@ -1,16 +1,15 @@
 # Project
-documentation/site/
 .cache
 .claude/settings.local.json
 # Working plans (e.g. from the plan-implementation skill) stay local
 plans/
 
 # Go
-cluster-map/**/*.exe
-cluster-map/**/*.test
-cluster-map/**/*.out
-cluster-map/cluster-map
-cluster-map/vendor/
+documentation/**/*.exe
+documentation/**/*.test
+documentation/**/*.out
+documentation/documentation
+documentation/vendor/
 
 # Python
 __pycache__/
