@@ -46,6 +46,8 @@ flowchart LR
 - **Dependency updates:** Renovate (`renovate.json`) opens update PRs daily. Minor, patch and digest updates
   auto-merge when CI is green (the e2e job deploys the whole cluster); majors and language runtimes
   (Python, Go, Node) wait for a human. Releases must be 3 days old; local `<component>:dev` images are ignored.
+  Renovate runs as the Mend Renovate GitHub App: Mend is the company behind Renovate and hosts it for free, so
+  no CI workflow is needed. Run logs: [developer.mend.io](https://developer.mend.io/github/Jeremiaszmacura).
 
 ## Conventions
 
