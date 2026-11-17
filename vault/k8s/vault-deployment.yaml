@@ -40,6 +40,20 @@ spec:
             httpGet: {path: /v1/sys/health, port: 8200}
             initialDelaySeconds: 3
             periodSeconds: 5
+          volumeMounts:
+            - name: hooks
+              mountPath: /vault/hooks
+          # Runs on every container start (new pod, crash, OOM kill). The container counts as running, and can become
+          # ready, only after the hook exits; a failed hook restarts the container.
+          lifecycle:
+            postStart:
+              exec:
+                command: ["/vault/hooks/enable-kv-mounts.sh"]
+      volumes:
+        - name: hooks
+          configMap:
+            name: vault-hooks
+            defaultMode: 0555  # The hook runs the script directly
 ---
 apiVersion: v1
 kind: Service

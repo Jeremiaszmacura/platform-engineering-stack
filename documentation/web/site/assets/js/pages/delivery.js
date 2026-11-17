@@ -20,8 +20,8 @@ const STEPS = [
     check: (m) => { const g = m.gateways[0]; return [Boolean(g && g.programmed), g ? `${g.name} ${g.programmed ? "Programmed" : "not Programmed"}` : "no Gateway"]; } },
   { title: "Deploy the components", what: "Monitoring first, then Vault and TimescaleDB (waiting for the database), then stock-app, traffic-generator, stock-ui and this site. A directory with a <code>kustomization.yaml</code> is applied with <code>-k</code>.",
     check: (m) => { const list = components(m); return [list.length >= 10, `${list.length} components running`]; } },
-  { title: "Wait for rollouts and the Vault Job", what: "<code>kubectl rollout status</code> for every Deployment, StatefulSet and DaemonSet, so a crashing new pod fails the run even while an old one still serves; then waits for <code>vault-configure</code> to complete.",
-    check: (m) => { const list = components(m); const bad = list.filter((c) => c.health.state !== "ok"); return [!bad.length, bad.length ? `not ready: ${bad.map((c) => c.app).join(", ")}` : "every workload ready, vault-configure completed"]; } },
+  { title: "Wait for rollouts", what: "<code>kubectl rollout status</code> for every Deployment, StatefulSet and DaemonSet, so a crashing new pod fails the run even while an old one still serves.",
+    check: (m) => { const list = components(m); const bad = list.filter((c) => c.health.state !== "ok"); return [!bad.length, bad.length ? `not ready: ${bad.map((c) => c.app).join(", ")}` : "every workload ready"]; } },
   { title: "Check every URL", what: "Polls each <code>*.localhost</code> URL through the Gateway until it answers, then prints them.",
     check: (m) => { const broken = brokenRoutes(m); return [!broken.length, broken.length ? `${broken.length} routes not accepted` : `${m.routes.length} routes accepted`]; } },
 ];
@@ -40,7 +40,7 @@ function pipelineFlow() {
     ["kind", "kind cluster", "3 nodes", "outside"], ["eg", "Envoy Gateway", "CRDs + controller", "envoy-gateway-system"],
     ["platform", "namespaces, RBAC", "platform/", "kube-system"], ["images", "4 images", "build + kind load", "outside"],
     ["gateway", "shared Gateway", "wait: Programmed", "envoy-gateway-system"], ["apps", "components", "in dependency order", "apps"],
-    ["wait", "rollouts + Job", "rollout status", "kube-system"], ["urls", "*.localhost", "every URL answers", "outside"],
+    ["wait", "rollouts", "rollout status", "kube-system"], ["urls", "*.localhost", "every URL answers", "outside"],
   ];
   const nodes = names.map(([id, title, sub, ns], i) => box(id, 16 + (i % 4) * 270, i < 4 ? 30 : 128, title, sub, ns));
   const edges = names.slice(1).map(([id], i) => ({ from: names[i][0], to: id, color: nsColor("outside"), sides: i === 3 ? ["b", "t"] : ["r", "l"] }));

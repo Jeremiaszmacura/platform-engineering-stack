@@ -45,12 +45,14 @@
       <tr><td>Grafana logins, preferences</td><td>SQLite on an <code>emptyDir</code></td><td><span class="mark y">✓ kept</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
       <tr><td>Traces (Tempo)</td><td><code>emptyDir</code></td><td><span class="mark y">✓ kept</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
       <tr><td>Metrics (Prometheus)</td><td>the image's <code>/prometheus</code> volume, which containerd creates per container</td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
-      <tr><td>Vault secrets and KV mounts</td><td>memory (dev mode)</td><td><span class="mark n">✗ lost, mounts too</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
+      <tr><td>Vault secrets</td><td>memory (dev mode)</td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
+      <tr><td>Vault KV mounts</td><td>memory, enabled by a <code>postStart</code> hook on every start</td><td><span class="mark y">✓ re-enabled</span></td><td><span class="mark y">✓ re-enabled</span></td><td><span class="mark y">✓ re-enabled</span></td></tr>
       <tr><td>Manifests, dashboards, code</td><td>this Git repository</td><td><span class="mark y">✓</span></td><td><span class="mark y">✓</span></td><td><span class="mark y">✓ the source of truth</span></td></tr>
     </tbody></table></div>
-  <p class="callout warn">Vault is the sharp edge: an OOM kill or a node restart quietly empties it, including the
-    <code>services/</code> and <code>infra/</code> mounts, and the finished <code>vault-configure</code> Job doesn't run
-    again by itself. Re-run <code>./recreate-cluster.sh</code>, or delete the Job and re-apply <code>vault/k8s</code>.</p>
+  <p class="callout warn">Vault is the sharp edge: an OOM kill or a node restart quietly empties it. Its
+    <code>services/</code> and <code>infra/</code> mounts are back before the pod turns ready
+    (<a href="components.html#vault">how</a>), so stock-app's secret API keeps working, but every secret written before
+    is gone.</p>
 </section>
 
 <section class="chapter" id="volumes">
@@ -140,9 +142,10 @@ kubectl get pod timescaledb-0 -n data -o wide --watch</pre></div></div>
   <div class="head"><span class="eyebrow">Weak spots</span><h2>What to fix next</h2></div>
   <div class="findings">
     <div class="finding"><span class="sev">Ephemeral · secrets</span><h3>Vault keeps everything in memory</h3>
-      <p>Dev mode has no storage, so a restart loses every secret and both KV mounts.</p>
-      <p class="fix">Exercise: run Vault with Raft storage on a PVC, initialise and unseal it once, and make
-        <code>vault-configure</code> safe to rerun after a restart.</p></div>
+      <p>Dev mode has no storage, so a restart loses every secret; only the KV mounts come back, from its
+        <code>postStart</code> hook.</p>
+      <p class="fix">Exercise: run Vault with Raft storage on a PVC and initialise it once. A restart then seals Vault
+        instead of emptying it; the hook skips mounts that exist but waits only 60 seconds, so add auto-unseal.</p></div>
     <div class="finding"><span class="sev">No backups · data</span><h3>Nothing backs up TimescaleDB</h3>
       <p>The data can be refetched, but a real database would need backups and a tested restore.</p>
       <p class="fix">Exercise: a CronJob that runs <code>pg_dump</code> to a second PVC every night, then restore it into a

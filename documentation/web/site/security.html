@@ -106,9 +106,10 @@ Role            monitoring/documentation-prometheus    get configmaps "prometheu
   <div class="head">
     <span class="eyebrow">Vault</span>
     <h2>Secrets outside Kubernetes</h2>
-    <p>HashiCorp Vault in dev mode holds the apps' own secrets. The <code>vault-configure</code> Job enables two KV v2
-      mounts: <code>services/</code>, one path per service, and <code>infra/</code>, reserved. stock-app reads and writes
-      under <code>services/stock-app/</code> through <code>POST /secret</code> and <code>GET /secret/{key}</code>.</p>
+    <p>HashiCorp Vault in dev mode holds the apps' own secrets in two KV v2 mounts, which it enables on every start
+      (<a href="components.html#vault">how</a>): <code>services/</code>, one path per service, and <code>infra/</code>,
+      reserved. stock-app reads and writes under <code>services/stock-app/</code> through <code>POST /secret</code> and
+      <code>GET /secret/{key}</code>.</p>
   </div>
   <figure class="figure"><div class="scroll-x" id="vault-seq"></div>
     <figcaption>Today: one root token, from the Kubernetes Secret <code>vault-dev-token</code>, opens every path.</figcaption></figure>
@@ -192,8 +193,8 @@ kubectl get pod -n apps -l app=stock-app -o jsonpath='{.items[0].spec.volumes[*]
     <div class="finding" id="pss-check"></div>
     <div class="finding" id="token-check"></div>
     <div class="finding"><span class="sev">Shared · secrets</span><h3>One root token for everything</h3>
-      <p>stock-app and the vault-configure Job use Vault's root token, so the per-service paths are separated only by
-        convention: anything holding the token reads every path.</p>
+      <p>stock-app uses Vault's root token, so the per-service paths are separated only by convention: anything holding
+        the token reads every path.</p>
       <p class="fix">Exercise: enable Vault's Kubernetes auth method with one policy per service, and let stock-app sign in
         with its own ServiceAccount token (the second diagram above).</p></div>
     <div class="finding"><span class="sev">Broad · RBAC</span><h3>Prometheus can read more than it uses</h3>
