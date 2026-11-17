@@ -333,6 +333,139 @@
         "x": 12,
         "y": 29
       }
+    },
+    {
+      "id": 12,
+      "title": "Trace delivery, from the Collector's own metrics",
+      "type": "row",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      }
+    },
+    {
+      "id": 13,
+      "title": "Spans per Second through the Collector",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Spans the Collector accepted from the apps, sent to Tempo, and dropped once its retries gave up. Accepted above sent means spans are waiting in the queue or being lost.",
+      "targets": [
+        {
+          "expr": "sum(rate(otelcol_receiver_accepted_spans[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "accepted",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "sum(rate(otelcol_exporter_sent_spans[$__rate_interval]))",
+          "refId": "B",
+          "legendFormat": "sent to Tempo",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "sum(rate(otelcol_exporter_send_failed_spans[$__rate_interval]))",
+          "refId": "C",
+          "legendFormat": "dropped",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "showPoints": "never"
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dropped"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "title": "Span Batches Waiting for Tempo",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Batches of spans the Collector holds for Tempo, including the ones it is retrying; the queue holds 1000. Above zero for more than a moment means Tempo isn't taking spans, and after about 5 minutes of retries they are dropped.",
+      "targets": [
+        {
+          "expr": "sum(otelcol_exporter_queue_size)",
+          "refId": "A",
+          "legendFormat": "waiting",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "showPoints": "never"
+          },
+          "unit": "short",
+          "noValue": "0",
+          "decimals": 0
+        }
+      }
     }
   ],
   "time": {

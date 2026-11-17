@@ -115,8 +115,9 @@ npm ci &amp;&amp; npm run dev    # or npm run build, into dist/</pre></div>
   <div class="head"><span class="eyebrow">monitoring · metrics</span><h2>Prometheus</h2>
     <p>At <a href="http://prometheus.localhost">prometheus.localhost</a>. Discovers every Service annotated
       <code>prometheus.io/scrape: "true"</code> in <code>apps</code>, <code>monitoring</code>, <code>vault</code>,
-      <code>data</code> and <code>docs</code> and scrapes each pod every 5 seconds
-      (<a href="observability.html#metrics">how</a>). Runs with exemplar storage, so latency samples keep their trace IDs.</p></div>
+      <code>data</code>, <code>docs</code> and <code>envoy-gateway-system</code> and scrapes each pod every 5 seconds
+      (<a href="observability.html#metrics">how</a>). Runs with exemplar storage, so latency samples keep their trace IDs.
+      Evaluates the alert rules in <code>alerts.yml</code> (<a href="observability.html#alerts">which</a>).</p></div>
   <dl class="spec" data-app="prometheus"></dl>
   <p class="prose"><code>kubectl apply -k monitoring/prometheus/k8s</code> applies an edited <code>prometheus.yml</code>;
     Prometheus reloads it by itself (<a href="workloads.html#config">why it has no rollout</a>).</p>
@@ -189,7 +190,9 @@ curl -s http://docs.localhost/api/map | jq . &gt; web/site/assets/snapshot.json 
     <p>Everything that isn't one component's: the kind cluster config (<code>kind-cluster.yaml</code>), the Gateway API
       controller (<code>envoy-gateway/</code>, the upstream release manifest with its CRDs), the shared Gateway, its
       GatewayClass and EnvoyProxy (<code>gateway/</code>), the namespaces and the RBAC that pods' ServiceAccounts are bound
-      to. If deleting a component should delete a resource, it belongs in that component's <code>k8s/</code> instead.</p></div>
+      to. If deleting a component should delete a resource, it belongs in that component's <code>k8s/</code> instead.
+      The EnvoyProxy annotates the proxy's Service, so Prometheus scrapes Envoy's <code>/stats/prometheus</code> on 19001
+      (job <code>shared-gateway</code>), e.g. <code>envoy_cluster_upstream_rq_xx</code> per route and status class.</p></div>
   <dl class="spec" data-app="envoy"></dl>
   <dl class="spec" data-app="gateway-helm"></dl>
 </section>

@@ -24,7 +24,9 @@ EXPECTED_PROMETHEUS_JOBS = {
     "grafana",
     "vault",
     "timescaledb",
+    "shared-gateway",
 }
+EXPECTED_ALERT_RULES = {"TargetDown", "SpansQueued", "SpansDropped"}
 EXPECTED_DASHBOARD_TITLES = {
     "Infrastructure Overview",
     "Stock App Metrics",
@@ -83,6 +85,14 @@ def test_discovered_targets_name_their_kubernetes_source():
     for target in discovered:
         missing = KUBERNETES_TARGET_LABELS - target["labels"].keys()
         assert not missing, f"target {target['labels']} has no {sorted(missing)} label"
+
+
+def test_alert_rules_are_loaded():
+    """Prometheus evaluates the alert rules from alerts.yml."""
+    response = requests.get(f"{PROMETHEUS_URL}/api/v1/rules", params={"type": "alert"}, timeout=REQUEST_TIMEOUT_SECONDS)
+    response.raise_for_status()
+    names = {rule["name"] for group in response.json()["data"]["groups"] for rule in group["rules"]}
+    assert EXPECTED_ALERT_RULES <= names
 
 
 def test_backend_traffic_reaches_prometheus():
