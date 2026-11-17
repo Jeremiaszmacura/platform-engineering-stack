@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workloads · Platform Engineering Stack</title>
+<meta name="description" content="Deployments, StatefulSets, DaemonSets and Jobs in the running cluster: probes, init containers, resources, images and how a config change rolls out.">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script>try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<script type="module" src="assets/js/pages/workloads.js"></script>
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<div class="frame">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content">
+<article class="page">
+
+<header class="page-head">
+  <span class="eyebrow">Learn · workloads</span>
+  <h1>How pods are started, checked and replaced</h1>
+  <p class="lede">Nobody here creates a pod by hand. Controllers do: each workload kind promises something different, and
+    the kubelet keeps every pod honest with probes. This chapter shows which promise each component relies on, and what
+    happens between <code>kubectl apply</code> and a pod taking traffic.</p>
+  <div class="facts" id="facts"></div>
+  <nav class="toc" id="toc" aria-label="On this page"></nav>
+</header>
+
+<section class="chapter" id="kinds">
+  <div class="head">
+    <span class="eyebrow">Controllers</span>
+    <h2>Workload kinds used here</h2>
+    <p>Picking the right kind is a common interview question. Each row lists who uses it in your cluster right now.</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Kind</th><th>Here</th><th>Why this kind</th></tr></thead>
+    <tbody id="kind-rows"></tbody></table></div>
+</section>
+
+<section class="chapter" id="probes">
+  <div class="head">
+    <span class="eyebrow">Health</span>
+    <h2>Probes: ready is not alive</h2>
+    <p>The kubelet runs each container's probes. A failing <b>readiness</b> probe takes the pod out of its Services'
+      endpoints, so it gets no new traffic, and nothing restarts. A failing <b>liveness</b> probe restarts the container.
+      Mixing them up turns a database blip into a restart storm.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="probe-flow"></div></figure>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Component</th><th>Readiness</th><th>Liveness</th><th class="num">Ready</th><th class="num">Restarts</th></tr></thead>
+    <tbody id="probe-rows"></tbody></table></div>
+  <ul class="prose">
+    <li><b>stock-app</b> has only a readiness probe on purpose: <code>/health</code> checks the database, and a database
+      outage must not restart the app, which couldn't fix it anyway.</li>
+    <li><b>Vault</b> has no liveness probe: in dev mode a restart wipes every secret.</li>
+    <li><b>documentation</b> reports ready only after its informers finished their first list, so it never serves an empty map.</li>
+    <li>The <b>postgres-exporter</b> sidecar has no readiness probe: an unready sidecar would take the database out of its Service.</li>
+  </ul>
+</section>
+
+<section class="chapter" id="startup">
+  <div class="head">
+    <span class="eyebrow">Start-up</span>
+    <h2>From scheduled to serving</h2>
+    <p>stock-app's pod runs an <b>init container</b>, <code>migrate</code>, before the app: it applies the database schema
+      with Alembic and must exit 0, so the app never starts against an old schema. The app then waits for its readiness
+      probe before any traffic arrives.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="startup-seq"></div>
+    <figcaption>Init containers run one after another, each to completion; regular containers start together after them.</figcaption></figure>
+</section>
+
+<section class="chapter" id="resources">
+  <div class="head">
+    <span class="eyebrow">Resources</span>
+    <h2>Requests, limits and what happens at the limit</h2>
+  </div>
+  <div class="grid-3">
+    <div class="card"><h3>Requests schedule</h3><p>The scheduler places a pod only on a node with enough unrequested CPU
+      and memory. Requests are a reservation, not a cap: stock-app asks for 192Mi because pandas and yfinance need that
+      much just to start.</p></div>
+    <div class="card"><h3>Limits enforce</h3><p>Above its CPU limit a container is throttled; above its memory limit it is
+      OOM-killed and restarted. Grafana was killed at 512Mi with dashboards refreshing, so it now has 1Gi and
+      <code>GOMEMLIMIT</code>, which makes Go collect garbage harder before it reaches the limit.</p></div>
+    <div class="card"><h3>QoS classes</h3><p>Requests equal to limits make a pod <b>Guaranteed</b>; lower requests make it
+      <b>Burstable</b> (every pod here); none at all, <b>BestEffort</b>. Under memory pressure the kubelet evicts
+      BestEffort pods first, Guaranteed last.</p></div>
+  </div>
+  <p class="callout">Every workload here sets requests and limits; the <a href="security.html#hardening">hardening
+    scorecard</a> checks it live. What the cluster can't show you yet is actual usage:
+    <code>kubectl top</code> needs metrics-server, which kind doesn't install.</p>
+</section>
+
+<section class="chapter" id="config">
+  <div class="head">
+    <span class="eyebrow">Rollouts</span>
+    <h2>A config change rolls out new pods</h2>
+    <p>Config files such as <code>prometheus.yml</code> or Grafana's <code>datasources.yaml</code> are plain files next to
+      the manifests. A <code>kustomization.yaml</code> turns each into a ConfigMap and adds a hash of the content to its
+      name. A changed file means a new name, so the pod template changes and the Deployment rolls out.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="config-flow"></div>
+    <figcaption>The rolling update starts the new pod first and removes the old one only once the new one is ready
+      (<code>maxSurge</code> 25%, <code>maxUnavailable</code> 25%, which round to one extra pod and none missing).</figcaption></figure>
+  <div class="grid-2">
+    <div class="card"><h3>The exception: Prometheus</h3><p>This site reads <code>prometheus-config</code> by name to learn which
+      namespaces are scraped, so that ConfigMap keeps a fixed name and no rollout happens. Prometheus re-reads the file
+      itself (<code>--config.auto-reload</code>) once the kubelet has updated the mounted copy, within about two minutes.
+      It skips a broken file and reports <code>prometheus_config_last_reload_successful 0</code>, and that file would then
+      fail its next start.</p></div>
+    <div class="card"><h3>What each change costs</h3><ul>
+      <li>Grafana: a new pod, so you log in again.</li>
+      <li>Tempo: a new pod, so its traces are gone.</li>
+      <li>OpenTelemetry Collector: a new pod; spans buffered in the app's SDK are retried.</li>
+      <li>Prometheus: nothing, if the file is valid.</li></ul></div>
+  </div>
+</section>
+
+<section class="chapter" id="images">
+  <div class="head">
+    <span class="eyebrow">Images</span>
+    <h2>Where every image comes from</h2>
+    <p>The four <code>:dev</code> images are built by <code>./recreate-cluster.sh</code> and loaded straight into the nodes'
+      containerd, so their <code>imagePullPolicy: IfNotPresent</code> never pulls. Every other image is pinned to a version
+      and pulled by the node; Renovate proposes the updates (<a href="delivery.html#renovate">Build &amp; ship</a>).</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Component</th><th>Namespace</th><th>Images</th><th>Source</th></tr></thead>
+    <tbody id="image-rows"></tbody></table></div>
+</section>
+
+<section class="chapter" id="try">
+  <div class="head"><span class="eyebrow">Hands on</span><h2>Try it</h2></div>
+  <div class="try">
+    <div><p>Scale out and back; the <a href="map.html">Cluster map</a> shows where each new pod lands.</p>
+      <div class="cmd"><pre>kubectl scale deploy/traffic-generator -n apps --replicas=3
+kubectl scale deploy/traffic-generator -n apps --replicas=1</pre></div></div>
+    <div><p>Roll out a restart and watch a new ReplicaSet replace the old one.</p>
+      <div class="cmd"><pre>kubectl rollout restart deploy/stock-ui -n apps
+kubectl rollout status deploy/stock-ui -n apps
+kubectl get rs -n apps -l app=stock-ui
+kubectl rollout history deploy/stock-ui -n apps</pre></div></div>
+    <div><p>Make stock-app unready without restarting it: stop the database and watch the dot on the Overview turn orange.</p>
+      <div class="cmd"><pre>kubectl scale statefulset/timescaledb -n data --replicas=0
+kubectl get endpointslices -n apps -l kubernetes.io/service-name=stock-app-service --watch
+kubectl scale statefulset/timescaledb -n data --replicas=1</pre></div></div>
+  </div>
+</section>
+
+<section class="chapter" id="practice">
+  <div class="head"><span class="eyebrow">Weak spots</span><h2>What to fix next</h2><p>The first is checked live.</p></div>
+  <div class="findings">
+    <div class="finding" id="replica-check"></div>
+    <div class="finding"><span class="sev">Static · scale</span><h3>Nothing scales with load</h3>
+      <p>Replica counts are fixed; a burst from traffic-generator just makes stock-app slower.</p>
+      <p class="fix">Exercise: install metrics-server, add a HorizontalPodAutoscaler for stock-app on CPU, fire 100
+        concurrent requests and watch replicas appear on the map.</p></div>
+    <div class="finding"><span class="sev">Unbounded · namespaces</span><h3>No quotas or defaults per namespace</h3>
+      <p>A pod without requests would still be accepted, and one namespace could take the whole node.</p>
+      <p class="fix">Exercise: a LimitRange with default requests and a ResourceQuota for <code>apps</code>; apply a pod
+        without resources and read the defaults the API filled in.</p></div>
+  </div>
+</section>
+
+<section class="chapter" id="interview">
+  <div class="head"><span class="eyebrow">Interview check</span><h2>Questions to answer from this chapter</h2></div>
+  <div class="qa-list">
+    <details class="qa"><summary>Readiness, liveness and startup probes: what does each control?</summary><div>
+      <p>Readiness decides whether the pod is an endpoint of its Services. Liveness decides whether the kubelet restarts the
+      container. A startup probe holds off both until a slow starter is up, instead of a huge
+      <code>initialDelaySeconds</code>. A liveness probe should check only the process itself, never its dependencies.</p></div></details>
+    <details class="qa"><summary>A pod is in CrashLoopBackOff. How do you find out why?</summary><div>
+      <p><code>kubectl describe pod</code> for events and the last state (exit code; 137 means killed, often OOM),
+      <code>kubectl logs --previous</code> for the crashed run, then the probes, the limits and missing config or Secrets.
+      The back-off grows to five minutes between attempts.</p></div></details>
+    <details class="qa"><summary>How does a rolling update avoid downtime, and when doesn't it?</summary><div>
+      <p>It creates new pods (up to <code>maxSurge</code>) and removes old ones only as new ones turn ready (keeping within
+      <code>maxUnavailable</code>). It fails to protect you when readiness doesn't reflect real readiness, when old and new
+      versions can't run side by side (schema changes), or when connections are cut without a graceful shutdown
+      (a <code>preStop</code> hook and enough <code>terminationGracePeriodSeconds</code>).</p></div></details>
+    <details class="qa"><summary>Why run database migrations in an init container, and what is the risk?</summary><div>
+      <p>The schema is in place before the app starts, and a failed migration stops the rollout. With several replicas,
+      every pod runs it, so migrations must be idempotent and safe to run concurrently (Alembic takes a lock); many teams
+      prefer a separate Job that the rollout waits for.</p></div></details>
+    <details class="qa"><summary>When would you choose a DaemonSet over a Deployment?</summary><div>
+      <p>When you need exactly one pod per node because the work is per node: node-exporter, log shippers, CNI agents,
+      kube-proxy. A Deployment places replicas wherever there is room and gives no per-node guarantee.</p></div></details>
+  </div>
+</section>
+
+</article>
+</main>
+</div>
+</body>
+</html>

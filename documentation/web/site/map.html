@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cluster map · Platform Engineering Stack</title>
+<meta name="description" content="Every node and pod of the cluster, live: where each pod runs, its IP, Service, identity and who it talks to.">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script>try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<script type="module" src="assets/js/pages/map.js"></script>
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<div class="frame">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content">
+<article class="page">
+
+<header class="page-head">
+  <span class="eyebrow">Start · the physical view</span>
+  <h1>Where everything runs</h1>
+  <p class="lede">Each node is a Docker container on your machine; each chip is a pod, coloured by namespace. Select a pod to
+    see its IP, Service, identity and secrets. Lines show who it talks to: solid for calls it makes, dashed for calls it
+    receives.</p>
+  <div class="facts" id="facts"></div>
+  <nav class="toc" id="toc" aria-label="On this page"></nav>
+</header>
+
+<section class="chapter" id="map">
+  <div class="head">
+    <span class="eyebrow">Topology</span>
+    <h2>Nodes and pods, right now</h2>
+  </div>
+  <div class="legend" id="legend"></div>
+  <div class="with-inspector">
+    <div class="map" id="map-canvas">
+      <svg class="wires" id="wires" aria-hidden="true"></svg>
+      <div class="hostbar">
+        <strong>Your machine</strong>
+        <span class="mono">browser → http://*.localhost → 127.0.0.1:80</span>
+        <span class="mono" id="hostbar-port"></span>
+      </div>
+      <div class="dockernet">
+        <span class="label">Docker network "kind" · each node is a container on it</span>
+        <div class="nodes" id="nodes"></div>
+      </div>
+    </div>
+    <aside class="inspector" id="inspector" aria-live="polite"></aside>
+  </div>
+  <div class="grid-2">
+    <div class="card"><h3>Reading the chips</h3><ul>
+      <li><b>Dashed</b> chips use <code>hostNetwork</code>: they share the node's IP instead of getting their own.</li>
+      <li><b>Faded</b> chips are finished Job pods. They stay until something deletes them.</li>
+      <li>An <b>orange dot</b> means the pod runs but is not ready, so its Services don't send it traffic.</li>
+      <li>The grey line under each node lists its node agents: one kube-proxy and one kindnet pod per node.</li>
+    </ul></div>
+    <div class="card"><h3>Watch it change</h3><p>The map refreshes every 5 seconds and new pods flash. Scale something
+      or delete a pod, then watch the scheduler place the replacement:</p>
+      <div class="cmd"><pre>kubectl scale deploy/traffic-generator -n apps --replicas=3
+kubectl delete pod -n apps -l app=stock-ui</pre></div></div>
+  </div>
+</section>
+
+<section class="chapter" id="scheduling">
+  <div class="head">
+    <span class="eyebrow">Scheduling</span>
+    <h2>Why a pod lands where it does</h2>
+    <p>The scheduler first filters out nodes a pod can't use, then scores the rest. Three rules shape this cluster.</p>
+  </div>
+  <div class="grid-3">
+    <div class="card"><h3>Taints keep pods off</h3><p>The control-plane node carries the taint
+      <code>node-role.kubernetes.io/control-plane:NoSchedule</code>. Only pods that tolerate it run there: the static
+      control-plane pods, the per-node agents, and node-exporter, whose DaemonSet adds the toleration on purpose.</p></div>
+    <div class="card"><h3>Volumes pin pods</h3><p>A local-path volume is a directory on one node, so its PersistentVolume
+      has a node affinity. TimescaleDB can only ever run on <span id="db-node">that node</span>:
+      <a href="state.html#volumes">State &amp; storage</a> shows the chain.</p></div>
+    <div class="card"><h3>Nothing spreads replicas</h3><p>No pod here asks to be spread out (topology spread
+      constraints or anti-affinity), so with more replicas two can land on the same worker, and losing that node takes
+      both.</p></div>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Node</th><th>Roles</th><th>Node IP</th><th>Pod range</th><th class="num">Workload pods</th><th>Taints</th></tr></thead>
+    <tbody id="node-rows"></tbody></table></div>
+</section>
+
+<section class="chapter" id="interview">
+  <div class="head">
+    <span class="eyebrow">Interview check</span>
+    <h2>Questions to answer from this page</h2>
+  </div>
+  <div class="qa-list">
+    <details class="qa"><summary>What is a "node" in this cluster, physically?</summary><div>
+      <p>A Docker container running systemd, containerd and the kubelet, created by kind from the
+      <code>kindest/node</code> image. The three containers sit on Docker's <code>kind</code> bridge network, so node IPs
+      are Docker addresses. On a cloud a node would be a VM; nothing above the kubelet changes.</p></div></details>
+    <details class="qa"><summary>A pod shows Running but not Ready. What happens to its traffic?</summary><div>
+      <p>The EndpointSlice controller drops it from every Service it backs, so kube-proxy and Envoy stop sending it new
+      connections. The kubelet does not restart it; only a failing liveness probe would.</p></div></details>
+    <details class="qa"><summary>Why does node-exporter run on the control-plane node when stock-app can't?</summary><div>
+      <p>The control-plane node is tainted <code>NoSchedule</code>. node-exporter's DaemonSet tolerates that taint so every
+      node is monitored; stock-app's Deployment doesn't, so the scheduler filters that node out.</p></div></details>
+    <details class="qa"><summary>Two replicas of an app landed on the same worker. How do you prevent it?</summary><div>
+      <p>Add a <code>topologySpreadConstraints</code> entry on <code>kubernetes.io/hostname</code> with
+      <code>maxSkew: 1</code> (or pod anti-affinity), and a PodDisruptionBudget so a node drain keeps one running.</p></div></details>
+  </div>
+</section>
+
+</article>
+</main>
+</div>
+</body>
+</html>

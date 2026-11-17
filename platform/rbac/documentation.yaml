@@ -1,0 +1,83 @@
+# Read-only API access for the documentation site (its ServiceAccount lives in documentation/k8s/).
+# No Secrets: their names and keys come from pod specs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: documentation
+rules:
+  - apiGroups: [""]
+    resources: [nodes, pods, services, serviceaccounts, persistentvolumeclaims, persistentvolumes]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [networkpolicies]
+    verbs: [get, list, watch]
+  - apiGroups: [gateway.networking.k8s.io]
+    resources: [gateways, httproutes]
+    verbs: [get, list, watch]
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [roles, rolebindings, clusterroles, clusterrolebindings]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: documentation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: documentation
+subjects:
+  - kind: ServiceAccount
+    name: documentation
+    namespace: docs
+---
+# resourceNames: exactly one ConfigMap each (kube-proxy's pod range, Prometheus' discovery namespaces)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: documentation-kube-proxy
+  namespace: kube-system
+rules:
+  - apiGroups: [""]
+    resources: [configmaps]
+    resourceNames: [kube-proxy]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: documentation-kube-proxy
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: documentation-kube-proxy
+subjects:
+  - kind: ServiceAccount
+    name: documentation
+    namespace: docs
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: documentation-prometheus
+  namespace: monitoring
+rules:
+  - apiGroups: [""]
+    resources: [configmaps]
+    resourceNames: [prometheus-config]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: documentation-prometheus
+  namespace: monitoring
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: documentation-prometheus
+subjects:
+  - kind: ServiceAccount
+    name: documentation
+    namespace: docs

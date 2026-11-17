@@ -1,25 +1,19 @@
-# Built from the repo root so the site can include stock-app/openapi.yaml:
-#   docker build -t documentation:dev -f documentation/Dockerfile .
-
-# Build the static site once...
-FROM python:3.14-slim AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
-COPY documentation/requirements.txt ./documentation/
-RUN pip install --no-cache-dir -r documentation/requirements.txt
+# Download modules first so this layer is cached between code changes
+COPY go.mod go.sum ./
+RUN go mod download
 
-COPY documentation/mkdocs.yml ./documentation/
-COPY documentation/docs ./documentation/docs
-COPY documentation/hooks ./documentation/hooks
-COPY stock-app/openapi.yaml ./stock-app/openapi.yaml
+COPY . .
+RUN CGO_ENABLED=0 go build -o documentation .
 
-WORKDIR /app/documentation
-RUN mkdocs build --strict
+# Static, non-root runtime image
+FROM gcr.io/distroless/static-debian12:nonroot
 
-# ...and serve it with non-root nginx on port 8080
-FROM nginxinc/nginx-unprivileged:1.30-alpine
-
-COPY --from=builder /app/documentation/site /usr/share/nginx/html
+COPY --from=builder /app/documentation /documentation
 
 EXPOSE 8080
+
+CMD ["/documentation"]

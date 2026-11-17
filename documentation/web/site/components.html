@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Components · Platform Engineering Stack</title>
+<meta name="description" content="Every component of the cluster: what it is for, its live spec sheet, the ideas worth knowing and how to run and test it.">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script>try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<script type="module" src="assets/js/pages/components.js"></script>
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<div class="frame">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content">
+<article class="page">
+
+<header class="page-head">
+  <span class="eyebrow">Reference · components</span>
+  <h1>Every component, with its live spec sheet</h1>
+  <p class="lede">One section per component: what it is for, its facts as the cluster reports them right now, the ideas
+    worth knowing and how to work on it. Each top-level directory of the repository is one component; its Kubernetes
+    manifests live in <code>&lt;component&gt;/k8s/</code>.</p>
+  <nav class="toc" id="toc" aria-label="On this page"></nav>
+</header>
+
+<section class="chapter" id="stock-app" style="--c:var(--ns-apps)">
+  <div class="head"><span class="eyebrow">apps · the real backend</span><h2>stock-app</h2>
+    <p>Serves daily stock prices (open, high, low, close, volume) at <a href="http://stock.localhost/api/v1/instruments">stock.localhost/api/v1</a>:
+      the instruments it holds, the bars for a date window, and a summary of a window. FastAPI with TimescaleDB, plus
+      <code>POST /secret</code> and <code>GET /secret/{key}</code> backed by Vault.</p></div>
+  <dl class="spec" data-app="stock-app"></dl>
+  <div class="grid-2">
+    <div class="card"><h3>Contract first</h3><p><code>stock-app/openapi.yaml</code> is the API's source of truth: the
+      request and response models are generated from it (<code>tox -e api</code>) and <code>make lint</code> fails if they
+      drift. The running service publishes it at <a href="http://stock.localhost/openapi.yaml">/openapi.yaml</a>, with
+      Swagger UI at <a href="http://stock.localhost/docs">/docs</a>, and the e2e tests validate every response against it.</p></div>
+    <div class="card"><h3>Providers</h3><p><code>STOCK_PROVIDER=yahoo</code> (the default) calls Yahoo Finance;
+      <code>fixture</code> replays <code>fixtures/market-data.json</code>, which CI uses because Yahoo rate-limits its
+      runners. Re-record with <code>tox -e record</code>. How the cache decides what to fetch:
+      <a href="state.html#cache-aside">State &amp; storage</a>.</p></div>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="hexagon"></div>
+    <figcaption>Hexagonal layout: every arrow is an import, and they all point inwards. The domain and the application
+      know nothing about FastAPI, SQL, Yahoo or Vault; outbound adapters satisfy the application's ports
+      (<code>typing.Protocol</code>) without importing them, and <code>src/main.py</code> is the only place adapters are built.
+      <code>lint-imports</code> checks five such rules (<code>.importlinter</code>) in <code>make lint</code>.</figcaption></figure>
+  <div class="cmd"><pre>cd stock-app
+tox -e tests          # unit tests: no database or network needed
+tox -e pre-commit     # lint, import rules, model drift
+docker build -t stock-app:dev . &amp;&amp; kind load docker-image stock-app:dev --name sample-cluster
+kubectl rollout restart deployment stock-app -n apps   # migrations run in its init container</pre></div>
+</section>
+
+<section class="chapter" id="timescaledb" style="--c:var(--ns-data)">
+  <div class="head"><span class="eyebrow">data · stock-app's database</span><h2>TimescaleDB</h2>
+    <p>PostgreSQL 17 with TimescaleDB, as a StatefulSet with a 2Gi volume, reachable only inside the cluster at
+      <code>timescaledb-service.data:5432</code> (database <code>stockdata</code>, user <code>stockapp</code>). The
+      <code>data</code> namespace may not attach routes to the Gateway.</p></div>
+  <dl class="spec" data-app="timescaledb"></dl>
+  <ul class="prose">
+    <li>stock-app's Alembic migrations create the schema, from its init container.</li>
+    <li>The password Secret exists twice, in <code>data</code> and in <code>apps</code>, because Secrets can't cross namespaces.</li>
+    <li>A <code>postgres_exporter</code> sidecar serves <code>pg_*</code> metrics on 9187 (job <code>timescaledb</code>). It logs in
+      as <code>postgres_exporter</code>, a role with only <code>pg_monitor</code>, created on first start by
+      <code>k8s/create-exporter-role.sh</code>.</li>
+  </ul>
+  <div class="cmd"><pre>kubectl exec -it timescaledb-0 -n data -c timescaledb -- psql -U stockapp -d stockdata</pre></div>
+</section>
+
+<section class="chapter" id="stock-ui" style="--c:var(--ns-apps)">
+  <div class="head"><span class="eyebrow">apps · a frontend</span><h2>stock-ui</h2>
+    <p>"Stock App", a React (Vite) app at <a href="http://stock-ui.localhost">stock-ui.localhost</a> that charts stock-app's
+      daily prices (line or candles, one week to five years). Only the Markets view uses the backend: Portfolio, Watchlist
+      and the account menu are mocked on purpose (<code>src/mocks/demoData.js</code>) and the indicator panels are empty
+      placeholders. Search filters stock-app's instrument list; any other ticker can be typed in full.</p></div>
+  <dl class="spec" data-app="stock-ui"></dl>
+  <div class="cmd"><pre>cd stock-ui
+npm ci
+npm run dev      # dev server; VITE_STOCK_API_URL overrides http://stock.localhost
+npm test         # Vitest
+npm run build    # into dist/, served by non-root nginx on 8080 in the image</pre></div>
+</section>
+
+<section class="chapter" id="traffic-generator" style="--c:var(--ns-apps)">
+  <div class="head"><span class="eyebrow">apps · a test tool</span><h2>traffic-generator</h2>
+    <p>A React (Vite) page at <a href="http://traffic-generator.localhost">traffic-generator.localhost</a> that simulates
+      traffic: pick a stock-app endpoint, send 1 to 100 concurrent requests and see every response. The same traffic shows
+      up in Prometheus, Grafana, Tempo and on this site's <a href="index.html#architecture">architecture diagram</a>.</p></div>
+  <dl class="spec" data-app="traffic-generator"></dl>
+  <div class="cmd"><pre>cd traffic-generator
+npm ci &amp;&amp; npm run dev    # or npm run build, into dist/</pre></div>
+</section>
+
+<section class="chapter" id="vault" style="--c:var(--ns-vault)">
+  <div class="head"><span class="eyebrow">vault · secrets</span><h2>Vault</h2>
+    <p>HashiCorp Vault in <b>dev mode</b> at <a href="http://vault.localhost">vault.localhost</a>, token <code>root</code>:
+      in memory and auto-unsealed, a playground only. The <code>vault-configure</code> Job enables the KV v2 mounts
+      <code>services/</code> (one path per service, ready for per-service policies) and <code>infra/</code> (reserved).
+      Prometheus scrapes <code>/v1/sys/metrics</code>. How it's used and how it should be:
+      <a href="security.html#vault">Identity &amp; secrets</a>.</p></div>
+  <dl class="spec" data-app="vault"></dl>
+  <dl class="spec" data-app="vault-configure"></dl>
+</section>
+
+<section class="chapter" id="prometheus" style="--c:var(--ns-monitoring)">
+  <div class="head"><span class="eyebrow">monitoring · metrics</span><h2>Prometheus</h2>
+    <p>At <a href="http://prometheus.localhost">prometheus.localhost</a>. Discovers every Service annotated
+      <code>prometheus.io/scrape: "true"</code> in <code>apps</code>, <code>monitoring</code>, <code>vault</code>,
+      <code>data</code> and <code>docs</code> and scrapes each pod every 5 seconds
+      (<a href="observability.html#metrics">how</a>). Runs with exemplar storage, so latency samples keep their trace IDs.</p></div>
+  <dl class="spec" data-app="prometheus"></dl>
+  <p class="prose"><code>kubectl apply -k monitoring/prometheus/k8s</code> applies an edited <code>prometheus.yml</code>;
+    Prometheus reloads it by itself (<a href="workloads.html#config">why it has no rollout</a>).</p>
+</section>
+
+<section class="chapter" id="node-exporter" style="--c:var(--ns-monitoring)">
+  <div class="head"><span class="eyebrow">monitoring · node metrics</span><h2>node-exporter</h2>
+    <p>A DaemonSet, one pod per node including the control plane, with the host's network and process table and read-only
+      mounts of <code>/proc</code>, <code>/sys</code> and <code>/</code>. Its numbers feed the Infrastructure Overview dashboard.</p></div>
+  <dl class="spec" data-app="node-exporter"></dl>
+</section>
+
+<section class="chapter" id="grafana" style="--c:var(--ns-monitoring)">
+  <div class="head"><span class="eyebrow">monitoring · dashboards</span><h2>Grafana</h2>
+    <p>At <a href="http://grafana.localhost">grafana.localhost</a> (<code>admin</code> / <code>admin</code>). Datasources and
+      dashboards are files in <code>monitoring/grafana/k8s/</code>, one JSON file per dashboard with a fixed
+      <code>uid</code>, listed in its <code>kustomization.yaml</code> (<a href="observability.html#dashboards">dashboards as code</a>).
+      Memory limit 1Gi: Grafana 13 idles at about 330Mi and was OOM-killed at 512Mi.</p></div>
+  <dl class="spec" data-app="grafana"></dl>
+</section>
+
+<section class="chapter" id="otel-collector" style="--c:var(--ns-monitoring)">
+  <div class="head"><span class="eyebrow">monitoring · trace pipeline</span><h2>OpenTelemetry Collector</h2>
+    <p>The <code>otelcol-k8s</code> distribution as one gateway Deployment: <code>otlp</code> receiver →
+      <code>memory_limiter</code> → <code>k8s_attributes</code> → <code>otlp_http</code> exporter to Tempo
+      (<a href="observability.html#traces">the pipeline, live</a>). It exposes its own metrics on 8888.</p></div>
+  <dl class="spec" data-app="otel-collector"></dl>
+</section>
+
+<section class="chapter" id="tempo" style="--c:var(--ns-monitoring)">
+  <div class="head"><span class="eyebrow">monitoring · trace storage</span><h2>Tempo</h2>
+    <p>A single binary with local storage on an <code>emptyDir</code>, so traces are lost when the pod restarts. No
+      HTTPRoute: Grafana is its UI. Search finds a new trace after about 30 seconds, once a block is cut; opening a trace by
+      ID works at once.</p></div>
+  <dl class="spec" data-app="tempo"></dl>
+</section>
+
+<section class="chapter" id="documentation" style="--c:var(--ns-docs)">
+  <div class="head"><span class="eyebrow">docs · this site</span><h2>documentation</h2>
+    <p>A Go service at <a href="http://docs.localhost">docs.localhost</a> that serves these pages and the live data behind
+      them. It reads the Kubernetes API through informers (<a href="security.html#this-site">how</a>) with a read-only
+      ClusterRole that excludes Secrets, and forwards read-only PromQL to Prometheus, the way Grafana's proxy mode does.</p></div>
+  <dl class="spec" data-app="documentation"></dl>
+  <div class="grid-2">
+    <div class="card"><h3>Endpoints</h3><ul>
+      <li><code>/</code> and <code>/*.html</code>: the pages, embedded in the binary</li>
+      <li><code>/api/map</code>: the cluster as JSON, built from the informer caches</li>
+      <li><code>/api/prometheus/api/v1/query</code> and <code>query_range</code>: forwarded to Prometheus, nothing else</li>
+      <li><code>/health</code> (ready once the informers have synced) and <code>/metrics</code></li></ul></div>
+    <div class="card"><h3>Code</h3><ul>
+      <li><code>internal/topology</code> turns API objects into the map: pure and unit-tested</li>
+      <li><code>internal/cluster</code> holds the informers; <code>internal/server</code> the HTTP routes and the proxy</li>
+      <li><code>web/site</code>: one HTML page per topic, shared CSS and JavaScript modules, no build step</li>
+      <li><code>web/test</code>: unit tests for the JavaScript model, run by Node's own test runner</li></ul></div>
+  </div>
+  <p class="prose">Change the docs by editing <code>documentation/web/site/</code>: each fact belongs on one page, others
+    link to it. A new page goes into the <code>PAGES</code> list in <code>assets/js/site.js</code>. Outside the cluster
+    <code>go run .</code> uses your kubeconfig and reaches Prometheus through <code>prometheus.localhost</code>. Without any
+    API (GitHub Pages publishes <code>web/site</code> as it is), the pages render <code>assets/snapshot.json</code>; refresh it
+    from a running cluster with the command below.</p>
+  <div class="cmd"><pre>cd documentation
+go test ./... &amp;&amp; golangci-lint run
+node --test 'web/test/*.test.js'
+go run .     # http://localhost:8080, against your current kubeconfig context
+curl -s http://docs.localhost/api/map | jq . &gt; web/site/assets/snapshot.json   # refresh the offline snapshot</pre></div>
+</section>
+
+<section class="chapter" id="platform" style="--c:var(--ns-gateway)">
+  <div class="head"><span class="eyebrow">cluster-wide · applied first</span><h2>platform</h2>
+    <p>Everything that isn't one component's: the kind cluster config (<code>kind-cluster.yaml</code>), the Gateway API
+      controller (<code>envoy-gateway/</code>, the upstream release manifest with its CRDs), the shared Gateway, its
+      GatewayClass and EnvoyProxy (<code>gateway/</code>), the namespaces and the RBAC that pods' ServiceAccounts are bound
+      to. If deleting a component should delete a resource, it belongs in that component's <code>k8s/</code> instead.</p></div>
+  <dl class="spec" data-app="envoy"></dl>
+  <dl class="spec" data-app="gateway-helm"></dl>
+</section>
+
+</article>
+</main>
+</div>
+</body>
+</html>

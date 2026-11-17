@@ -1,0 +1,2269 @@
+{
+  "generated_at": "2026-11-17T17:11:53.921872635Z",
+  "context": "sample-cluster",
+  "version": "v1.37.0",
+  "system_namespaces": [
+    "default",
+    "envoy-gateway-system",
+    "kube-node-lease",
+    "kube-public",
+    "kube-system",
+    "local-path-storage"
+  ],
+  "ranges": {
+    "nodes": "",
+    "pods": "10.244.0.0/16",
+    "services": "10.96.0.0/16"
+  },
+  "nodes": [
+    {
+      "name": "sample-cluster-control-plane",
+      "ip": "172.18.0.3",
+      "pod_cidr": "10.244.0.0/24",
+      "roles": [
+        "control-plane"
+      ],
+      "taints": [
+        "node-role.kubernetes.io/control-plane:NoSchedule"
+      ],
+      "agents": [
+        "etcd",
+        "kindnet",
+        "kube-controller-manager",
+        "kube-proxy",
+        "kube-scheduler"
+      ]
+    },
+    {
+      "name": "sample-cluster-worker",
+      "ip": "172.18.0.2",
+      "pod_cidr": "10.244.1.0/24",
+      "roles": [],
+      "taints": [],
+      "agents": [
+        "kindnet",
+        "kube-proxy"
+      ]
+    },
+    {
+      "name": "sample-cluster-worker2",
+      "ip": "172.18.0.4",
+      "pod_cidr": "10.244.2.0/24",
+      "roles": [],
+      "taints": [],
+      "agents": [
+        "kindnet",
+        "kube-proxy"
+      ]
+    }
+  ],
+  "pods": [
+    {
+      "id": "apps/stock-app-bcd8578c7-9mcj7",
+      "name": "stock-app-bcd8578c7-9mcj7",
+      "namespace": "apps",
+      "app": "stock-app",
+      "ip": "10.244.2.11",
+      "node": "sample-cluster-worker2",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "stock-app:dev"
+      ],
+      "service_account": "stock-app",
+      "token_mounted": false,
+      "secrets": [
+        "stock-app-secret/db-password → STOCK_DB_PASSWORD",
+        "vault-dev-token/token → VAULT_TOKEN"
+      ],
+      "config_maps": [],
+      "volumes": [
+        "emptyDir at /tmp",
+        "emptyDir at /home/stockapp"
+      ],
+      "probes": [
+        "readiness: GET /health :8000"
+      ],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": true,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": true,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
+      "id": "apps/stock-ui-7d9d78b48-fvp5t",
+      "name": "stock-ui-7d9d78b48-fvp5t",
+      "namespace": "apps",
+      "app": "stock-ui",
+      "ip": "10.244.2.7",
+      "node": "sample-cluster-worker2",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "stock-ui:dev"
+      ],
+      "service_account": "stock-ui",
+      "token_mounted": false,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [],
+      "probes": [
+        "readiness: GET / :8080",
+        "liveness: GET / :8080"
+      ],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": false,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
+      "id": "apps/traffic-generator-74b69d54cd-lxx6s",
+      "name": "traffic-generator-74b69d54cd-lxx6s",
+      "namespace": "apps",
+      "app": "traffic-generator",
+      "ip": "10.244.1.10",
+      "node": "sample-cluster-worker",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "traffic-generator:dev"
+      ],
+      "service_account": "traffic-generator",
+      "token_mounted": false,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [],
+      "probes": [
+        "readiness: GET / :8080",
+        "liveness: GET / :8080"
+      ],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": false,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
+      "id": "data/timescaledb-0",
+      "name": "timescaledb-0",
+      "namespace": "data",
+      "app": "timescaledb",
+      "ip": "10.244.1.16",
+      "node": "sample-cluster-worker",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "StatefulSet",
+      "images": [
+        "quay.io/prometheuscommunity/postgres-exporter:v0.20.1",
+        "timescale/timescaledb:2.28.3-pg17"
+      ],
+      "service_account": "timescaledb",
+      "token_mounted": false,
+      "secrets": [
+        "timescaledb-secret/exporter-password → DATA_SOURCE_PASS",
+        "timescaledb-secret/exporter-password → EXPORTER_PASSWORD",
+        "timescaledb-secret/postgres-password → POSTGRES_PASSWORD"
+      ],
+      "config_maps": [
+        "timescaledb-init-48k77kfc27 → volume at /docker-entrypoint-initdb.d/100-create-exporter-role.sh"
+      ],
+      "volumes": [
+        "PVC data-timescaledb-0 at /var/lib/postgresql/data"
+      ],
+      "probes": [
+        "readiness: exec pg_isready -U stockapp -d stockdata",
+        "liveness: exec pg_isready -U stockapp -d stockdata"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
+      "id": "docs/documentation-cb855b4f5-wjfn2",
+      "name": "documentation-cb855b4f5-wjfn2",
+      "namespace": "docs",
+      "app": "documentation",
+      "ip": "10.244.2.20",
+      "node": "sample-cluster-worker2",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "documentation:dev"
+      ],
+      "service_account": "documentation",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [],
+      "probes": [
+        "readiness: GET /health :8080",
+        "liveness: GET /health :8080"
+      ],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": true,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": true,
+        "added_capabilities": [],
+        "seccomp": true,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
+      "id": "envoy-gateway-system/envoy-gateway-7b99796d48-qg8cd",
+      "name": "envoy-gateway-7b99796d48-qg8cd",
+      "namespace": "envoy-gateway-system",
+      "app": "gateway-helm",
+      "ip": "10.244.1.3",
+      "node": "sample-cluster-worker",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "envoyproxy/gateway:v1.10.0"
+      ],
+      "service_account": "envoy-gateway",
+      "token_mounted": true,
+      "secrets": [
+        "envoy-gateway → volume at /certs"
+      ],
+      "config_maps": [
+        "envoy-gateway-config → volume at /config"
+      ],
+      "volumes": [
+        "emptyDir at /var/lib/eg/wasm"
+      ],
+      "probes": [
+        "readiness: GET /readyz :8081",
+        "liveness: GET /healthz :8081"
+      ],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": true,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": true,
+        "added_capabilities": [],
+        "seccomp": true,
+        "host_access": [],
+        "limits": false
+      }
+    },
+    {
+      "id": "envoy-gateway-system/shared-gateway-proxy-675f449499-g6rms",
+      "name": "shared-gateway-proxy-675f449499-g6rms",
+      "namespace": "envoy-gateway-system",
+      "app": "envoy",
+      "ip": "10.244.2.9",
+      "node": "sample-cluster-worker2",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "docker.io/envoyproxy/envoy:distroless-v1.40.2@sha256:09ca6f2140a61ad8df11779a4a30d52b48433d444466328494f9188c9c35eded",
+        "envoyproxy/gateway:v1.10.0"
+      ],
+      "service_account": "envoy-envoy-gateway-system-shared-gateway-0ee10bef",
+      "token_mounted": false,
+      "secrets": [
+        "envoy → volume at /certs"
+      ],
+      "config_maps": [
+        "envoy-envoy-gateway-system-shared-gateway-0ee10bef → volume at /sds"
+      ],
+      "volumes": [
+        "emptyDir at /tmp"
+      ],
+      "probes": [
+        "readiness: GET /ready :19003",
+        "liveness: GET /ready :19003",
+        "readiness: GET /healthz :19002",
+        "liveness: GET /healthz :19002"
+      ],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": false,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": true,
+        "added_capabilities": [],
+        "seccomp": true,
+        "host_access": [],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/coredns-559f6c778d-s9sdj",
+      "name": "coredns-559f6c778d-s9sdj",
+      "namespace": "kube-system",
+      "app": "kube-dns",
+      "ip": "10.244.0.3",
+      "node": "sample-cluster-control-plane",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "registry.k8s.io/coredns/coredns:v1.14.6"
+      ],
+      "service_account": "coredns",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [
+        "coredns → volume at /etc/coredns"
+      ],
+      "volumes": [],
+      "probes": [
+        "readiness: GET /ready :readiness-probe",
+        "liveness: GET /health :liveness-probe"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": true,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": true,
+        "added_capabilities": [
+          "NET_BIND_SERVICE"
+        ],
+        "seccomp": false,
+        "host_access": [],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/coredns-559f6c778d-vslfc",
+      "name": "coredns-559f6c778d-vslfc",
+      "namespace": "kube-system",
+      "app": "kube-dns",
+      "ip": "10.244.0.2",
+      "node": "sample-cluster-control-plane",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "registry.k8s.io/coredns/coredns:v1.14.6"
+      ],
+      "service_account": "coredns",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [
+        "coredns → volume at /etc/coredns"
+      ],
+      "volumes": [],
+      "probes": [
+        "readiness: GET /ready :readiness-probe",
+        "liveness: GET /health :liveness-probe"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": true,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": true,
+        "added_capabilities": [
+          "NET_BIND_SERVICE"
+        ],
+        "seccomp": false,
+        "host_access": [],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/etcd-sample-cluster-control-plane",
+      "name": "etcd-sample-cluster-control-plane",
+      "namespace": "kube-system",
+      "app": "etcd",
+      "ip": "172.18.0.3",
+      "node": "sample-cluster-control-plane",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Node",
+      "images": [
+        "registry.k8s.io/etcd:3.7.0-0"
+      ],
+      "service_account": "default",
+      "token_mounted": false,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /etc/kubernetes/pki/etcd at /etc/kubernetes/pki/etcd",
+        "hostPath /var/lib/etcd at /var/lib/etcd"
+      ],
+      "probes": [
+        "readiness: GET /readyz :probe-port",
+        "liveness: GET /livez :probe-port"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": true,
+        "host_access": [
+          "hostNetwork",
+          "hostPath"
+        ],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/kindnet-fqrl6",
+      "name": "kindnet-fqrl6",
+      "namespace": "kube-system",
+      "app": "kindnet",
+      "ip": "172.18.0.2",
+      "node": "sample-cluster-worker",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "docker.io/kindest/kindnetd:v20260820-69b56db7"
+      ],
+      "service_account": "kindnet",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /etc/cni/net.d at /etc/cni/net.d",
+        "hostPath /run/xtables.lock at /run/xtables.lock",
+        "hostPath /lib/modules at /lib/modules",
+        "hostPath /var/run/nri at /var/run/nri"
+      ],
+      "probes": [],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPath"
+        ],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/kindnet-m4t68",
+      "name": "kindnet-m4t68",
+      "namespace": "kube-system",
+      "app": "kindnet",
+      "ip": "172.18.0.4",
+      "node": "sample-cluster-worker2",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "docker.io/kindest/kindnetd:v20260820-69b56db7"
+      ],
+      "service_account": "kindnet",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /etc/cni/net.d at /etc/cni/net.d",
+        "hostPath /run/xtables.lock at /run/xtables.lock",
+        "hostPath /lib/modules at /lib/modules",
+        "hostPath /var/run/nri at /var/run/nri"
+      ],
+      "probes": [],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPath"
+        ],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/kindnet-qknnv",
+      "name": "kindnet-qknnv",
+      "namespace": "kube-system",
+      "app": "kindnet",
+      "ip": "172.18.0.3",
+      "node": "sample-cluster-control-plane",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "docker.io/kindest/kindnetd:v20260820-69b56db7"
+      ],
+      "service_account": "kindnet",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /etc/cni/net.d at /etc/cni/net.d",
+        "hostPath /run/xtables.lock at /run/xtables.lock",
+        "hostPath /lib/modules at /lib/modules",
+        "hostPath /var/run/nri at /var/run/nri"
+      ],
+      "probes": [],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPath"
+        ],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/kube-apiserver-sample-cluster-control-plane",
+      "name": "kube-apiserver-sample-cluster-control-plane",
+      "namespace": "kube-system",
+      "app": "kube-apiserver",
+      "ip": "172.18.0.3",
+      "node": "sample-cluster-control-plane",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Node",
+      "images": [
+        "registry.k8s.io/kube-apiserver:v1.37.0"
+      ],
+      "service_account": "default",
+      "token_mounted": false,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /etc/ssl/certs at /etc/ssl/certs",
+        "hostPath /etc/ca-certificates at /etc/ca-certificates",
+        "hostPath /etc/kubernetes/pki at /etc/kubernetes/pki",
+        "hostPath /usr/local/share/ca-certificates at /usr/local/share/ca-certificates",
+        "hostPath /usr/share/ca-certificates at /usr/share/ca-certificates"
+      ],
+      "probes": [
+        "readiness: GET /readyz :probe-port",
+        "liveness: GET /livez :probe-port"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": true,
+        "host_access": [
+          "hostNetwork",
+          "hostPath"
+        ],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/kube-controller-manager-sample-cluster-control-plane",
+      "name": "kube-controller-manager-sample-cluster-control-plane",
+      "namespace": "kube-system",
+      "app": "kube-controller-manager",
+      "ip": "172.18.0.3",
+      "node": "sample-cluster-control-plane",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Node",
+      "images": [
+        "registry.k8s.io/kube-controller-manager:v1.37.0"
+      ],
+      "service_account": "default",
+      "token_mounted": false,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /etc/ssl/certs at /etc/ssl/certs",
+        "hostPath /etc/ca-certificates at /etc/ca-certificates",
+        "hostPath /etc/kubernetes/pki at /etc/kubernetes/pki",
+        "hostPath /etc/kubernetes/controller-manager.conf at /etc/kubernetes/controller-manager.conf",
+        "hostPath /usr/local/share/ca-certificates at /usr/local/share/ca-certificates",
+        "hostPath /usr/share/ca-certificates at /usr/share/ca-certificates"
+      ],
+      "probes": [
+        "liveness: GET /healthz :probe-port"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": true,
+        "host_access": [
+          "hostNetwork",
+          "hostPath"
+        ],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/kube-proxy-bphn6",
+      "name": "kube-proxy-bphn6",
+      "namespace": "kube-system",
+      "app": "kube-proxy",
+      "ip": "172.18.0.4",
+      "node": "sample-cluster-worker2",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "registry.k8s.io/kube-proxy:v1.37.0"
+      ],
+      "service_account": "kube-proxy",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [
+        "kube-proxy → volume at /var/lib/kube-proxy"
+      ],
+      "volumes": [
+        "hostPath /run/xtables.lock at /run/xtables.lock",
+        "hostPath /lib/modules at /lib/modules"
+      ],
+      "probes": [],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPath"
+        ],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/kube-proxy-d9xvl",
+      "name": "kube-proxy-d9xvl",
+      "namespace": "kube-system",
+      "app": "kube-proxy",
+      "ip": "172.18.0.3",
+      "node": "sample-cluster-control-plane",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "registry.k8s.io/kube-proxy:v1.37.0"
+      ],
+      "service_account": "kube-proxy",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [
+        "kube-proxy → volume at /var/lib/kube-proxy"
+      ],
+      "volumes": [
+        "hostPath /run/xtables.lock at /run/xtables.lock",
+        "hostPath /lib/modules at /lib/modules"
+      ],
+      "probes": [],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPath"
+        ],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/kube-proxy-kh7lr",
+      "name": "kube-proxy-kh7lr",
+      "namespace": "kube-system",
+      "app": "kube-proxy",
+      "ip": "172.18.0.2",
+      "node": "sample-cluster-worker",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "registry.k8s.io/kube-proxy:v1.37.0"
+      ],
+      "service_account": "kube-proxy",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [
+        "kube-proxy → volume at /var/lib/kube-proxy"
+      ],
+      "volumes": [
+        "hostPath /run/xtables.lock at /run/xtables.lock",
+        "hostPath /lib/modules at /lib/modules"
+      ],
+      "probes": [],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPath"
+        ],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/kube-scheduler-sample-cluster-control-plane",
+      "name": "kube-scheduler-sample-cluster-control-plane",
+      "namespace": "kube-system",
+      "app": "kube-scheduler",
+      "ip": "172.18.0.3",
+      "node": "sample-cluster-control-plane",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Node",
+      "images": [
+        "registry.k8s.io/kube-scheduler:v1.37.0"
+      ],
+      "service_account": "default",
+      "token_mounted": false,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /etc/kubernetes/scheduler.conf at /etc/kubernetes/scheduler.conf"
+      ],
+      "probes": [
+        "readiness: GET /readyz :probe-port",
+        "liveness: GET /livez :probe-port"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": true,
+        "host_access": [
+          "hostNetwork",
+          "hostPath"
+        ],
+        "limits": false
+      }
+    },
+    {
+      "id": "local-path-storage/local-path-provisioner-75f7fc7dc5-4q8m8",
+      "name": "local-path-provisioner-75f7fc7dc5-4q8m8",
+      "namespace": "local-path-storage",
+      "app": "local-path-provisioner",
+      "ip": "10.244.0.4",
+      "node": "sample-cluster-control-plane",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "docker.io/kindest/local-path-provisioner:v20260820-69b56db7"
+      ],
+      "service_account": "local-path-provisioner-service-account",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [
+        "local-path-config → volume at /etc/config/"
+      ],
+      "volumes": [],
+      "probes": [],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [],
+        "limits": false
+      }
+    },
+    {
+      "id": "monitoring/grafana-cccccb8f8-zwhf2",
+      "name": "grafana-cccccb8f8-zwhf2",
+      "namespace": "monitoring",
+      "app": "grafana",
+      "ip": "10.244.2.15",
+      "node": "sample-cluster-worker2",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "grafana/grafana:13.2.5"
+      ],
+      "service_account": "grafana",
+      "token_mounted": false,
+      "secrets": [
+        "grafana-admin-secret/admin-password → GF_SECURITY_ADMIN_PASSWORD",
+        "grafana-admin-secret/admin-user → GF_SECURITY_ADMIN_USER"
+      ],
+      "config_maps": [
+        "grafana-dashboard-provider-h557gdcg2b → volume at /etc/grafana/provisioning/dashboards",
+        "grafana-dashboards-f7bchb7d4f → volume at /etc/grafana/dashboards",
+        "grafana-datasources-56k2k48m7m → volume at /etc/grafana/provisioning/datasources"
+      ],
+      "volumes": [
+        "emptyDir at /var/lib/grafana"
+      ],
+      "probes": [
+        "readiness: GET /api/health :3000",
+        "liveness: GET /api/health :3000"
+      ],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": false,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
+      "id": "monitoring/node-exporter-2dpdm",
+      "name": "node-exporter-2dpdm",
+      "namespace": "monitoring",
+      "app": "node-exporter",
+      "ip": "172.18.0.2",
+      "node": "sample-cluster-worker",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "prom/node-exporter:v1.12.1"
+      ],
+      "service_account": "node-exporter",
+      "token_mounted": false,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /proc at /host/proc",
+        "hostPath /sys at /host/sys",
+        "hostPath / at /rootfs"
+      ],
+      "probes": [
+        "readiness: GET / :9100"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPID",
+          "hostPath"
+        ],
+        "limits": true
+      }
+    },
+    {
+      "id": "monitoring/node-exporter-g65f5",
+      "name": "node-exporter-g65f5",
+      "namespace": "monitoring",
+      "app": "node-exporter",
+      "ip": "172.18.0.4",
+      "node": "sample-cluster-worker2",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "prom/node-exporter:v1.12.1"
+      ],
+      "service_account": "node-exporter",
+      "token_mounted": false,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /proc at /host/proc",
+        "hostPath /sys at /host/sys",
+        "hostPath / at /rootfs"
+      ],
+      "probes": [
+        "readiness: GET / :9100"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPID",
+          "hostPath"
+        ],
+        "limits": true
+      }
+    },
+    {
+      "id": "monitoring/node-exporter-xhcst",
+      "name": "node-exporter-xhcst",
+      "namespace": "monitoring",
+      "app": "node-exporter",
+      "ip": "172.18.0.3",
+      "node": "sample-cluster-control-plane",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "prom/node-exporter:v1.12.1"
+      ],
+      "service_account": "node-exporter",
+      "token_mounted": false,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /proc at /host/proc",
+        "hostPath /sys at /host/sys",
+        "hostPath / at /rootfs"
+      ],
+      "probes": [
+        "readiness: GET / :9100"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPID",
+          "hostPath"
+        ],
+        "limits": true
+      }
+    },
+    {
+      "id": "monitoring/otel-collector-ff684b5d9-79vmg",
+      "name": "otel-collector-ff684b5d9-79vmg",
+      "namespace": "monitoring",
+      "app": "otel-collector",
+      "ip": "10.244.2.17",
+      "node": "sample-cluster-worker2",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "otel/opentelemetry-collector-k8s:0.164.0"
+      ],
+      "service_account": "otel-collector",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [
+        "otel-collector-config-2m5cd4h2m7 → volume at /etc/otel-collector/"
+      ],
+      "volumes": [],
+      "probes": [
+        "readiness: GET / :13133"
+      ],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": true,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": true,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
+      "id": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "name": "prometheus-79cdd9d885-cw8vd",
+      "namespace": "monitoring",
+      "app": "prometheus",
+      "ip": "10.244.1.13",
+      "node": "sample-cluster-worker",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "prom/prometheus:v3.15.1"
+      ],
+      "service_account": "prometheus",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [
+        "prometheus-config → volume at /etc/prometheus/"
+      ],
+      "volumes": [],
+      "probes": [
+        "readiness: GET /-/ready :9090",
+        "liveness: GET /-/healthy :9090"
+      ],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": false,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
+      "id": "monitoring/tempo-7f6f89b49b-hbps4",
+      "name": "tempo-7f6f89b49b-hbps4",
+      "namespace": "monitoring",
+      "app": "tempo",
+      "ip": "10.244.1.15",
+      "node": "sample-cluster-worker",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "grafana/tempo:3.1.1"
+      ],
+      "service_account": "tempo",
+      "token_mounted": false,
+      "secrets": [],
+      "config_maps": [
+        "tempo-config-gc2k295kkb → volume at /etc/tempo/"
+      ],
+      "volumes": [
+        "emptyDir at /var/tempo"
+      ],
+      "probes": [
+        "readiness: GET /ready :3200"
+      ],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": true,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": true,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
+      "id": "vault/vault-6c864bf7bf-jhh9w",
+      "name": "vault-6c864bf7bf-jhh9w",
+      "namespace": "vault",
+      "app": "vault",
+      "ip": "10.244.1.6",
+      "node": "sample-cluster-worker",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "hashicorp/vault:1.20.4"
+      ],
+      "service_account": "vault",
+      "token_mounted": false,
+      "secrets": [
+        "vault-dev-token/token → VAULT_DEV_ROOT_TOKEN_ID"
+      ],
+      "config_maps": [],
+      "volumes": [],
+      "probes": [
+        "readiness: GET /v1/sys/health :8200"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [
+          "IPC_LOCK"
+        ],
+        "seccomp": false,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
+      "id": "vault/vault-configure-q56zz",
+      "name": "vault-configure-q56zz",
+      "namespace": "vault",
+      "app": "vault-configure",
+      "ip": "10.244.2.5",
+      "node": "sample-cluster-worker2",
+      "host_network": false,
+      "phase": "Succeeded",
+      "ready": false,
+      "restarts": 0,
+      "owner": "Job",
+      "images": [
+        "hashicorp/vault:1.20.4"
+      ],
+      "service_account": "vault-configure",
+      "token_mounted": false,
+      "secrets": [
+        "vault-dev-token/token → VAULT_TOKEN"
+      ],
+      "config_maps": [],
+      "volumes": [],
+      "probes": [],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [],
+        "limits": false
+      }
+    }
+  ],
+  "services": [
+    {
+      "id": "apps/stock-app-service",
+      "name": "stock-app-service",
+      "namespace": "apps",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.188.144",
+      "ports": [
+        "8000 → 8000/TCP"
+      ],
+      "target_ports": [
+        "8000"
+      ],
+      "node_ports": [],
+      "dns": "stock-app-service.apps.svc.cluster.local",
+      "scraped": true,
+      "job": "stock-app",
+      "metrics_port": "8000",
+      "metrics_path": "/metrics",
+      "hostnames": [
+        "stock.localhost"
+      ],
+      "cors": true,
+      "pods": [
+        "apps/stock-app-bcd8578c7-9mcj7"
+      ]
+    },
+    {
+      "id": "apps/stock-ui-service",
+      "name": "stock-ui-service",
+      "namespace": "apps",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.186.208",
+      "ports": [
+        "80 → 8080/TCP"
+      ],
+      "target_ports": [
+        "8080"
+      ],
+      "node_ports": [],
+      "dns": "stock-ui-service.apps.svc.cluster.local",
+      "scraped": false,
+      "job": "",
+      "metrics_port": "8080",
+      "metrics_path": "/metrics",
+      "hostnames": [
+        "stock-ui.localhost"
+      ],
+      "cors": false,
+      "pods": [
+        "apps/stock-ui-7d9d78b48-fvp5t"
+      ]
+    },
+    {
+      "id": "apps/traffic-generator-service",
+      "name": "traffic-generator-service",
+      "namespace": "apps",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.7.140",
+      "ports": [
+        "80 → 8080/TCP"
+      ],
+      "target_ports": [
+        "8080"
+      ],
+      "node_ports": [],
+      "dns": "traffic-generator-service.apps.svc.cluster.local",
+      "scraped": false,
+      "job": "",
+      "metrics_port": "8080",
+      "metrics_path": "/metrics",
+      "hostnames": [
+        "traffic-generator.localhost"
+      ],
+      "cors": false,
+      "pods": [
+        "apps/traffic-generator-74b69d54cd-lxx6s"
+      ]
+    },
+    {
+      "id": "data/timescaledb-service",
+      "name": "timescaledb-service",
+      "namespace": "data",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.254.235",
+      "ports": [
+        "5432 → 5432/TCP",
+        "9187 → 9187/TCP"
+      ],
+      "target_ports": [
+        "5432",
+        "9187"
+      ],
+      "node_ports": [],
+      "dns": "timescaledb-service.data.svc.cluster.local",
+      "scraped": true,
+      "job": "timescaledb",
+      "metrics_port": "9187",
+      "metrics_path": "/metrics",
+      "hostnames": [],
+      "cors": false,
+      "pods": [
+        "data/timescaledb-0"
+      ]
+    },
+    {
+      "id": "default/kubernetes",
+      "name": "kubernetes",
+      "namespace": "default",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.0.1",
+      "ports": [
+        "443 → 6443/TCP"
+      ],
+      "target_ports": [
+        "6443"
+      ],
+      "node_ports": [],
+      "dns": "kubernetes.default.svc.cluster.local",
+      "scraped": false,
+      "job": "",
+      "metrics_port": "6443",
+      "metrics_path": "/metrics",
+      "hostnames": [],
+      "cors": false,
+      "pods": []
+    },
+    {
+      "id": "docs/documentation-service",
+      "name": "documentation-service",
+      "namespace": "docs",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.177.78",
+      "ports": [
+        "80 → 8080/TCP"
+      ],
+      "target_ports": [
+        "8080"
+      ],
+      "node_ports": [],
+      "dns": "documentation-service.docs.svc.cluster.local",
+      "scraped": true,
+      "job": "documentation",
+      "metrics_port": "8080",
+      "metrics_path": "/metrics",
+      "hostnames": [
+        "docs.localhost"
+      ],
+      "cors": false,
+      "pods": [
+        "docs/documentation-cb855b4f5-wjfn2"
+      ]
+    },
+    {
+      "id": "envoy-gateway-system/envoy-gateway",
+      "name": "envoy-gateway",
+      "namespace": "envoy-gateway-system",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.45.33",
+      "ports": [
+        "18000 → 18000/TCP",
+        "18001 → 18001/TCP",
+        "18002 → 18002/TCP",
+        "19001 → 19001/TCP",
+        "9443 → 9443/TCP"
+      ],
+      "target_ports": [
+        "18000",
+        "18001",
+        "18002",
+        "19001",
+        "9443"
+      ],
+      "node_ports": [],
+      "dns": "envoy-gateway.envoy-gateway-system.svc.cluster.local",
+      "scraped": false,
+      "job": "",
+      "metrics_port": "18000",
+      "metrics_path": "/metrics",
+      "hostnames": [],
+      "cors": false,
+      "pods": [
+        "envoy-gateway-system/envoy-gateway-7b99796d48-qg8cd"
+      ]
+    },
+    {
+      "id": "envoy-gateway-system/shared-gateway-proxy",
+      "name": "shared-gateway-proxy",
+      "namespace": "envoy-gateway-system",
+      "type": "NodePort",
+      "cluster_ip": "10.96.51.184",
+      "ports": [
+        "80 → 10080/TCP (nodePort 30080)"
+      ],
+      "target_ports": [
+        "10080"
+      ],
+      "node_ports": [
+        "30080"
+      ],
+      "dns": "shared-gateway-proxy.envoy-gateway-system.svc.cluster.local",
+      "scraped": false,
+      "job": "",
+      "metrics_port": "10080",
+      "metrics_path": "/metrics",
+      "hostnames": [],
+      "cors": false,
+      "pods": [
+        "envoy-gateway-system/shared-gateway-proxy-675f449499-g6rms"
+      ]
+    },
+    {
+      "id": "kube-system/kube-dns",
+      "name": "kube-dns",
+      "namespace": "kube-system",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.0.10",
+      "ports": [
+        "53 → 53/UDP",
+        "53 → 53/TCP",
+        "9153 → 9153/TCP"
+      ],
+      "target_ports": [
+        "53",
+        "53",
+        "9153"
+      ],
+      "node_ports": [],
+      "dns": "kube-dns.kube-system.svc.cluster.local",
+      "scraped": true,
+      "job": "",
+      "metrics_port": "9153",
+      "metrics_path": "/metrics",
+      "hostnames": [],
+      "cors": false,
+      "pods": [
+        "kube-system/coredns-559f6c778d-s9sdj",
+        "kube-system/coredns-559f6c778d-vslfc"
+      ]
+    },
+    {
+      "id": "monitoring/grafana-service",
+      "name": "grafana-service",
+      "namespace": "monitoring",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.214.131",
+      "ports": [
+        "3000 → 3000/TCP"
+      ],
+      "target_ports": [
+        "3000"
+      ],
+      "node_ports": [],
+      "dns": "grafana-service.monitoring.svc.cluster.local",
+      "scraped": true,
+      "job": "grafana",
+      "metrics_port": "3000",
+      "metrics_path": "/metrics",
+      "hostnames": [
+        "grafana.localhost"
+      ],
+      "cors": false,
+      "pods": [
+        "monitoring/grafana-cccccb8f8-zwhf2"
+      ]
+    },
+    {
+      "id": "monitoring/node-exporter-service",
+      "name": "node-exporter-service",
+      "namespace": "monitoring",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.76.169",
+      "ports": [
+        "9100 → 9100/TCP"
+      ],
+      "target_ports": [
+        "9100"
+      ],
+      "node_ports": [],
+      "dns": "node-exporter-service.monitoring.svc.cluster.local",
+      "scraped": true,
+      "job": "node-exporter",
+      "metrics_port": "9100",
+      "metrics_path": "/metrics",
+      "hostnames": [],
+      "cors": false,
+      "pods": [
+        "monitoring/node-exporter-2dpdm",
+        "monitoring/node-exporter-g65f5",
+        "monitoring/node-exporter-xhcst"
+      ]
+    },
+    {
+      "id": "monitoring/otel-collector-service",
+      "name": "otel-collector-service",
+      "namespace": "monitoring",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.236.204",
+      "ports": [
+        "4318 → 4318/TCP",
+        "8888 → 8888/TCP"
+      ],
+      "target_ports": [
+        "4318",
+        "8888"
+      ],
+      "node_ports": [],
+      "dns": "otel-collector-service.monitoring.svc.cluster.local",
+      "scraped": true,
+      "job": "otel-collector",
+      "metrics_port": "8888",
+      "metrics_path": "/metrics",
+      "hostnames": [],
+      "cors": false,
+      "pods": [
+        "monitoring/otel-collector-ff684b5d9-79vmg"
+      ]
+    },
+    {
+      "id": "monitoring/prometheus-service",
+      "name": "prometheus-service",
+      "namespace": "monitoring",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.217.62",
+      "ports": [
+        "9090 → 9090/TCP"
+      ],
+      "target_ports": [
+        "9090"
+      ],
+      "node_ports": [],
+      "dns": "prometheus-service.monitoring.svc.cluster.local",
+      "scraped": false,
+      "job": "",
+      "metrics_port": "9090",
+      "metrics_path": "/metrics",
+      "hostnames": [
+        "prometheus.localhost"
+      ],
+      "cors": false,
+      "pods": [
+        "monitoring/prometheus-79cdd9d885-cw8vd"
+      ]
+    },
+    {
+      "id": "monitoring/tempo-service",
+      "name": "tempo-service",
+      "namespace": "monitoring",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.219.72",
+      "ports": [
+        "3200 → 3200/TCP",
+        "4318 → 4318/TCP"
+      ],
+      "target_ports": [
+        "3200",
+        "4318"
+      ],
+      "node_ports": [],
+      "dns": "tempo-service.monitoring.svc.cluster.local",
+      "scraped": true,
+      "job": "tempo",
+      "metrics_port": "3200",
+      "metrics_path": "/metrics",
+      "hostnames": [],
+      "cors": false,
+      "pods": [
+        "monitoring/tempo-7f6f89b49b-hbps4"
+      ]
+    },
+    {
+      "id": "vault/vault-service",
+      "name": "vault-service",
+      "namespace": "vault",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.6.238",
+      "ports": [
+        "8200 → 8200/TCP"
+      ],
+      "target_ports": [
+        "8200"
+      ],
+      "node_ports": [],
+      "dns": "vault-service.vault.svc.cluster.local",
+      "scraped": true,
+      "job": "vault",
+      "metrics_port": "8200",
+      "metrics_path": "/v1/sys/metrics",
+      "hostnames": [
+        "vault.localhost"
+      ],
+      "cors": false,
+      "pods": [
+        "vault/vault-6c864bf7bf-jhh9w"
+      ]
+    }
+  ],
+  "gateways": [
+    {
+      "id": "envoy-gateway-system/shared-gateway",
+      "name": "shared-gateway",
+      "namespace": "envoy-gateway-system",
+      "class": "envoy-gateway",
+      "programmed": true,
+      "addresses": [
+        "172.18.0.3",
+        "172.18.0.2",
+        "172.18.0.4"
+      ],
+      "listeners": [
+        {
+          "name": "http",
+          "protocol": "HTTP",
+          "port": 80,
+          "hostname": "*.localhost",
+          "allowed_routes": "namespaces labelled shared-gateway-access=true",
+          "attached_routes": 7
+        }
+      ],
+      "proxy_pods": [
+        "envoy-gateway-system/shared-gateway-proxy-675f449499-g6rms"
+      ],
+      "proxy_service": "envoy-gateway-system/shared-gateway-proxy"
+    }
+  ],
+  "routes": [
+    {
+      "id": "apps/stock-app-route",
+      "name": "stock-app-route",
+      "namespace": "apps",
+      "gateways": [
+        "envoy-gateway-system/shared-gateway"
+      ],
+      "hostnames": [
+        "stock.localhost"
+      ],
+      "backends": [
+        {
+          "service": "apps/stock-app-service",
+          "port": 8000
+        }
+      ],
+      "filters": [
+        "CORS"
+      ],
+      "accepted": true,
+      "status": "Accepted"
+    },
+    {
+      "id": "apps/stock-ui-route",
+      "name": "stock-ui-route",
+      "namespace": "apps",
+      "gateways": [
+        "envoy-gateway-system/shared-gateway"
+      ],
+      "hostnames": [
+        "stock-ui.localhost"
+      ],
+      "backends": [
+        {
+          "service": "apps/stock-ui-service",
+          "port": 80
+        }
+      ],
+      "filters": [],
+      "accepted": true,
+      "status": "Accepted"
+    },
+    {
+      "id": "apps/traffic-generator-route",
+      "name": "traffic-generator-route",
+      "namespace": "apps",
+      "gateways": [
+        "envoy-gateway-system/shared-gateway"
+      ],
+      "hostnames": [
+        "traffic-generator.localhost"
+      ],
+      "backends": [
+        {
+          "service": "apps/traffic-generator-service",
+          "port": 80
+        }
+      ],
+      "filters": [],
+      "accepted": true,
+      "status": "Accepted"
+    },
+    {
+      "id": "docs/documentation-route",
+      "name": "documentation-route",
+      "namespace": "docs",
+      "gateways": [
+        "envoy-gateway-system/shared-gateway"
+      ],
+      "hostnames": [
+        "docs.localhost"
+      ],
+      "backends": [
+        {
+          "service": "docs/documentation-service",
+          "port": 80
+        }
+      ],
+      "filters": [],
+      "accepted": true,
+      "status": "Accepted"
+    },
+    {
+      "id": "monitoring/grafana-route",
+      "name": "grafana-route",
+      "namespace": "monitoring",
+      "gateways": [
+        "envoy-gateway-system/shared-gateway"
+      ],
+      "hostnames": [
+        "grafana.localhost"
+      ],
+      "backends": [
+        {
+          "service": "monitoring/grafana-service",
+          "port": 3000
+        }
+      ],
+      "filters": [],
+      "accepted": true,
+      "status": "Accepted"
+    },
+    {
+      "id": "monitoring/prometheus-route",
+      "name": "prometheus-route",
+      "namespace": "monitoring",
+      "gateways": [
+        "envoy-gateway-system/shared-gateway"
+      ],
+      "hostnames": [
+        "prometheus.localhost"
+      ],
+      "backends": [
+        {
+          "service": "monitoring/prometheus-service",
+          "port": 9090
+        }
+      ],
+      "filters": [],
+      "accepted": true,
+      "status": "Accepted"
+    },
+    {
+      "id": "vault/vault-route",
+      "name": "vault-route",
+      "namespace": "vault",
+      "gateways": [
+        "envoy-gateway-system/shared-gateway"
+      ],
+      "hostnames": [
+        "vault.localhost"
+      ],
+      "backends": [
+        {
+          "service": "vault/vault-service",
+          "port": 8200
+        }
+      ],
+      "filters": [],
+      "accepted": true,
+      "status": "Accepted"
+    }
+  ],
+  "service_accounts": [
+    {
+      "name": "stock-app",
+      "namespace": "apps",
+      "automount": "false",
+      "used_by": [
+        "stock-app-bcd8578c7-9mcj7"
+      ],
+      "token_mounted": false,
+      "permissions": []
+    },
+    {
+      "name": "stock-ui",
+      "namespace": "apps",
+      "automount": "false",
+      "used_by": [
+        "stock-ui-7d9d78b48-fvp5t"
+      ],
+      "token_mounted": false,
+      "permissions": []
+    },
+    {
+      "name": "traffic-generator",
+      "namespace": "apps",
+      "automount": "false",
+      "used_by": [
+        "traffic-generator-74b69d54cd-lxx6s"
+      ],
+      "token_mounted": false,
+      "permissions": []
+    },
+    {
+      "name": "timescaledb",
+      "namespace": "data",
+      "automount": "false",
+      "used_by": [
+        "timescaledb-0"
+      ],
+      "token_mounted": false,
+      "permissions": []
+    },
+    {
+      "name": "documentation",
+      "namespace": "docs",
+      "automount": "not set (true)",
+      "used_by": [
+        "documentation-cb855b4f5-wjfn2"
+      ],
+      "token_mounted": true,
+      "permissions": [
+        "ClusterRole documentation (cluster-wide): get,list,watch nodes,pods,services,serviceaccounts,persistentvolumeclaims,persistentvolumes; get,list,watch networkpolicies; get,list,watch gateways,httproutes; get,list,watch roles,rolebindings,clusterroles,clusterrolebindings",
+        "Role documentation-kube-proxy (in kube-system): get configmaps",
+        "Role documentation-prometheus (in monitoring): get configmaps"
+      ]
+    },
+    {
+      "name": "grafana",
+      "namespace": "monitoring",
+      "automount": "false",
+      "used_by": [
+        "grafana-cccccb8f8-zwhf2"
+      ],
+      "token_mounted": false,
+      "permissions": []
+    },
+    {
+      "name": "node-exporter",
+      "namespace": "monitoring",
+      "automount": "false",
+      "used_by": [
+        "node-exporter-2dpdm",
+        "node-exporter-g65f5",
+        "node-exporter-xhcst"
+      ],
+      "token_mounted": false,
+      "permissions": []
+    },
+    {
+      "name": "otel-collector",
+      "namespace": "monitoring",
+      "automount": "not set (true)",
+      "used_by": [
+        "otel-collector-ff684b5d9-79vmg"
+      ],
+      "token_mounted": true,
+      "permissions": [
+        "Role otel-collector (in apps): get,list,watch pods"
+      ]
+    },
+    {
+      "name": "prometheus",
+      "namespace": "monitoring",
+      "automount": "not set (true)",
+      "used_by": [
+        "prometheus-79cdd9d885-cw8vd"
+      ],
+      "token_mounted": true,
+      "permissions": [
+        "ClusterRole prometheus (cluster-wide): get,list,watch nodes,services,endpoints,pods; get /metrics"
+      ]
+    },
+    {
+      "name": "tempo",
+      "namespace": "monitoring",
+      "automount": "false",
+      "used_by": [
+        "tempo-7f6f89b49b-hbps4"
+      ],
+      "token_mounted": false,
+      "permissions": []
+    },
+    {
+      "name": "vault",
+      "namespace": "vault",
+      "automount": "false",
+      "used_by": [
+        "vault-6c864bf7bf-jhh9w"
+      ],
+      "token_mounted": false,
+      "permissions": []
+    },
+    {
+      "name": "vault-configure",
+      "namespace": "vault",
+      "automount": "false",
+      "used_by": [
+        "vault-configure-q56zz"
+      ],
+      "token_mounted": false,
+      "permissions": []
+    }
+  ],
+  "config": [
+    {
+      "kind": "ConfigMap",
+      "name": "timescaledb-init-48k77kfc27",
+      "namespace": "data",
+      "keys": [
+        "(all keys)"
+      ],
+      "used_by": [
+        "timescaledb-0"
+      ]
+    },
+    {
+      "kind": "ConfigMap",
+      "name": "grafana-dashboard-provider-h557gdcg2b",
+      "namespace": "monitoring",
+      "keys": [
+        "(all keys)"
+      ],
+      "used_by": [
+        "grafana-cccccb8f8-zwhf2"
+      ]
+    },
+    {
+      "kind": "ConfigMap",
+      "name": "grafana-dashboards-f7bchb7d4f",
+      "namespace": "monitoring",
+      "keys": [
+        "(all keys)"
+      ],
+      "used_by": [
+        "grafana-cccccb8f8-zwhf2"
+      ]
+    },
+    {
+      "kind": "ConfigMap",
+      "name": "grafana-datasources-56k2k48m7m",
+      "namespace": "monitoring",
+      "keys": [
+        "(all keys)"
+      ],
+      "used_by": [
+        "grafana-cccccb8f8-zwhf2"
+      ]
+    },
+    {
+      "kind": "ConfigMap",
+      "name": "otel-collector-config-2m5cd4h2m7",
+      "namespace": "monitoring",
+      "keys": [
+        "(all keys)"
+      ],
+      "used_by": [
+        "otel-collector-ff684b5d9-79vmg"
+      ]
+    },
+    {
+      "kind": "ConfigMap",
+      "name": "prometheus-config",
+      "namespace": "monitoring",
+      "keys": [
+        "(all keys)"
+      ],
+      "used_by": [
+        "prometheus-79cdd9d885-cw8vd"
+      ]
+    },
+    {
+      "kind": "ConfigMap",
+      "name": "tempo-config-gc2k295kkb",
+      "namespace": "monitoring",
+      "keys": [
+        "(all keys)"
+      ],
+      "used_by": [
+        "tempo-7f6f89b49b-hbps4"
+      ]
+    },
+    {
+      "kind": "Secret",
+      "name": "stock-app-secret",
+      "namespace": "apps",
+      "keys": [
+        "db-password"
+      ],
+      "used_by": [
+        "stock-app-bcd8578c7-9mcj7"
+      ]
+    },
+    {
+      "kind": "Secret",
+      "name": "vault-dev-token",
+      "namespace": "apps",
+      "keys": [
+        "token"
+      ],
+      "used_by": [
+        "stock-app-bcd8578c7-9mcj7"
+      ]
+    },
+    {
+      "kind": "Secret",
+      "name": "timescaledb-secret",
+      "namespace": "data",
+      "keys": [
+        "exporter-password",
+        "postgres-password"
+      ],
+      "used_by": [
+        "timescaledb-0"
+      ]
+    },
+    {
+      "kind": "Secret",
+      "name": "grafana-admin-secret",
+      "namespace": "monitoring",
+      "keys": [
+        "admin-password",
+        "admin-user"
+      ],
+      "used_by": [
+        "grafana-cccccb8f8-zwhf2"
+      ]
+    },
+    {
+      "kind": "Secret",
+      "name": "vault-dev-token",
+      "namespace": "vault",
+      "keys": [
+        "token"
+      ],
+      "used_by": [
+        "vault-6c864bf7bf-jhh9w",
+        "vault-configure-q56zz"
+      ]
+    }
+  ],
+  "volumes": [
+    {
+      "claim": "data-timescaledb-0",
+      "namespace": "data",
+      "storage_class": "standard",
+      "capacity": "2Gi",
+      "access_modes": [
+        "ReadWriteOnce"
+      ],
+      "volume": "pvc-44c46aec-7d17-4605-a245-4a399c8a19b6",
+      "node": "sample-cluster-worker",
+      "path": "/var/local-path-provisioner/pvc-44c46aec-7d17-4605-a245-4a399c8a19b6_data_data-timescaledb-0",
+      "pods": [
+        "timescaledb-0"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "source": "envoy-gateway-system/shared-gateway-proxy-675f449499-g6rms",
+      "target": "apps/stock-app-bcd8578c7-9mcj7",
+      "label": "stock.localhost",
+      "kind": "gateway"
+    },
+    {
+      "source": "envoy-gateway-system/shared-gateway-proxy-675f449499-g6rms",
+      "target": "apps/stock-ui-7d9d78b48-fvp5t",
+      "label": "stock-ui.localhost",
+      "kind": "gateway"
+    },
+    {
+      "source": "envoy-gateway-system/shared-gateway-proxy-675f449499-g6rms",
+      "target": "apps/traffic-generator-74b69d54cd-lxx6s",
+      "label": "traffic-generator.localhost",
+      "kind": "gateway"
+    },
+    {
+      "source": "envoy-gateway-system/shared-gateway-proxy-675f449499-g6rms",
+      "target": "docs/documentation-cb855b4f5-wjfn2",
+      "label": "docs.localhost",
+      "kind": "gateway"
+    },
+    {
+      "source": "envoy-gateway-system/shared-gateway-proxy-675f449499-g6rms",
+      "target": "monitoring/grafana-cccccb8f8-zwhf2",
+      "label": "grafana.localhost",
+      "kind": "gateway"
+    },
+    {
+      "source": "envoy-gateway-system/shared-gateway-proxy-675f449499-g6rms",
+      "target": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "label": "prometheus.localhost",
+      "kind": "gateway"
+    },
+    {
+      "source": "envoy-gateway-system/shared-gateway-proxy-675f449499-g6rms",
+      "target": "vault/vault-6c864bf7bf-jhh9w",
+      "label": "vault.localhost",
+      "kind": "gateway"
+    },
+    {
+      "source": "apps/stock-app-bcd8578c7-9mcj7",
+      "target": "data/timescaledb-0",
+      "label": "timescaledb-service.data:5432",
+      "kind": "call"
+    },
+    {
+      "source": "apps/stock-app-bcd8578c7-9mcj7",
+      "target": "vault/vault-6c864bf7bf-jhh9w",
+      "label": "vault-service.vault:8200",
+      "kind": "call"
+    },
+    {
+      "source": "apps/stock-app-bcd8578c7-9mcj7",
+      "target": "monitoring/otel-collector-ff684b5d9-79vmg",
+      "label": "otel-collector-service.monitoring:4318",
+      "kind": "call"
+    },
+    {
+      "source": "docs/documentation-cb855b4f5-wjfn2",
+      "target": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "label": "prometheus-service.monitoring:9090",
+      "kind": "call"
+    },
+    {
+      "source": "vault/vault-configure-q56zz",
+      "target": "vault/vault-6c864bf7bf-jhh9w",
+      "label": "vault-service.vault:8200",
+      "kind": "call"
+    },
+    {
+      "source": "monitoring/grafana-cccccb8f8-zwhf2",
+      "target": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "label": "prometheus-service:9090",
+      "kind": "call"
+    },
+    {
+      "source": "monitoring/grafana-cccccb8f8-zwhf2",
+      "target": "monitoring/tempo-7f6f89b49b-hbps4",
+      "label": "tempo-service:3200",
+      "kind": "call"
+    },
+    {
+      "source": "monitoring/otel-collector-ff684b5d9-79vmg",
+      "target": "monitoring/tempo-7f6f89b49b-hbps4",
+      "label": "tempo-service:4318",
+      "kind": "call"
+    },
+    {
+      "source": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "target": "apps/stock-app-bcd8578c7-9mcj7",
+      "label": "scrape 10.244.2.11:8000/metrics (job stock-app)",
+      "kind": "scrape"
+    },
+    {
+      "source": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "target": "data/timescaledb-0",
+      "label": "scrape 10.244.1.16:9187/metrics (job timescaledb)",
+      "kind": "scrape"
+    },
+    {
+      "source": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "target": "docs/documentation-cb855b4f5-wjfn2",
+      "label": "scrape 10.244.2.20:8080/metrics (job documentation)",
+      "kind": "scrape"
+    },
+    {
+      "source": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "target": "monitoring/grafana-cccccb8f8-zwhf2",
+      "label": "scrape 10.244.2.15:3000/metrics (job grafana)",
+      "kind": "scrape"
+    },
+    {
+      "source": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "target": "monitoring/node-exporter-2dpdm",
+      "label": "scrape 172.18.0.2:9100/metrics (job node-exporter)",
+      "kind": "scrape"
+    },
+    {
+      "source": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "target": "monitoring/node-exporter-g65f5",
+      "label": "scrape 172.18.0.4:9100/metrics (job node-exporter)",
+      "kind": "scrape"
+    },
+    {
+      "source": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "target": "monitoring/node-exporter-xhcst",
+      "label": "scrape 172.18.0.3:9100/metrics (job node-exporter)",
+      "kind": "scrape"
+    },
+    {
+      "source": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "target": "monitoring/otel-collector-ff684b5d9-79vmg",
+      "label": "scrape 10.244.2.17:8888/metrics (job otel-collector)",
+      "kind": "scrape"
+    },
+    {
+      "source": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "target": "monitoring/tempo-7f6f89b49b-hbps4",
+      "label": "scrape 10.244.1.15:3200/metrics (job tempo)",
+      "kind": "scrape"
+    },
+    {
+      "source": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "target": "vault/vault-6c864bf7bf-jhh9w",
+      "label": "scrape 10.244.1.6:8200/v1/sys/metrics (job vault)",
+      "kind": "scrape"
+    },
+    {
+      "source": "docs/documentation-cb855b4f5-wjfn2",
+      "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
+      "label": "Kubernetes API (ServiceAccount token)",
+      "kind": "api"
+    },
+    {
+      "source": "envoy-gateway-system/envoy-gateway-7b99796d48-qg8cd",
+      "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
+      "label": "Kubernetes API (ServiceAccount token)",
+      "kind": "api"
+    },
+    {
+      "source": "kube-system/coredns-559f6c778d-s9sdj",
+      "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
+      "label": "Kubernetes API (ServiceAccount token)",
+      "kind": "api"
+    },
+    {
+      "source": "kube-system/coredns-559f6c778d-vslfc",
+      "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
+      "label": "Kubernetes API (ServiceAccount token)",
+      "kind": "api"
+    },
+    {
+      "source": "local-path-storage/local-path-provisioner-75f7fc7dc5-4q8m8",
+      "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
+      "label": "Kubernetes API (ServiceAccount token)",
+      "kind": "api"
+    },
+    {
+      "source": "monitoring/otel-collector-ff684b5d9-79vmg",
+      "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
+      "label": "Kubernetes API (ServiceAccount token)",
+      "kind": "api"
+    },
+    {
+      "source": "monitoring/prometheus-79cdd9d885-cw8vd",
+      "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
+      "label": "Kubernetes API (ServiceAccount token)",
+      "kind": "api"
+    }
+  ],
+  "network_policies": []
+}

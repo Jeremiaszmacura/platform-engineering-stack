@@ -7,13 +7,12 @@ CLUSTER_NAME=sample-cluster
 # `yahoo` calls the live API; `fixture` replays recorded prices (used by CI).
 STOCK_PROVIDER="${STOCK_PROVIDER:-yahoo}"
 
-# <image> <build context> [Dockerfile]. Docs build from the repo root to include stock-app/openapi.yaml.
+# <image> <build context>
 IMAGES=(
     "stock-app:dev stock-app"
-    "cluster-map:dev cluster-map"
     "traffic-generator:dev traffic-generator"
     "stock-ui:dev stock-ui"
-    "documentation:dev . documentation/Dockerfile"
+    "documentation:dev documentation"
 )
 
 # Applied in order, after platform/ (Vault and TimescaleDB before their clients).
@@ -25,7 +24,6 @@ COMPONENTS=(
     vault/k8s
     timescaledb/k8s
     stock-app/k8s
-    cluster-map/k8s
     traffic-generator/k8s
     stock-ui/k8s
     documentation/k8s
@@ -39,7 +37,6 @@ URLS=(
     "Traffic-generator http://traffic-generator.localhost"
     "Stock-UI http://stock-ui.localhost"
     "Stock-app http://stock.localhost"
-    "Cluster-map http://cluster-map.localhost"
     "Vault http://vault.localhost"
     "Prometheus http://prometheus.localhost"
     "Grafana http://grafana.localhost"
@@ -98,8 +95,8 @@ kubectl apply -f platform/rbac/
 
 echo "🐳 Building and loading images..."
 for entry in "${IMAGES[@]}"; do
-    read -r image context dockerfile <<< "$entry"
-    docker build -t "$image" -f "${dockerfile:-$context/Dockerfile}" "$context"
+    read -r image context <<< "$entry"
+    docker build -t "$image" "$context"
     kind load docker-image "$image" --name "$CLUSTER_NAME"
 done
 
@@ -147,4 +144,4 @@ for entry in "${URLS[@]}"; do
         || fail "${name} not reachable at ${url} within 60s" "${NAMESPACES[@]}"
 done
 
-echo "✅ Cluster ready. Grafana login: admin/admin, Vault token: root"
+echo "✅ Cluster ready. Start at http://docs.localhost (Grafana login: admin/admin, Vault token: root)"

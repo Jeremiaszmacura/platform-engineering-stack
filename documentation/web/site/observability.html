@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Observability · Platform Engineering Stack</title>
+<meta name="description" content="Metrics, traces and logs in the running cluster: how Prometheus discovers targets, how a request becomes a trace, and how the three signals link up.">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script>try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<script type="module" src="assets/js/pages/observability.js"></script>
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<div class="frame">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content">
+<article class="page">
+
+<header class="page-head">
+  <span class="eyebrow">Learn · observability</span>
+  <h1>What the cluster says about itself</h1>
+  <p class="lede">A metric tells you <i>that</i> something is wrong, a trace tells you <i>where</i> in the request, and a log
+    tells you <i>what exactly</i> happened. Here the three are wired together: Prometheus scrapes metrics, the OpenTelemetry
+    Collector carries traces to Tempo, and Grafana shows both.</p>
+  <nav class="toc" id="toc" aria-label="On this page"></nav>
+</header>
+
+<section class="chapter" id="pulse">
+  <div class="head">
+    <span class="eyebrow">Live</span>
+    <h2>The pulse of stock-app, right now</h2>
+    <p>Each tile is one PromQL query over the last 15 minutes, run through this site's Prometheus proxy. Open
+      <a href="http://traffic-generator.localhost">traffic-generator</a>, fire 50 requests, and watch the lines move within
+      a few seconds. Expand a tile to see its query.</p>
+  </div>
+  <div class="tiles" id="tiles"></div>
+  <p class="muted" id="pulse-status"></p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Signal</th><th>Answers</th><th>Example here</th><th>Stored in</th></tr></thead>
+    <tbody>
+      <tr><td><b>Metrics</b></td><td>Is something wrong?</td><td>p95 latency jumped to 2 s</td><td>Prometheus</td></tr>
+      <tr><td><b>Traces</b></td><td>Where in the request?</td><td>the Yahoo call took 1.8 s</td><td>Tempo</td></tr>
+      <tr><td><b>Logs</b></td><td>What exactly happened?</td><td>the error message, with its <code>trace_id</code></td><td>the container's stdout: <code>kubectl logs</code></td></tr>
+    </tbody></table></div>
+</section>
+
+<section class="chapter" id="metrics">
+  <div class="head">
+    <span class="eyebrow">Metrics</span>
+    <h2>How Prometheus finds its targets</h2>
+    <p>Nobody tells Prometheus about a new service. It asks the Kubernetes API which endpoints exist and keeps those whose
+      Service carries an annotation. Then it <b>pulls</b>: every 5 seconds it fetches <code>/metrics</code> from each pod
+      directly.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="scrape-flow"></div>
+    <figcaption>One scrape job, <code>kubernetes-services</code>, covers every component; <code>self</code> is the only static target.</figcaption></figure>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Annotation on the Service</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td><code>prometheus.io/scrape: "true"</code></td><td>keep this Service's endpoints as targets (the rest are dropped)</td></tr>
+      <tr><td><code>prometheus.io/job: &lt;name&gt;</code></td><td>sets the <code>job</code> label that dashboards filter on</td></tr>
+      <tr><td><code>prometheus.io/port: "9187"</code></td><td>scrape this port of a multi-port Service (TimescaleDB's exporter, not PostgreSQL)</td></tr>
+      <tr><td><code>prometheus.io/path: /v1/sys/metrics</code></td><td>replaces <code>/metrics</code> (Vault)</td></tr>
+    </tbody></table></div>
+  <p class="prose">Relabel rules also copy where each series came from into <code>namespace</code>, <code>pod</code>,
+    <code>service</code> and <code>node</code> labels: the same names trace spans carry as <code>k8s.namespace.name</code>,
+    <code>k8s.pod.name</code>, so a metric and a trace point at the same pod. Discovery is limited to the namespaces listed in
+    <code>prometheus.yml</code>, because <code>kube-system</code>'s DNS Service carries the same annotation; a new namespace
+    must be added there.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Job</th><th>Namespace</th><th>Pod</th><th>Node</th><th>Target</th><th>Up</th></tr></thead>
+    <tbody id="target-rows"></tbody></table></div>
+</section>
+
+<section class="chapter" id="app-metrics">
+  <div class="head">
+    <span class="eyebrow">Instrumentation</span>
+    <h2>What stock-app measures, and what it refuses to</h2>
+  </div>
+  <div class="grid-2">
+    <div class="card"><h3>RED for every route</h3><ul>
+      <li><b>Rate</b>: <code>http_requests_total</code> by endpoint, method and status code</li>
+      <li><b>Errors</b>: <code>http_responses_by_status_total</code> by status class</li>
+      <li><b>Duration</b>: <code>http_request_duration_seconds</code>, a histogram</li>
+      <li>Probes and scrapes go to <code>monitoring_requests_total</code> instead, so health checks don't flatter the error rate.</li>
+      <li><code>stock_*</code> metrics count provider calls and cache hits, misses and refreshes.</li></ul></div>
+    <div class="card"><h3>No label straight from a request</h3><p>A label is a new time series per value. A
+      <code>symbol</code> label would create one series per ticker anyone ever typed, and a malicious client could grow
+      Prometheus' memory without limit. Routes are labelled by template (<code>/instruments/{symbol}/bars</code>), never
+      by raw URL. An e2e test checks it.</p></div>
+  </div>
+</section>
+
+<section class="chapter" id="dashboards">
+  <div class="head">
+    <span class="eyebrow">Grafana</span>
+    <h2>Dashboards as code</h2>
+    <p>Grafana's datasources and dashboards are files in Git, not clicks in a UI. Kustomize turns them into ConfigMaps,
+      Grafana mounts them and loads them on every start, so a new pod gets them back and a review shows every change.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="provisioning"></div></figure>
+  <div class="grid-3">
+    <a class="comp" href="http://grafana.localhost/d/stock-app" style="--c:var(--ns-monitoring)"><b>Stock App Metrics</b>
+      <p>Availability and latency SLIs, request rate, p95, 4XX and 5XX rates, health checks and the cache-aside pipeline.</p></a>
+    <a class="comp" href="http://grafana.localhost/d/tracing" style="--c:var(--ns-monitoring)"><b>Tracing</b>
+      <p>Rate and duration per route measured from traces, and tables of recent, slow and failed requests.</p></a>
+    <a class="comp" href="http://grafana.localhost/d/infrastructure" style="--c:var(--ns-monitoring)"><b>Infrastructure Overview</b>
+      <p>CPU and memory per node, from node-exporter.</p></a>
+  </div>
+  <p class="prose">Provisioned dashboards are read-only in the UI: change one there, <i>Export → Export as JSON</i>, save it
+    over the file and apply it. Logins and preferences live in Grafana's SQLite database on an <code>emptyDir</code>, so a
+    new pod logs you out but loses nothing else.</p>
+</section>
+
+<section class="chapter" id="traces">
+  <div class="head">
+    <span class="eyebrow">Traces</span>
+    <h2>One request, followed through everything it touches</h2>
+    <p>A <b>trace</b> is the journey of one request, identified by a trace ID. A <b>span</b> is one step of it (handling
+      the request, one SQL query, one outgoing call) with a start, a duration and attributes; spans nest. <b>Context
+      propagation</b> carries the trace ID: inside a process automatically, between services in the W3C
+      <code>traceparent</code> header.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="waterfall"></div>
+    <figcaption>stock-ui asks for prices stock-app has never seen. Three quarters of the time is Yahoo; the database is not
+      the problem. Ask again and the trace shrinks to a few fast SELECTs, because the prices are now cached.</figcaption></figure>
+  <figure class="figure"><div class="scroll-x" id="trace-flow"></div>
+    <figcaption>The OpenTelemetry Collector's pipeline, with live span rates. The apps only know the Collector's address
+      (<code>OTEL_EXPORTER_OTLP_ENDPOINT</code>), so swapping Tempo needs no app change.</figcaption></figure>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Stage</th><th>What ours does</th></tr></thead>
+    <tbody>
+      <tr><td><b>Receivers</b> take data in</td><td>accept spans over OTLP/HTTP on 4318</td></tr>
+      <tr><td><b>Processors</b> change it</td><td><code>memory_limiter</code> refuses data before the pod runs out of memory;
+        <code>k8s_attributes</code> looks up the sender's pod IP and adds namespace, pod, deployment and node</td></tr>
+      <tr><td><b>Exporters</b> send it on</td><td>forward to Tempo, queueing and retrying while Tempo is down</td></tr>
+    </tbody></table></div>
+  <div class="grid-2">
+    <div class="card"><h3>Why a Collector in the middle</h3><ul>
+      <li>Apps stay simple: they only know "send to the Collector".</li>
+      <li>One place for shared rules: Kubernetes metadata, dropping sensitive attributes, or keeping only slow and failed
+        traces (<i>tail sampling</i>, which an app can't do because it decides before the request ends).</li>
+      <li>It absorbs trouble: if Tempo restarts, the Collector buffers and retries instead of every app.</li></ul></div>
+    <div class="card"><h3>Gateway or agent</h3><p>Ours is a <b>gateway</b>: one central Deployment every app sends to. An
+      <b>agent</b> is a DaemonSet, one Collector per node that apps reach locally. Large clusters often use both: agents next
+      to the apps, forwarding to a gateway that samples and exports.</p>
+      <p>To name the pod behind a span, the Collector needs to read pods: its Role covers <code>apps</code> only
+      (<a href="security.html#api-access">Identity</a>).</p></div>
+  </div>
+  <div class="grid-2">
+    <div class="card"><h3>Who creates the spans</h3><p><b>Instrumentation libraries</b> plug into what the app already
+      uses (FastAPI, SQLAlchemy, requests) and turn every incoming request, SQL query and outgoing call into a span with
+      standard attribute names. <b>Manual spans</b> cover the rest: in stock-app only the call to Yahoo, whose client has no
+      library. Tracing lives at the app's edges; its core layers never import OpenTelemetry.</p></div>
+    <div class="card"><h3>Good habits</h3><ul>
+      <li>Name spans by route template, not raw URL, so similar requests group together.</li>
+      <li>Never put secrets or personal data in attributes: many people read traces.</li>
+      <li>Skip noise: <code>/health</code> and <code>/metrics</code> are not traced.</li>
+      <li>Sample when traffic grows; here every request is kept.</li></ul></div>
+  </div>
+</section>
+
+<section class="chapter" id="correlate">
+  <div class="head">
+    <span class="eyebrow">Together</span>
+    <h2>From a slow dot to the line that explains it</h2>
+    <p>The signals share one key, the trace ID. The latency histogram stores it as an <b>exemplar</b> on its samples
+      (Prometheus runs with <code>--enable-feature=exemplar-storage</code>), and every log line written during a request
+      carries <code>trace_id=&lt;id&gt;</code>.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="correlation"></div></figure>
+  <ol class="steps">
+    <li><div><span class="where">metrics</span>On the Stock App dashboard's <i>p95 Latency</i> panel, each dot is an exemplar. Click one.</div></li>
+    <li><div><span class="where">traces</span>Grafana opens that request's trace in Tempo: the waterfall shows which span was slow.</div></li>
+    <li><div><span class="where">logs</span>Search the pod's log for the same ID: <code>kubectl logs -n apps deploy/stock-app | grep &lt;trace_id&gt;</code>.</div></li>
+  </ol>
+</section>
+
+<section class="chapter" id="try">
+  <div class="head"><span class="eyebrow">Hands on</span><h2>Try it</h2></div>
+  <div class="try">
+    <div><p>Chart a symbol you haven't used yet at <a href="http://stock-ui.localhost">stock-ui</a>, then open Grafana's
+      <a href="http://grafana.localhost/d/tracing">Tracing</a> dashboard (<code>admin</code> / <code>admin</code>). After about
+      30 seconds the request appears under <i>Slow requests</i>; click its trace ID for the waterfall. Search needs Tempo to
+      cut a block first; opening a trace by ID works at once.</p></div>
+    <div><p>Every target and its health, the same list this page shows above.</p>
+      <div class="cmd"><pre>curl -s http://prometheus.localhost/api/v1/targets | jq '.data.activeTargets[] | {job: .labels.job, pod: .labels.pod, health}'</pre></div></div>
+    <div><p>The raw metrics of one pod, exactly what Prometheus scrapes.</p>
+      <div class="cmd"><pre>kubectl port-forward -n apps deploy/stock-app 8000:8000 &amp;
+curl -s localhost:8000/metrics | grep -E '^(http_requests_total|stock_cache_lookups_total)'</pre></div></div>
+  </div>
+</section>
+
+<section class="chapter" id="practice">
+  <div class="head"><span class="eyebrow">Weak spots</span><h2>What to fix next</h2></div>
+  <div class="findings">
+    <div class="finding"><span class="sev">Blind · edge</span><h3>The Gateway's Envoy is not scraped</h3>
+      <p>Every request enters through Envoy, yet nothing measures it: no rate, error or latency per route at the edge.</p>
+      <p class="fix">Exercise: add <code>prometheus.io/*</code> annotations for port 19001 and path <code>/stats/prometheus</code>
+        through the <code>EnvoyProxy</code>'s <code>envoyService</code>, add <code>envoy-gateway-system</code> to the scrape
+        namespaces, and graph <code>envoy_cluster_upstream_rq</code> per route.</p></div>
+    <div class="finding"><span class="sev">Silent · alerts</span><h3>Nothing pages anyone</h3>
+      <p>Dashboards show the SLIs, but no rule fires when availability drops or a target goes down.</p>
+      <p class="fix">Exercise: add <code>rule_files</code> with an alert on <code>up == 0</code> and on the availability SLI
+        burning too fast, and run Alertmanager.</p></div>
+    <div class="finding"><span class="sev">Ephemeral · history</span><h3>Metrics and traces die with their pods</h3>
+      <p>Prometheus keeps its database in the container's filesystem and Tempo on an <code>emptyDir</code>.</p>
+      <p class="fix">Exercise: give Prometheus a PVC and a retention size, and think about what it costs.</p></div>
+    <div class="finding"><span class="sev">Scattered · logs</span><h3>Logs only live in the pods</h3>
+      <p><code>kubectl logs</code> shows one container at a time, and logs vanish with the pod.</p>
+      <p class="fix">Exercise: run Grafana Alloy as a DaemonSet shipping to Loki, and link <code>trace_id</code> from logs to Tempo.</p></div>
+  </div>
+</section>
+
+<section class="chapter" id="interview">
+  <div class="head"><span class="eyebrow">Interview check</span><h2>Questions to answer from this chapter</h2></div>
+  <div class="qa-list">
+    <details class="qa"><summary>Prometheus pulls; OTLP pushes. What are the trade-offs?</summary><div>
+      <p>Pull gives a free health signal (<code>up</code>), central control of rate and targets, and no client buffering; it
+      needs service discovery and network reach to every target. Push suits short-lived jobs, clients behind NAT, and
+      events like spans; the receiver then needs back-pressure, which is why the Collector has <code>memory_limiter</code>.</p></div></details>
+    <details class="qa"><summary>Why compute p95 from a histogram, and why with <code>rate()</code>?</summary><div>
+      <p>Histogram buckets can be summed across pods and then turned into a quantile; a client-side summary's quantiles
+      can't be averaged. <code>rate()</code> over the cumulative buckets gives the distribution of the last window instead
+      of since the process started. The result is an estimate within the bucket bounds.</p></div></details>
+    <details class="qa"><summary>What is label cardinality and how do you keep it bounded?</summary><div>
+      <p>Every unique label combination is a series in memory. Only label with values from a small, known set (status
+      class, route template, provider); never user IDs, raw URLs or anything a client controls. Watch
+      <code>prometheus_tsdb_head_series</code>.</p></div></details>
+    <details class="qa"><summary>Which SLIs would you define for stock-app, and what SLO?</summary><div>
+      <p>Availability: share of non-5XX responses; latency: share of requests under 1 s. Both are on the Stock App
+      dashboard. An SLO like 99.5% over 30 days gives an error budget; alert on its burn rate (fast and slow windows),
+      not on single errors.</p></div></details>
+    <details class="qa"><summary>Why not let every app send traces straight to Tempo?</summary><div>
+      <p>Then every app owns retries, batching, metadata and backend choice. A Collector centralizes that: tail sampling,
+      attribute scrubbing, k8s metadata, fan-out to two backends, and a backend change without redeploying apps.</p></div></details>
+  </div>
+</section>
+
+</article>
+</main>
+</div>
+</body>
+</html>

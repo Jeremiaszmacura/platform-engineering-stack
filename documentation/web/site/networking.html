@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Networking · Platform Engineering Stack</title>
+<meta name="description" content="How a request gets from your browser to a pod and between pods: Gateway API, Envoy, NodePort, kube-proxy, kindnet, CoreDNS and CORS, with your cluster's live addresses.">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script>try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<script type="module" src="assets/js/pages/networking.js"></script>
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<div class="frame">
+<aside class="sidebar" id="sidebar"></aside>
+<main class="content">
+<article class="page">
+
+<header class="page-head">
+  <span class="eyebrow">Learn · networking</span>
+  <h1>How a request finds its pod</h1>
+  <p class="lede">Traffic from outside into the cluster is <b>north-south</b>; traffic between pods is <b>east-west</b>.
+    This chapter follows both, packet by packet, with the addresses your cluster uses right now.</p>
+  <nav class="toc" id="toc" aria-label="On this page"></nav>
+</header>
+
+<section class="chapter" id="addresses">
+  <div class="head">
+    <span class="eyebrow">Basics</span>
+    <h2>Three address ranges</h2>
+    <p>Kubernetes networking gets easier once you keep these apart. They never overlap, and a different component manages each.</p>
+  </div>
+  <div class="ranges" id="ranges"></div>
+  <p class="callout">A pod IP changes every time the pod is recreated. A Service's ClusterIP and DNS name last as long as
+    the Service. Apps call the Service name, never a pod IP.</p>
+</section>
+
+<section class="chapter" id="north-south">
+  <div class="head">
+    <span class="eyebrow">North-south</span>
+    <h2>Your browser to a pod</h2>
+    <p>You open <code>http://stock-ui.localhost</code>. Step through the hops: the packet moves, and every address is live.</p>
+  </div>
+  <div class="figure"><div id="journey-north"></div></div>
+  <div class="grid-2">
+    <div class="card"><h3>Why a NodePort?</h3><p>On a cloud the Gateway's Service would be <code>type: LoadBalancer</code>
+      with an external IP. kind has no load balancer, so <code>platform/gateway/envoyproxy.yaml</code> makes it a NodePort
+      with a fixed port, and kind publishes that one port. A NodePort is open on every node, so a rescheduled Envoy pod
+      keeps answering; CI restarts the proxy to prove it.</p></div>
+    <div class="card"><h3>Why Envoy skips the ClusterIP</h3><p>Envoy Gateway watches the backend Service's EndpointSlice
+      and hands Envoy the ready pod IPs over xDS. Envoy balances across them itself (and could retry or eject a bad
+      one), instead of letting kube-proxy pick a pod blindly behind a second NAT.</p></div>
+  </div>
+</section>
+
+<section class="chapter" id="gateway">
+  <div class="head">
+    <span class="eyebrow">Gateway API</span>
+    <h2>Who decides where traffic goes</h2>
+    <p>Pods and Services are reachable only from inside the cluster. Your browser gets in through one shared Gateway.
+      Gateway API describes it with three kinds of objects, each owned by a different role. This is the tree in your
+      cluster right now; a rejected route turns red.</p>
+  </div>
+  <figure class="figure">
+    <div class="scroll-x" id="gateway-tree"></div>
+    <figcaption>GatewayClass → Gateway → HTTPRoutes → Services, as the Envoy Gateway controller reports them.</figcaption>
+  </figure>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Object</th><th>Owner here</th><th>Decides</th></tr></thead>
+    <tbody>
+      <tr><td><b>GatewayClass</b> <code>envoy-gateway</code></td><td>whoever installs the implementation (<code>platform/gateway/</code>)</td><td>which controller runs Gateways of this class</td></tr>
+      <tr><td><b>Gateway</b> <code>shared-gateway</code></td><td>the platform team (<code>platform/gateway/</code>)</td><td>listeners (HTTP :80, <code>*.localhost</code>) and which namespaces may attach routes</td></tr>
+      <tr><td><b>EnvoyProxy</b> <code>shared-gateway</code></td><td>the platform team (<code>platform/gateway/</code>)</td><td>how the proxy runs: Deployment size, NodePort Service (an Envoy Gateway resource, not Gateway API)</td></tr>
+      <tr><td><b>HTTPRoute</b> <code>&lt;component&gt;-route</code></td><td>each app team (<code>&lt;component&gt;/k8s/</code>)</td><td>hostnames, matches, filters (CORS, redirects, headers) and the backend Service</td></tr>
+    </tbody></table></div>
+  <figure class="figure">
+    <div class="scroll-x" id="planes"></div>
+    <figcaption>A route change never restarts anything: the controller watches the API and streams new config to the proxy.</figcaption>
+  </figure>
+  <div class="grid-2">
+    <div class="card"><h3>Control plane: Envoy Gateway</h3><p>The <code>envoy-gateway</code> pod watches Gateways,
+      HTTPRoutes, Services and EndpointSlices, turns them into Envoy configuration and streams it to the proxies over xDS
+      (gRPC, port 18000). It creates the proxy Deployment and Service for each Gateway and writes status back:
+      <code>Programmed</code> on the Gateway, <code>Accepted</code> and <code>ResolvedRefs</code> on each route. No request
+      passes through it.</p></div>
+    <div class="card"><h3>Data plane: Envoy</h3><p>The <code>shared-gateway-proxy</code> pods. Every request from your
+      browser passes through them. Envoy only knows what the controller sent, so a new route works a moment after
+      <code>kubectl apply</code>.</p></div>
+  </div>
+  <p class="callout"><b>Who may attach.</b> The listener admits HTTPRoutes only from namespaces labelled
+    <code>shared-gateway-access: "true"</code> (<code>platform/namespaces.yaml</code>). <code>data</code> has no label, so a
+    route there is rejected with <code>NotAllowedByListeners</code> and TimescaleDB can't be exposed by accident. The
+    platform team controls the door; app teams control their own routes.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>HTTPRoute</th><th>Namespace</th><th>Hostnames</th><th>Backend</th><th>Filters</th><th>Status</th></tr></thead>
+    <tbody id="route-rows"></tbody></table></div>
+  <p class="prose"><b>Why Gateway API and not Ingress?</b> The Ingress API is frozen: anything beyond host and path, such
+    as CORS, needed controller-specific annotations like <code>nginx.ingress.kubernetes.io/enable-cors</code>. Gateway API
+    makes those typed, validated fields, splits the platform's part (Gateway) from each app's part (HTTPRoute), and any
+    conformant implementation (Envoy Gateway, Istio, Cilium, NGINX Gateway Fabric) runs the same routes. This cluster used
+    ingress-nginx until it moved over.</p>
+</section>
+
+<section class="chapter" id="cors">
+  <div class="head">
+    <span class="eyebrow">Cross-origin</span>
+    <h2>CORS: the call your browser makes</h2>
+    <p>stock-ui needs prices from stock-app. The stock-ui pod never calls the API: it only serves files. The JavaScript
+      runs in your browser, and the browser calls <code>http://stock.localhost</code> from the origin
+      <code>http://stock-ui.localhost</code>.</p>
+  </div>
+  <figure class="figure"><div class="scroll-x" id="cors-seq"></div>
+    <figcaption>Envoy applies the CORS filter on <code>stock-app-route</code>; stock-app has no CORS code at all.</figcaption></figure>
+  <ul class="prose">
+    <li>The filter (a standard HTTPRoute field since Gateway API v1.5) allows exactly two origins, stock-ui and
+      traffic-generator, and only <code>GET</code>.</li>
+    <li>A plain <code>GET</code> is a "simple" request: no preflight. A custom header or a <code>PUT</code> makes the browser
+      ask first with <code>OPTIONS</code>, and Envoy answers that itself.</li>
+    <li>For any other origin Envoy adds no <code>Access-Control-Allow-Origin</code>, so the browser hides the response from
+      the page. The server still answered: CORS protects users, it doesn't hide your API.</li>
+  </ul>
+</section>
+
+<section class="chapter" id="east-west">
+  <div class="head">
+    <span class="eyebrow">East-west</span>
+    <h2>Pod to Service to pod</h2>
+    <p>stock-app runs a query against TimescaleDB. In-cluster traffic never touches the Gateway: DNS turns the name into a
+      ClusterIP, and kube-proxy's NAT rules on the sending node turn that into a pod IP.</p>
+  </div>
+  <div class="figure"><div id="journey-east"></div></div>
+  <div class="prose">
+    <p>The kube-proxy rules for <code>timescaledb-service</code> look like this (see the real ones under <i>Try it</i>):</p>
+    <pre id="iptables"></pre>
+    <p>With two replicas the <code>KUBE-SVC</code> chain gets one <code>-m statistic --mode random --probability 0.5</code>
+      rule per endpoint. That is all kube-proxy load balancing is: a random pick per new connection. A long-lived
+      connection, like a database pool, stays on the pod it first got.</p>
+  </div>
+</section>
+
+<section class="chapter" id="dns">
+  <div class="head">
+    <span class="eyebrow">Discovery</span>
+    <h2>Services and DNS names</h2>
+    <p>A <code>ClusterIP</code> Service is reachable only from inside the cluster; it is reachable from your machine only
+      if an accepted HTTPRoute sends traffic to it. The DNS name works from any pod.</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Service</th><th>Namespace</th><th>ClusterIP</th><th>port → targetPort</th><th>DNS name</th><th>Hostname</th><th class="num">Ready pods</th></tr></thead>
+    <tbody id="svc-rows"></tbody></table></div>
+  <div class="prose">
+    <p>Every pod gets the same <code>/etc/resolv.conf</code> pattern. In <code>apps</code> it is:</p>
+    <pre id="resolv"></pre>
+    <p>So the same name means different things depending on the namespace you ask from:</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Name used</th><th>By</th><th>Resolves because</th></tr></thead>
+    <tbody>
+      <tr><td><code>prometheus-service:9090</code></td><td>Grafana (monitoring)</td><td>the first search entry, <code>monitoring.svc.cluster.local</code>, matches. It works only because both are in the same namespace.</td></tr>
+      <tr><td><code>timescaledb-service.data</code></td><td>stock-app (apps)</td><td><code>…data.apps.svc.cluster.local</code> fails, then <code>…data.svc.cluster.local</code> matches. Cross-namespace calls need at least <code>&lt;service&gt;.&lt;namespace&gt;</code>.</td></tr>
+      <tr><td><code>query1.finance.yahoo.com</code></td><td>stock-app</td><td>it has 3 dots, fewer than 5, so all three search domains fail first: three wasted lookups before the real one.</td></tr>
+    </tbody></table></div>
+</section>
+
+<section class="chapter" id="try">
+  <div class="head"><span class="eyebrow">Hands on</span><h2>Try it</h2></div>
+  <div class="try">
+    <div><p>The Gateway API objects and their status, then one route's conditions with messages.</p>
+      <div class="cmd"><pre>kubectl get gatewayclass,gateway,httproute -A
+kubectl describe httproute stock-app-route -n apps</pre></div></div>
+    <div><p>Ask Envoy which pod IPs it sends <code>stock.localhost</code> to (its admin API shows the config the controller pushed).</p>
+      <div class="cmd"><pre>kubectl port-forward -n envoy-gateway-system deploy/shared-gateway-proxy 19000:19000 &amp;
+curl -s localhost:19000/clusters | grep stock-app-route | grep hostname</pre></div></div>
+    <div><p>Read the NodePort rule that sends host port 80 to Envoy, then the per-Service rules on a worker.</p>
+      <div class="cmd"><pre>docker exec sample-cluster-control-plane iptables -t nat -S KUBE-NODEPORTS
+docker exec sample-cluster-worker iptables -t nat -S | grep -E 'KUBE-(SVC|SEP)' | head -30</pre></div></div>
+    <div><p>Read kindnet's routes: one per other node's pod range, no tunnel.</p>
+      <div class="cmd"><pre>docker exec sample-cluster-control-plane ip route</pre></div></div>
+    <div><p>Run a throwaway debug pod and test DNS and connectivity from inside <code>apps</code>.</p>
+      <div class="cmd"><pre>kubectl run netshoot -n apps --rm -it --image=nicolaka/netshoot -- bash
+# inside: nslookup timescaledb-service.data ; curl -s stock-app-service:8000/health ; nc -zv vault-service.vault 8200</pre></div></div>
+    <div><p>Watch the Gateway reject a route from a namespace without the label. The route table above shows it within 5 seconds.</p>
+      <div class="cmd"><pre>kubectl create service clusterip demo -n data --tcp=80
+kubectl apply -f - &lt;&lt;'EOF'
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: demo, namespace: data}
+spec:
+  parentRefs: [{name: shared-gateway, namespace: envoy-gateway-system}]
+  hostnames: [demo.localhost]
+  rules: [{backendRefs: [{name: demo, port: 80}]}]
+EOF
+kubectl get httproute demo -n data -o jsonpath='{.status.parents[0].conditions[0].reason}'   # NotAllowedByListeners
+kubectl delete httproute,service demo -n data</pre></div></div>
+  </div>
+</section>
+
+<section class="chapter" id="practice">
+  <div class="head">
+    <span class="eyebrow">Weak spots</span>
+    <h2>What to fix next</h2>
+    <p>Acceptable on a laptop, and each one is a good exercise. The first is checked live.</p>
+  </div>
+  <div class="findings">
+    <div class="finding" id="routes-check"></div>
+    <div class="finding"><span class="sev">Open · TLS</span><h3>Everything is plain HTTP</h3>
+      <p>The Gateway has one HTTP listener, so Grafana logins and the Vault token cross the network unencrypted.</p>
+      <p class="fix">Exercise: add an HTTPS listener on 443 with a self-signed certificate Secret
+        (<code>tls.certificateRefs</code>), publish its nodePort in <code>kind-cluster.yaml</code>, and redirect HTTP to
+        HTTPS with a <code>RequestRedirect</code> filter.</p></div>
+    <div class="finding"><span class="sev">Open · limits</span><h3>No rate limits or timeouts at the edge</h3>
+      <p>Any client can open as many requests as it likes, and a slow backend holds Envoy connections for as long as it takes.</p>
+      <p class="fix">Exercise: set a request timeout on <code>stock-app-route</code> (<code>timeouts.request</code>) and a
+        local rate limit with Envoy Gateway's <code>BackendTrafficPolicy</code>; fire traffic-generator at it.</p></div>
+  </div>
+</section>
+
+<section class="chapter" id="interview">
+  <div class="head"><span class="eyebrow">Interview check</span><h2>Questions to answer from this chapter</h2></div>
+  <div class="qa-list">
+    <details class="qa"><summary>Walk me through what happens when I open http://stock-ui.localhost.</summary><div>
+      <p>The name resolves to 127.0.0.1; Docker forwards host :80 to the control-plane container's :30080; kube-proxy's
+      NodePort rule DNATs it to an Envoy pod; Envoy matches the Host header to <code>stock-ui-route</code> and connects to a
+      ready stock-ui pod IP from the EndpointSlice; kindnet routes the packet to that pod's node; nginx answers.</p></div></details>
+    <details class="qa"><summary>ClusterIP, NodePort, LoadBalancer: which does this cluster use where, and why?</summary><div>
+      <p>Every app Service is ClusterIP: only reachable inside. The Gateway's proxy Service is a NodePort with a fixed port,
+      because kind has no cloud load balancer and kind can publish one fixed port. On a cloud it would be a LoadBalancer.
+      Apps never get NodePorts: one entry point, one place for TLS, auth and limits.</p></div></details>
+    <details class="qa"><summary>A new HTTPRoute doesn't work. How do you debug it?</summary><div>
+      <p><code>kubectl describe httproute</code>: <code>Accepted: False</code> with <code>NotAllowedByListeners</code> means the
+      namespace lacks the label; <code>NoMatchingListenerHostname</code> means the hostname isn't under <code>*.localhost</code>;
+      <code>ResolvedRefs: False</code> means the backend Service or port is wrong. Then check the EndpointSlice has ready
+      pods, and Envoy's <code>/clusters</code>. <code>curl -H 'Host: x.localhost' 127.0.0.1</code> takes DNS out of the picture.</p></div></details>
+    <details class="qa"><summary>How does kube-proxy load-balance a ClusterIP, and what are its limits?</summary><div>
+      <p>In iptables mode, one random-probability rule per endpoint picks a pod per new connection. It knows nothing about
+      load or health beyond readiness, and long-lived connections stick to one pod. IPVS and nftables modes scale better;
+      L7 balancing (per request, with retries) needs a proxy such as Envoy or a service mesh.</p></div></details>
+    <details class="qa"><summary>What does <code>ndots:5</code> cost, and how would you reduce it?</summary><div>
+      <p>Names with fewer than five dots try every search domain first, so <code>query1.finance.yahoo.com</code> costs three
+      NXDOMAIN answers before the real lookup. Use fully qualified names with a trailing dot, lower <code>ndots</code> in the
+      pod's <code>dnsConfig</code>, or run NodeLocal DNSCache to make the misses cheap.</p></div></details>
+    <details class="qa"><summary>Why put CORS on the route instead of in the app, and what is the trade-off?</summary><div>
+      <p>One typed, validated place that any conformant gateway implements; preflights never reach the app; the policy is
+      visible in the manifest. The trade-off: changing allowed origins is a route change, and a request that bypasses the
+      Gateway (pod to pod) gets no CORS, which is fine because only browsers enforce it.</p></div></details>
+  </div>
+</section>
+
+</article>
+</main>
+</div>
+</body>
+</html>
