@@ -19,8 +19,8 @@ const OUTSIDE = {
     stock-ui and traffic-generator runs here too, so their calls to <code>stock.localhost</code> come from your browser,
     not from their pods.</p><p><a href="networking.html#north-south">Follow it packet by packet →</a></p>`,
   yahoo: `<h3>Yahoo Finance</h3><p>stock-app asks it only for dates it has never stored. The call leaves the pod, is
-    NATed to the node's IP and then by Docker to your machine's. With <code>STOCK_PROVIDER=fixture</code> stock-app replays
-    recorded prices instead, which is what CI does.</p><p><a href="state.html#cache-aside">How the cache works →</a></p>`,
+    NATed to the node's IP and then by Docker to your machine's. With <code>STOCK_PROVIDER=synthetic</code> stock-app generates
+    its prices instead, which is what CI does.</p><p><a href="state.html#cache-aside">How the cache works →</a></p>`,
 };
 
 const HINT = `<p class="note">Select a box. Start with <b>stock-app</b> to see every connection a backend needs, or with

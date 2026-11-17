@@ -58,7 +58,7 @@ function ciFlow() {
       box("go", 316, 44, "go-qa", "golangci-lint, go test", "apps", 240),
       box("py", 316, 110, "python-qa", "pre-commit, tox tests", "apps", 240),
       box("fe", 316, 176, "frontend-qa", "build, Vitest, node --test", "apps", 240),
-      box("e2e", 316, 242, "e2e", "kind + fixtures + pytest", "apps", 240),
+      box("e2e", 316, 242, "e2e", "kind + synthetic prices + pytest", "apps", 240),
       box("restart", 572, 242, "restart the proxy", "*.localhost still answers", "envoy-gateway-system", 232),
       box("main", 872, 140, "merge to main", "auto for minor and patch", "outside"),
       box("pages", 872, 242, "deploy-documentation", "GitHub Pages: web/site", "docs"),

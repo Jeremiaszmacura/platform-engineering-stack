@@ -1,7 +1,6 @@
 """Every stock-app endpoint, each response validated against the /openapi.yaml the pod publishes.
 
 502/503 need a broken provider or database and are covered by stock-app/tests/test_routes.py.
-Not marked external: with STOCK_PROVIDER=fixture (as in CI) no network is used.
 """
 
 from datetime import date, timedelta
@@ -18,7 +17,7 @@ from cluster import REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL
 SYMBOL = "AAPL"
 PROVIDER_TIMEOUT_SECONDS = 60
 
-# A year ending a week ago: has sessions and overlaps the fixture recording.
+# A year ending a week ago, so it holds settled sessions with any provider.
 WINDOW_END = date.today() - timedelta(days=7)
 WINDOW_START = WINDOW_END - timedelta(days=365)
 WINDOW = {"start": WINDOW_START.isoformat(), "end": WINDOW_END.isoformat()}
