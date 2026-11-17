@@ -1,6 +1,6 @@
 ---
 name: quick-code-review
-description: Quick single-pass code review by one reviewer against this project's house rules, giving feedback on improvements, best practices, and potential issues. Use for a fast, lightweight review of a small change, a diff, or a file or two when you want one focused pass. For a deep, go lang specific, thorough review of a real service - independent multi-agent coverage of concurrency, reliability, and security with a re-review-until-consensus fix loop - use go-deep-code-review instead.
+description: Quick single-pass code review by one reviewer against this project's house rules, giving feedback on improvements, best practices, and potential issues. Use for a fast, lightweight review of a small change, a diff, or a file or two when you want one focused pass.
 ---
 
 ## Instructions
