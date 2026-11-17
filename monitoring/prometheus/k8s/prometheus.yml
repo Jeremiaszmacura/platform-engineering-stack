@@ -25,3 +25,12 @@ scrape_configs:
       - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_job]
         action: replace
         target_label: job
+      # Name where each series comes from (same label names as kube-prometheus and kube-state-metrics).
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - source_labels: [__meta_kubernetes_service_name]
+        target_label: service
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: node

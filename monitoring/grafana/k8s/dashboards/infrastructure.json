@@ -18,9 +18,9 @@
       },
       "targets": [
         {
-          "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "expr": "100 - (avg by (node) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
           "refId": "A",
-          "legendFormat": "{{ instance }}",
+          "legendFormat": "{{ node }}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -53,7 +53,7 @@
         {
           "expr": "100 * (1 - ((node_memory_MemAvailable_bytes or node_memory_MemFree_bytes) / node_memory_MemTotal_bytes))",
           "refId": "A",
-          "legendFormat": "{{ instance }}",
+          "legendFormat": "{{ node }}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
