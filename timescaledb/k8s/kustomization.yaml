@@ -1,0 +1,15 @@
+# Applied with `kubectl apply -k`, which builds the ConfigMap from the plain create-exporter-role.sh next to it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - timescaledb-secret.yaml
+  - timescaledb-serviceaccount.yaml
+  - timescaledb-statefulset.yaml
+configMapGenerator:
+  - name: timescaledb-init
+    namespace: data
+    files:
+      - create-exporter-role.sh
+    options:
+      labels:
+        app: timescaledb

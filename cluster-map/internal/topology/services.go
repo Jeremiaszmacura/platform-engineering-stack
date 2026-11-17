@@ -39,6 +39,7 @@ func buildServices(services []*corev1.Service, pods []*corev1.Pod, routes []Rout
 			Job:       s.Annotations["prometheus.io/job"],
 		}
 		svc.Ports, svc.TargetPorts, svc.NodePorts = servicePorts(s)
+		svc.MetricsPort, svc.MetricsPath = metricsEndpoint(s.Annotations, svc.TargetPorts)
 		svc.Hostnames, svc.CORS = routedHostnames(svc.ID, routes)
 		svc.Pods = selectedPods(s, pods)
 		out = append(out, svc)
@@ -158,6 +159,18 @@ func configLinks(pods []*corev1.Pod, appPods []Pod, refs []Reference, services m
 	return links
 }
 
+// metricsEndpoint returns the pod port and path Prometheus scrapes for a Service, as its relabel rules choose them.
+func metricsEndpoint(annotations map[string]string, targetPorts []string) (port, path string) {
+	port, path = annotations["prometheus.io/port"], annotations["prometheus.io/path"]
+	if port == "" && len(targetPorts) > 0 {
+		port = targetPorts[0]
+	}
+	if path == "" {
+		path = "/metrics"
+	}
+	return port, path
+}
+
 // sdNamespaces returns the namespaces Prometheus' kubernetes_sd is limited to; empty means all.
 func sdNamespaces(prometheusConfig string) []string {
 	match := sdNamespacesPattern.FindStringSubmatch(prometheusConfig)
@@ -183,11 +196,11 @@ func scrapeLinks(pods []Pod, services []Service, prometheusConfig string) []Link
 			continue
 		}
 		for _, svc := range services {
-			if !svc.Scraped || len(svc.TargetPorts) == 0 || (namespaces != nil && !slices.Contains(namespaces, svc.Namespace)) {
+			if !svc.Scraped || svc.MetricsPort == "" || (namespaces != nil && !slices.Contains(namespaces, svc.Namespace)) {
 				continue
 			}
 			for _, target := range svc.Pods {
-				label := fmt.Sprintf("scrape %s:%s/metrics (job %s)", byID[target].IP, svc.TargetPorts[0], svc.Job)
+				label := fmt.Sprintf("scrape %s:%s%s (job %s)", byID[target].IP, svc.MetricsPort, svc.MetricsPath, svc.Job)
 				links = append(links, Link{scraper.ID, target, label, "scrape"})
 			}
 		}

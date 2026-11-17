@@ -10,7 +10,7 @@ Copy an existing component (e.g. `stock-app/` or `cluster-map/`) and then:
    `automountServiceAccountToken: false`; requests/limits, readiness probe, non-root `securityContext`.
 3. **Cluster script:** add it to `IMAGES`, `COMPONENTS` and `URLS` in `recreate-cluster.sh`.
 4. **Metrics** (if any): annotate the Service with `prometheus.io/scrape: "true"` and `prometheus.io/job`
-   (and `prometheus.io/port` if it has more than one port);
+   (plus `prometheus.io/port` if it has more than one port, `prometheus.io/path` if not `/metrics`);
    add a dashboard JSON with a fixed `uid` to `monitoring/grafana/k8s/dashboards/` and list it in that
    directory's `kustomization.yaml`.
 5. **Tests and docs:** add the URL to `SERVICE_URLS` in `e2e/cluster.py`, e2e tests, a page in

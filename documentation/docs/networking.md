@@ -89,8 +89,7 @@ packet to the node that owns that pod IP range, without a tunnel or NAT.
 
 ## Why Gateway API
 
-This cluster used ingress-nginx, which was retired upstream in March 2026 and gets no more fixes. The Ingress API is
-frozen: anything beyond host and path, like CORS, needed controller-specific annotations
+The Ingress API is frozen: anything beyond host and path, like CORS, needs controller-specific annotations
 (`nginx.ingress.kubernetes.io/enable-cors`). Gateway API makes those typed, validated fields and splits the
 platform's part (Gateway) from each app's part (HTTPRoute). Any conformant implementation (Envoy Gateway, Istio,
 Cilium, NGINX Gateway Fabric) can run the same routes.

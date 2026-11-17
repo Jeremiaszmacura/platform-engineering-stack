@@ -24,7 +24,7 @@ def test_stock_app_allows_stock_ui_origin():
 
 
 def test_stock_app_answers_cors_preflight():
-    """OPTIONS preflight from the Stock App origin is accepted by the stock-app ingress."""
+    """OPTIONS preflight from the Stock App origin is accepted by stock-app's HTTPRoute."""
     response = requests.options(
         f"{STOCK_APP_URL}/api/v1/instruments",
         headers={"Origin": STOCK_UI_URL, "Access-Control-Request-Method": "GET"},

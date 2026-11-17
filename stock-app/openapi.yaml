@@ -15,7 +15,7 @@ info:
 
 servers:
   - url: http://stock.localhost
-    description: Cluster ingress host.
+    description: Cluster host, routed by the Gateway.
 
 tags:
   - name: market-data

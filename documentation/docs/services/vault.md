@@ -5,7 +5,7 @@ and lost on restart — playground only.
 
 The `vault-configure` Job creates two KV v2 mounts: `services/` (one path per service, e.g.
 `services/stock-app/<key>`, ready for per-service policies) and `infra/` (reserved).
-The token comes from the `vault-dev-token` Secret.
+The token comes from the `vault-dev-token` Secret. Prometheus scrapes `/v1/sys/metrics` (job `vault`).
 
 ```sh
 curl -X POST http://stock.localhost/secret -H 'Content-Type: application/json' -d '{"key":"demo","value":"x"}'

@@ -34,6 +34,11 @@ spec:
                 secretKeyRef:
                   name: timescaledb-secret
                   key: postgres-password
+            - name: EXPORTER_PASSWORD  # Read by create-exporter-role.sh
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: exporter-password
             # initdb needs a subdirectory, not the mount point.
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
@@ -43,6 +48,10 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+            # One file, so the image's own init scripts in that directory stay.
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d/100-create-exporter-role.sh
+              subPath: create-exporter-role.sh
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "stockapp", "-d", "stockdata"]
@@ -53,6 +62,38 @@ spec:
               command: ["pg_isready", "-U", "stockapp", "-d", "stockdata"]
             initialDelaySeconds: 30
             periodSeconds: 10
+        # Sidecar: turns PostgreSQL's statistics into Prometheus metrics, reading them over localhost.
+        # No readinessProbe: an unready exporter would take the database out of the Service.
+        - name: postgres-exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+          env:
+            - name: DATA_SOURCE_URI
+              value: localhost:5432/stockdata?sslmode=disable
+            - name: DATA_SOURCE_USER
+              value: postgres_exporter  # Created by create-exporter-role.sh, can only read statistics
+            - name: DATA_SOURCE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: exporter-password
+          ports:
+            - containerPort: 9187
+              name: metrics
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534  # The image's user, nobody
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {cpu: 100m, memory: 64Mi}
+      volumes:
+        - name: init
+          configMap:
+            name: timescaledb-init
+            defaultMode: 0555  # The entrypoint runs executable scripts and only sources the others
   # PVC data-timescaledb-0: survives pod restarts, not ./recreate-cluster.sh.
   volumeClaimTemplates:
     - metadata:
@@ -70,11 +111,20 @@ metadata:
   namespace: data
   labels:
     app: timescaledb
+  annotations:
+    prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
+    prometheus.io/job: timescaledb
+    prometheus.io/port: "9187"  # The exporter, not PostgreSQL
 spec:
-  type: ClusterIP  # In-cluster only: no Ingress, the database is not a web service
+  type: ClusterIP  # In-cluster only: no HTTPRoute, the database is not a web service
   selector:
     app: timescaledb
   ports:
-    - port: 5432
+    - name: postgres
+      port: 5432
       targetPort: 5432
+      protocol: TCP
+    - name: metrics
+      port: 9187
+      targetPort: 9187
       protocol: TCP

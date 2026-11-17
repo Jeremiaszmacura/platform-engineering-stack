@@ -22,8 +22,7 @@ flowchart LR
 - **Ownership:** a resource owned by one component lives in `<component>/k8s/`; cluster-wide resources
   (kind config, Gateway API controller and the shared Gateway, namespaces, RBAC) live in `platform/` and are applied
   first.
-- **Entry point:** Gateway API, implemented by Envoy Gateway (`platform/envoy-gateway/`), replaced the retired
-  ingress-nginx. The platform owns the GatewayClass and the one shared Gateway (`platform/gateway/`); each component
+- **Entry point:** Gateway API, implemented by Envoy Gateway (`platform/envoy-gateway/`). The platform owns the GatewayClass and the one shared Gateway (`platform/gateway/`); each component
   owns its HTTPRoute. Only namespaces labelled `shared-gateway-access: "true"` may attach routes. kind maps host port
   80 to the fixed NodePort 30080 of the Gateway's Envoy Service, so the proxy needs no node pinning.
 - **Namespaces:** `apps` (stock-app, traffic-generator, stock-ui), `monitoring` (+ cluster-map), `vault`, `data`
@@ -32,8 +31,8 @@ flowchart LR
   discovery), cluster-map (the live map) and the OpenTelemetry Collector (pods in `apps`, to label spans) get
   read-only API access; none can read Secrets.
 - **Metrics discovery:** a Service is scraped when annotated `prometheus.io/scrape: "true"` and
-  `prometheus.io/job: <name>` (plus `prometheus.io/port` on a multi-port Service), so new services need no
-  Prometheus change.
+  `prometheus.io/job: <name>` (optionally `prometheus.io/port` and `prometheus.io/path`), so new services need no
+  Prometheus change. A new namespace must be added to the scrape list in `prometheus.yml`.
 - **Tracing:** stock-app traces every HTTP request with OpenTelemetry and sends it over OTLP to the OpenTelemetry
   Collector, which adds Kubernetes metadata and forwards it to Tempo; Grafana reads Tempo. Apps only know the
   Collector's address. The latency histogram's exemplars and every log line carry the trace id.

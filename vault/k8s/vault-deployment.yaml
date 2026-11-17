@@ -48,6 +48,11 @@ metadata:
   namespace: vault
   labels:
     app: vault
+  annotations:
+    prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
+    prometheus.io/job: vault
+    # No token needed in dev mode; Vault answers in Prometheus format because Prometheus' Accept header asks for it.
+    prometheus.io/path: /v1/sys/metrics
 spec:
   type: ClusterIP
   selector:

@@ -369,3 +369,25 @@ func TestBuildEmptySnapshotHasNoNilLists(t *testing.T) {
 		t.Errorf("empty snapshot produced nil lists: %+v", m)
 	}
 }
+
+func TestMetricsEndpoint(t *testing.T) {
+	tests := []struct {
+		name        string
+		annotations map[string]string
+		targetPorts []string
+		port, path  string
+	}{
+		{"defaults", nil, []string{"8080", "9090"}, "8080", "/metrics"},
+		{"annotated", map[string]string{"prometheus.io/port": "9187", "prometheus.io/path": "/v1/sys/metrics"},
+			[]string{"5432", "9187"}, "9187", "/v1/sys/metrics"},
+		{"no ports", nil, nil, "", "/metrics"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			port, path := metricsEndpoint(tt.annotations, tt.targetPorts)
+			if port != tt.port || path != tt.path {
+				t.Errorf("metricsEndpoint = %q, %q; want %q, %q", port, path, tt.port, tt.path)
+			}
+		})
+	}
+}
