@@ -23,13 +23,19 @@ EXPECTED_DASHBOARD_TITLES = {
 
 # One node-exporter per kind node.
 EXPECTED_TARGETS_PER_JOB = {"node-exporter": 3}
+KUBERNETES_TARGET_LABELS = {"namespace", "pod", "service", "node"}
+
+
+def fetch_active_targets():
+    """Return Prometheus' active scrape targets."""
+    response = requests.get(f"{PROMETHEUS_URL}/api/v1/targets", timeout=REQUEST_TIMEOUT_SECONDS)
+    response.raise_for_status()
+    return response.json()["data"]["activeTargets"]
 
 
 def fetch_up_jobs():
     """Return the jobs whose active targets are all up."""
-    response = requests.get(f"{PROMETHEUS_URL}/api/v1/targets", timeout=REQUEST_TIMEOUT_SECONDS)
-    response.raise_for_status()
-    targets = response.json()["data"]["activeTargets"]
+    targets = fetch_active_targets()
     all_jobs = {target["labels"]["job"] for target in targets}
     down_jobs = {target["labels"]["job"] for target in targets if target["health"] != "up"}
     return all_jobs - down_jobs
@@ -37,9 +43,7 @@ def fetch_up_jobs():
 
 def count_up_targets(job):
     """Return how many targets of job are up."""
-    response = requests.get(f"{PROMETHEUS_URL}/api/v1/targets", timeout=REQUEST_TIMEOUT_SECONDS)
-    response.raise_for_status()
-    targets = response.json()["data"]["activeTargets"]
+    targets = fetch_active_targets()
     return sum(1 for target in targets if target["labels"]["job"] == job and target["health"] == "up")
 
 
@@ -60,6 +64,15 @@ def test_all_scrape_targets_are_up():
         TARGETS_UP_TIMEOUT_SECONDS,
         description=f"Prometheus jobs {sorted(EXPECTED_PROMETHEUS_JOBS)} to be up",
     )
+
+
+def test_discovered_targets_name_their_kubernetes_source():
+    """Every discovered target is labelled with its namespace, pod, Service and node."""
+    discovered = [target for target in fetch_active_targets() if target["scrapePool"] == "kubernetes-services"]
+    assert discovered, "no targets discovered from Kubernetes"
+    for target in discovered:
+        missing = KUBERNETES_TARGET_LABELS - target["labels"].keys()
+        assert not missing, f"target {target['labels']} has no {sorted(missing)} label"
 
 
 def test_backend_traffic_reaches_prometheus():
