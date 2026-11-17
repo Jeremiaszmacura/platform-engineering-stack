@@ -32,7 +32,8 @@ flowchart LR
   discovery), cluster-map (the live map) and the OpenTelemetry Collector (pods in `apps`, to label spans) get
   read-only API access; none can read Secrets.
 - **Metrics discovery:** a Service is scraped when annotated `prometheus.io/scrape: "true"` and
-  `prometheus.io/job: <name>`, so new services need no Prometheus change.
+  `prometheus.io/job: <name>` (plus `prometheus.io/port` on a multi-port Service), so new services need no
+  Prometheus change.
 - **Tracing:** stock-app traces every HTTP request with OpenTelemetry and sends it over OTLP to the OpenTelemetry
   Collector, which adds Kubernetes metadata and forwards it to Tempo; Grafana reads Tempo. Apps only know the
   Collector's address. The latency histogram's exemplars and every log line carry the trace id.

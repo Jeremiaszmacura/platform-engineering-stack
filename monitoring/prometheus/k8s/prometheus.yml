@@ -22,6 +22,12 @@ scrape_configs:
       - source_labels: [__meta_kubernetes_endpoint_port_protocol]
         action: keep
         regex: .+
+      # prometheus.io/port picks the metrics port of a multi-port Service; the other ports collapse into one target.
+      - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
       - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_job]
         action: replace
         target_label: job

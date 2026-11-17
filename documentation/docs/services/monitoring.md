@@ -6,8 +6,10 @@ both. All of them run in namespace `monitoring`.
 
 - **Scraping:** Services annotated `prometheus.io/scrape: "true"` + `prometheus.io/job: <name>` in namespaces
   `apps` and `monitoring` are discovered automatically, one target per pod (jobs: `stock-app`,
-  `cluster-map`, `node-exporter`, plus `self`). Each series names where it came from: `namespace`, `pod`,
-  `service` and `node` labels (the names trace spans carry as `k8s.namespace.name`, `k8s.pod.name`, …).
+  `cluster-map`, `node-exporter`, `otel-collector`, `tempo`, `grafana`, plus `self`). A Service with more than
+  one port names its metrics port in `prometheus.io/port`. Not scraped yet: Vault, TimescaleDB, Envoy Gateway.
+  Each series names where it came from: `namespace`, `pod`, `service` and `node` labels (the names trace spans
+  carry as `k8s.namespace.name`, `k8s.pod.name`, …).
 - **App metrics:** stock-app exposes `http_requests_total`, `http_request_duration_seconds`,
   `http_responses_by_status_total` (probes and scrapes excluded; those go to `monitoring_requests_total` by
   `endpoint` and `status_code`); stock-app adds `stock_*` metrics for its provider calls and cache hits.

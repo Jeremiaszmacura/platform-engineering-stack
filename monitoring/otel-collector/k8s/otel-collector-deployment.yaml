@@ -31,6 +31,8 @@ spec:
               containerPort: 4318
             - name: health
               containerPort: 13133
+            - name: metrics
+              containerPort: 8888
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -57,6 +59,10 @@ metadata:
   namespace: monitoring
   labels:
     app: otel-collector
+  annotations:
+    prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
+    prometheus.io/job: otel-collector
+    prometheus.io/port: "8888"  # Not the OTLP port
 spec:
   type: ClusterIP
   selector:
@@ -65,3 +71,6 @@ spec:
     - name: otlp-http
       port: 4318
       targetPort: 4318
+    - name: metrics
+      port: 8888
+      targetPort: 8888
