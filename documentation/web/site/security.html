@@ -60,13 +60,14 @@
   <div class="head">
     <span class="eyebrow">An API client</span>
     <h2>How this site reads the cluster</h2>
-    <p>Every diagram on this site comes from the <code>documentation</code> service. It doesn't call the API for each page
+    <p>Every diagram on this site comes from the <code>documentation</code> service. It doesn't list the cluster for each page
       view: client-go <b>informers</b> list each kind of object once, then keep a watch open, so an in-memory copy follows
-      the cluster within about a second. Controllers and operators use the same mechanism.</p>
+      the cluster within about a second. Controllers and operators use the same mechanism. Only two small ConfigMaps
+      (<code>kube-proxy</code>, <code>prometheus-config</code>) are read with a GET on each map request.</p>
   </div>
   <figure class="figure"><div class="scroll-x" id="informer-seq"></div>
     <figcaption>Polling the API every 5 seconds would cost a dozen LIST calls per open tab. Watching costs one long-lived
-      connection per kind of object, however many tabs are open.</figcaption></figure>
+      connection per kind of object, however many tabs are open, plus the two ConfigMap GETs per tab.</figcaption></figure>
   <pre><span class="c"># documentation/k8s/documentation-serviceaccount.yaml: token mounted on purpose</span>
 ServiceAccount  docs/documentation
 <span class="c"># platform/rbac/documentation.yaml</span>
