@@ -191,8 +191,9 @@
     <span class="eyebrow">Together</span>
     <h2>From a slow dot to the line that explains it</h2>
     <p>The signals share one key, the trace ID. The latency histogram stores it as an <b>exemplar</b> on its samples
-      (Prometheus runs with <code>--enable-feature=exemplar-storage</code>), and every log line written during a request
-      carries <code>trace_id=&lt;id&gt;</code>.</p>
+      (Prometheus runs with <code>--enable-feature=exemplar-storage</code>), and every line stock-app's own logger
+      writes during a request carries <code>trace_id=&lt;id&gt;</code>. uvicorn's access lines and library warnings
+      don't.</p>
   </div>
   <figure class="figure"><div class="scroll-x" id="correlation"></div></figure>
   <ol class="steps">
