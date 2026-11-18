@@ -116,7 +116,8 @@ sequence(document.getElementById("informer-seq"), {
     { from: "d", to: "a", label: "WATCH pods?resourceVersion=…", note: "one long-lived connection per kind" },
     { from: "a", to: "d", label: "ADDED · MODIFIED · DELETED events", note: "the cache follows the cluster within about a second", dashed: true },
     { from: "b", to: "d", label: "GET /api/map", note: "every 5 s, through the Gateway" },
-    { from: "d", to: "d", label: "build the map from the cache", note: "no API call per page view" },
+    { from: "d", to: "a", label: "GET 2 ConfigMaps", note: "kube-proxy, prometheus-config · each request" },
+    { from: "d", to: "d", label: "build the map from the cache", note: "no LIST per page view" },
     { from: "d", to: "b", label: "200 map JSON" },
   ],
 });
