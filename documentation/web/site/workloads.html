@@ -75,8 +75,8 @@
   <p class="prose">Vault's container has a <b><code>postStart</code> hook</b> instead: the kubelet runs it inside the
     container as soon as the container starts, and treats the container as running, so probes it and can mark it ready,
     only once the hook exits. A failed hook restarts the container. Unlike an init container, the hook runs again when
-    only the container restarts (a crash, an OOM kill), and that is what Vault needs: dev mode loses its KV mounts on
-    every restart (<a href="components.html#vault">Vault</a>).</p>
+    only the container restarts (a crash, an OOM kill), and that is what Vault needs: dev mode loses its KV mounts and
+    auth setup on every restart (<a href="components.html#vault">Vault</a>).</p>
 </section>
 
 <section class="chapter" id="resources">

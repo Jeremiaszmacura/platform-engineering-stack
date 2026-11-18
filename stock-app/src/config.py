@@ -9,8 +9,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Dev default; the cluster sets it from stock-app-secret.
 DEFAULT_DB_PASSWORD = "stockapp"  # nosec B105 - dev-mode default, not a real credential
 
-DEFAULT_VAULT_TOKEN = "root"  # nosec B105 - dev-mode root token, see vault/README.md
-
 
 class Settings(BaseSettings):
     """Settings read from STOCK_* (and VAULT_*) environment variables."""
@@ -27,7 +25,9 @@ class Settings(BaseSettings):
 
     # Unprefixed: every service uses the same VAULT_* variable names.
     vault_addr: str = Field(default="http://vault-service.vault:8200", validation_alias="VAULT_ADDR")
-    vault_token: SecretStr = Field(default=SecretStr(DEFAULT_VAULT_TOKEN), validation_alias="VAULT_TOKEN")
+    # Vault's kubernetes auth role, and where the Deployment mounts the ServiceAccount token issued for Vault.
+    vault_role: str = Field(default="stock-app", validation_alias="VAULT_ROLE")
+    vault_jwt_path: str = Field(default="/var/run/secrets/vault/token", validation_alias="VAULT_JWT_PATH")
     vault_secret_path: str = Field(default="stock-app", validation_alias="VAULT_SECRET_PATH")
     # Standard OpenTelemetry variable; tracing is off when unset (tests, local runs).
     otlp_endpoint: str | None = Field(default=None, validation_alias="OTEL_EXPORTER_OTLP_ENDPOINT")

@@ -17,7 +17,7 @@ export const APPS = {
   },
   vault: {
     purpose: "Secret store, in dev mode",
-    note: "In memory and auto-unsealed. Clients sign in with the root token, not with their Kubernetes identity. A restart loses every secret; a postStart hook enables the services/ and infra/ KV mounts again before the pod is ready.",
+    note: "In memory and auto-unsealed. Apps sign in with their ServiceAccount token (kubernetes auth method), and Vault checks it with the API's TokenReview. A restart loses every secret; a postStart hook sets up the KV mounts, the auth method and the policies again before the pod is ready.",
   },
   prometheus: {
     purpose: "Finds and scrapes metrics",

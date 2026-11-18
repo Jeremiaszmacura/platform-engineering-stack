@@ -76,8 +76,7 @@
       "service_account": "stock-app",
       "token_mounted": false,
       "secrets": [
-        "stock-app-secret/db-password → STOCK_DB_PASSWORD",
-        "vault-dev-token/token → VAULT_TOKEN"
+        "stock-app-secret/db-password → STOCK_DB_PASSWORD"
       ],
       "config_maps": [],
       "volumes": [
@@ -1159,12 +1158,12 @@
         "hashicorp/vault:1.20.4"
       ],
       "service_account": "vault",
-      "token_mounted": false,
+      "token_mounted": true,
       "secrets": [
         "vault-dev-token/token → VAULT_DEV_ROOT_TOKEN_ID"
       ],
       "config_maps": [
-        "vault-hooks-fggm796m25 → volume at /vault/hooks"
+        "vault-hooks-dctd786cd2 → volume at /vault/hooks"
       ],
       "volumes": [],
       "probes": [
@@ -1867,12 +1866,14 @@
     {
       "name": "vault",
       "namespace": "vault",
-      "automount": "false",
+      "automount": "true",
       "used_by": [
         "vault-756777fcc8-xbgc5"
       ],
-      "token_mounted": false,
-      "permissions": []
+      "token_mounted": true,
+      "permissions": [
+        "ClusterRole system:auth-delegator (cluster-wide): create tokenreviews; create subjectaccessreviews"
+      ]
     }
   ],
   "config": [
@@ -1955,7 +1956,7 @@
     },
     {
       "kind": "ConfigMap",
-      "name": "vault-hooks-fggm796m25",
+      "name": "vault-hooks-dctd786cd2",
       "namespace": "vault",
       "keys": [
         "(all keys)"
@@ -1970,17 +1971,6 @@
       "namespace": "apps",
       "keys": [
         "db-password"
-      ],
-      "used_by": [
-        "stock-app-74cbd6dbdf-ft7kp"
-      ]
-    },
-    {
-      "kind": "Secret",
-      "name": "vault-dev-token",
-      "namespace": "apps",
-      "keys": [
-        "token"
       ],
       "used_by": [
         "stock-app-74cbd6dbdf-ft7kp"
@@ -2228,6 +2218,12 @@
     },
     {
       "source": "monitoring/prometheus-79cdd9d885-vp98w",
+      "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
+      "label": "Kubernetes API (ServiceAccount token)",
+      "kind": "api"
+    },
+    {
+      "source": "vault/vault-756777fcc8-xbgc5",
       "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
       "label": "Kubernetes API (ServiceAccount token)",
       "kind": "api"

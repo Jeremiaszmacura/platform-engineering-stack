@@ -87,8 +87,8 @@ function checks(map, pods) {
   const token = document.getElementById("token-check");
   token.className = "finding live-ok";
   token.innerHTML = `<span class="sev">Live · API tokens</span><h3>${holders.length} workload identities hold an API token</h3>
-    <p>${holders.map((a) => code(`${a.namespace}/${a.name}`)).join(" ")}: each reads the API for a reason (service discovery,
-      span metadata, this site). None may read Secrets or change anything.</p>
+    <p>${holders.map((a) => code(`${a.namespace}/${a.name}`)).join(" ")}: each calls the API for a reason (service discovery,
+      span metadata, this site, Vault's token checks). None may read Secrets or change anything.</p>
     <p class="fix">Exercise: list what each may do with <code>kubectl auth can-i --list --as=system:serviceaccount:&lt;ns&gt;:&lt;name&gt;</code>
       and remove a verb; see what breaks.</p>`;
   const netpol = document.getElementById("netpol-check");
@@ -122,30 +122,19 @@ sequence(document.getElementById("informer-seq"), {
 });
 
 sequence(document.getElementById("vault-seq"), {
-  label: "Writing and reading a secret through stock-app",
-  actors: [actor("u", "You", "curl", "outside"), actor("s", "stock-app", "VAULT_ADDR, VAULT_TOKEN", "apps"), actor("v", "Vault", "dev mode, in memory", "vault")],
+  label: "How stock-app signs in to Vault with its ServiceAccount",
+  width: 960,
+  actors: [actor("u", "You", "curl", "outside"), actor("s", "stock-app", "ServiceAccount apps/stock-app", "apps"),
+    actor("v", "Vault", "kubernetes auth method", "vault"), actor("a", "kube-apiserver", "TokenReview API", "kube-system")],
   steps: [
     { from: "u", to: "s", label: 'POST /secret {"key":"demo","value":"x"}' },
-    { from: "s", to: "v", label: "POST /v1/services/data/stock-app/demo", note: "X-Vault-Token: root, from the Secret vault-dev-token" },
-    { from: "v", to: "s", label: "200, version 1" },
-    { from: "s", to: "u", label: "201 Created" },
-    { from: "u", to: "s", label: "GET /secret/demo" },
-    { from: "s", to: "v", label: "GET /v1/services/data/stock-app/demo" },
-    { from: "v", to: "s", label: '200 {"data": {"value": "x"}}' },
-    { from: "s", to: "u", label: '200 {"key":"demo","value":"x"}' },
-  ],
-});
-
-sequence(document.getElementById("vault-k8s-seq"), {
-  label: "Vault's Kubernetes auth method",
-  actors: [actor("s", "stock-app pod", "projected ServiceAccount token", "apps"), actor("v", "Vault", "auth/kubernetes", "vault"), actor("a", "kube-apiserver", "TokenReview API", "kube-system")],
-  steps: [
-    { from: "s", to: "v", label: "POST /v1/auth/kubernetes/login", note: "role: stock-app, jwt: its ServiceAccount token" },
-    { from: "v", to: "a", label: "TokenReview: is this token valid?", note: "Vault's own ServiceAccount needs system:auth-delegator" },
+    { from: "s", to: "v", label: "POST /v1/auth/kubernetes/login", note: "role stock-app + the pod's token (audience vault)" },
+    { from: "v", to: "a", label: "TokenReview: is this token genuine?", note: "with Vault's own token: system:auth-delegator" },
     { from: "a", to: "v", label: "yes: system:serviceaccount:apps:stock-app" },
-    { from: "v", to: "s", label: "client token, TTL 1 h", note: "policy: read services/data/stock-app/*" },
-    { from: "s", to: "v", label: "GET /v1/services/data/stock-app/demo", note: "X-Vault-Token: the short-lived token" },
-    { from: "v", to: "s", label: "200, and 403 for any other service's path" },
+    { from: "v", to: "s", label: "Vault token, TTL 1 h", note: "policy stock-app: services/stock-app/* only" },
+    { from: "s", to: "v", label: "POST /v1/services/data/stock-app/demo", note: "X-Vault-Token: that token" },
+    { from: "v", to: "s", label: "200, version 1", note: "any other path: 403" },
+    { from: "s", to: "u", label: "201 Created" },
   ],
 });
 

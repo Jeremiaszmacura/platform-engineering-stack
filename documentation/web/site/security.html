@@ -105,18 +105,41 @@ Role            monitoring/documentation-prometheus    get configmaps "prometheu
 <section class="chapter" id="vault">
   <div class="head">
     <span class="eyebrow">Vault</span>
-    <h2>Secrets outside Kubernetes</h2>
-    <p>HashiCorp Vault in dev mode holds the apps' own secrets in two KV v2 mounts, which it enables on every start
-      (<a href="components.html#vault">how</a>): <code>services/</code>, one path per service, and <code>infra/</code>,
-      reserved. stock-app reads and writes under <code>services/stock-app/</code> through <code>POST /secret</code> and
-      <code>GET /secret/{key}</code>.</p>
+    <h2>How a service signs in to Vault</h2>
+    <p>HashiCorp Vault in dev mode holds the apps' own secrets in two KV v2 mounts (<a href="components.html#vault">how it
+      starts</a>): <code>services/</code>, one path per service, and <code>infra/</code>, reserved. No app holds a Vault
+      password. Each signs in with its <b>ServiceAccount</b> through Vault's built-in <b>kubernetes auth method</b> and gets
+      a short-lived Vault token that opens only its own path.</p>
   </div>
+  <ol class="steps">
+    <li><div><span class="where">kubelet</span>Mounts a token for stock-app's ServiceAccount at
+      <code>/var/run/secrets/vault/token</code>, issued for the audience <code>vault</code>, and replaces it before its hour
+      is up. The Kubernetes API rejects tokens issued for another audience, so the pod still has no API access.</div></li>
+    <li><div><span class="where">stock-app</span>Sends that token to Vault with the role <code>stock-app</code>.</div></li>
+    <li><div><span class="where">vault</span>Asks the Kubernetes API whose token it is (a TokenReview). The role accepts only
+      ServiceAccount <code>stock-app</code> in <code>apps</code>, with the audience <code>vault</code>.</div></li>
+    <li><div><span class="where">vault</span>Returns a Vault token valid for one hour, with the policy <code>stock-app</code>:
+      read and write <code>services/stock-app/*</code>, a 403 anywhere else.</div></li>
+    <li><div><span class="where">stock-app</span>Uses that token for every request, and signs in again when Vault rejects
+      it (expired, or Vault restarted).</div></li>
+  </ol>
   <figure class="figure"><div class="scroll-x" id="vault-seq"></div>
-    <figcaption>Today: one root token, from the Kubernetes Secret <code>vault-dev-token</code>, opens every path.</figcaption></figure>
-  <figure class="figure"><div class="scroll-x" id="vault-k8s-seq"></div>
-    <figcaption>The production pattern: Vault's Kubernetes auth method trusts the pod's ServiceAccount token and returns a
-      short-lived token that can only read that service's path. No secret is stored in Kubernetes at all.</figcaption></figure>
+    <figcaption>The first secret request after start-up. Later requests go straight to the write, until Vault rejects the
+      token.</figcaption></figure>
+  <pre><span class="c"># stock-app/k8s/stock-app-deployment.yaml: the pod's token, for Vault only</span>
+projected serviceAccountToken   audience: vault   expirationSeconds: 3600   → /var/run/secrets/vault/token
+<span class="c"># platform/rbac/vault.yaml: Vault may check tokens and nothing else</span>
+ClusterRoleBinding vault-tokenreview   ServiceAccount vault/vault → ClusterRole system:auth-delegator
+<span class="c"># vault/k8s/configure-vault.sh and stock-app-policy.hcl: set up again on every Vault start</span>
+role    auth/kubernetes/role/stock-app   ServiceAccount apps/stock-app   audience vault   TTL 1h   policy stock-app
+policy  stock-app                        create, read, update on services/data/stock-app/*</pre>
+  <p class="callout">The root token, <code>root</code>, is only for people at <a href="http://vault.localhost">vault.localhost</a>
+    and for Vault's start-up hook. A token stolen from stock-app is worth little: the ServiceAccount token works only with
+    Vault, and the Vault token only on stock-app's path, for an hour at most.</p>
   <div class="try">
+    <div><p>Sign in as stock-app yourself and see which policies the Vault token carries.</p>
+      <div class="cmd"><pre>JWT=$(kubectl create token stock-app -n apps --audience vault)
+curl -s http://vault.localhost/v1/auth/kubernetes/login -d "{\"role\":\"stock-app\",\"jwt\":\"$JWT\"}" | jq .auth.policies</pre></div></div>
     <div><p>Write a secret through stock-app, then read it back.</p>
       <div class="cmd"><pre>curl -X POST http://stock.localhost/secret -H 'Content-Type: application/json' -d '{"key":"demo","value":"x"}'
 curl http://stock.localhost/secret/demo</pre></div></div>
@@ -192,11 +215,10 @@ kubectl get pod -n apps -l app=stock-app -o jsonpath='{.items[0].spec.volumes[*]
   <div class="findings">
     <div class="finding" id="pss-check"></div>
     <div class="finding" id="token-check"></div>
-    <div class="finding"><span class="sev">Shared · secrets</span><h3>One root token for everything</h3>
-      <p>stock-app uses Vault's root token, so the per-service paths are separated only by convention: anything holding
-        the token reads every path.</p>
-      <p class="fix">Exercise: enable Vault's Kubernetes auth method with one policy per service, and let stock-app sign in
-        with its own ServiceAccount token (the second diagram above).</p></div>
+    <div class="finding"><span class="sev">Static · secrets</span><h3>The database password never changes</h3>
+      <p>stock-app's PostgreSQL password is a Kubernetes Secret, committed to Git and copied into two namespaces.</p>
+      <p class="fix">Exercise: enable Vault's database secrets engine and let stock-app fetch short-lived PostgreSQL
+        credentials with the Vault token it already has.</p></div>
     <div class="finding"><span class="sev">Broad · RBAC</span><h3>Prometheus can read more than it uses</h3>
       <p>Discovery looks at six namespaces, but the ClusterRole allows reading pods, Services and Endpoints everywhere. <code>v1 Endpoints</code> is also deprecated in favour of EndpointSlices.</p>
       <p class="fix">Exercise: one Role and RoleBinding per scraped namespace, and <code>role: endpointslice</code>.</p></div>
@@ -215,6 +237,11 @@ kubectl get pod -n apps -l app=stock-app -o jsonpath='{.items[0].spec.volumes[*]
       <p>A Role grants within one namespace; a ClusterRole defines rules that can be cluster-wide. A RoleBinding grants a Role
       or a ClusterRole <i>inside its namespace</i>; a ClusterRoleBinding grants a ClusterRole everywhere. Binding a
       ClusterRole with RoleBindings is the usual way to reuse one set of rules in a few namespaces.</p></div></details>
+    <details class="qa"><summary>How can a pod sign in to Vault without a stored password?</summary><div>
+      <p>With its ServiceAccount token, through Vault's kubernetes auth method. Vault checks the token with the API's
+      TokenReview (Vault needs <code>system:auth-delegator</code>), matches its ServiceAccount, namespace and audience to a
+      role, and returns a short-lived Vault token with that role's policies. A projected token with its own audience keeps
+      the token useless against the Kubernetes API.</p></div></details>
     <details class="qa"><summary>Why are Kubernetes Secrets "not secret", and what do you use instead?</summary><div>
       <p>They are base64, readable by anyone with <code>get secrets</code> in the namespace (or who can create a pod
       there and mount it), and stored in etcd in the clear unless encryption at rest is configured. Use an external

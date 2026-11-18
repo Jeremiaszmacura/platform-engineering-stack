@@ -45,7 +45,8 @@
       cross-namespace calls use <code>&lt;service&gt;.&lt;namespace&gt;</code>.</li>
     <li><b>Least privilege.</b> Each workload has its own ServiceAccount with no API token. Only Prometheus (service
       discovery, kubelet metrics), the documentation site (the live diagrams) and the OpenTelemetry Collector (pods in <code>apps</code>, to
-      label spans) get read-only API access; none can read Secrets. <a href="security.html#api-access">Live view</a>.</li>
+      label spans) get read-only API access, and Vault may only check tokens (TokenReview); none can read Secrets.
+      <a href="security.html#api-access">Live view</a>.</li>
     <li><b>Metrics discovery.</b> A Service is scraped when annotated <code>prometheus.io/scrape: "true"</code> and
       <code>prometheus.io/job: &lt;name&gt;</code> (optionally <code>prometheus.io/port</code> and
       <code>prometheus.io/path</code>), so a new service needs no Prometheus change. Each node's kubelet is scraped too
@@ -54,13 +55,15 @@
     <li><b>Tracing.</b> stock-app traces every HTTP request with OpenTelemetry and sends it over OTLP to the OpenTelemetry
       Collector, which adds Kubernetes metadata and forwards it to Tempo; Grafana reads Tempo. Apps only know the
       Collector's address. The latency histogram's exemplars and every log line carry the trace ID.</li>
-    <li><b>Secrets.</b> Development credentials live in one Secret per tool. Secrets can't cross namespaces, so the Vault
-      token and the database password are declared in both namespaces that need them. Vault (dev mode) holds the apps'
-      secrets, one path per service (<code>services/&lt;service&gt;/</code>).</li>
+    <li><b>Secrets.</b> Development credentials live in one Secret per tool. Secrets can't cross namespaces, so the database
+      password is declared in both namespaces that need it. Vault (dev mode) holds the apps' secrets, one path per service
+      (<code>services/&lt;service&gt;/</code>). Apps sign in to Vault with their ServiceAccount (kubernetes auth method) and
+      get a token for their own path only; the root token is for people and Vault's setup hook.
+      <a href="security.html#vault">How</a>.</li>
     <li><b>Stateful data.</b> TimescaleDB uses a PVC; it is empty after every <code>./recreate-cluster.sh</code>, which is fine
       because stock-app refills it from the provider. Setup that a restart can wipe runs on every start, never once in a
-      Job: Grafana loads its dashboards and datasources from ConfigMaps, and Vault (dev mode, in memory) enables its KV
-      mounts in a <code>postStart</code> hook. Grafana's database (logins, preferences) is on an <code>emptyDir</code>.</li>
+      Job: Grafana loads its dashboards and datasources from ConfigMaps, and Vault (dev mode, in memory) sets up its KV
+      mounts, auth method and policies in a <code>postStart</code> hook. Grafana's database (logins, preferences) is on an <code>emptyDir</code>.</li>
     <li><b>API contract.</b> stock-app's <code>openapi.yaml</code> is the source of truth; its models are generated from it.</li>
     <li><b>Documentation.</b> This site is the only documentation: the root <code>README.md</code> just points here. One Go
       service, <code>documentation/</code>, serves the pages and their live data: the cluster map from the Kubernetes API

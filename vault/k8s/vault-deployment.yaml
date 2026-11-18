@@ -48,7 +48,7 @@ spec:
           lifecycle:
             postStart:
               exec:
-                command: ["/vault/hooks/enable-kv-mounts.sh"]
+                command: ["/vault/hooks/configure-vault.sh"]
       volumes:
         - name: hooks
           configMap:
