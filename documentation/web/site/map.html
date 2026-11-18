@@ -74,11 +74,12 @@ kubectl delete pod -n apps -l app=stock-ui</pre></div></div>
   <div class="grid-3">
     <div class="card"><h3>Taints keep pods off</h3><p>The control-plane node carries the taint
       <code>node-role.kubernetes.io/control-plane:NoSchedule</code>. Only pods that tolerate it run there: the static
-      control-plane pods, the per-node agents, and node-exporter, whose DaemonSet adds the toleration on purpose.</p></div>
+      control-plane pods, the per-node agents, CoreDNS, local-path-provisioner, and node-exporter, whose DaemonSet adds
+      the toleration on purpose.</p></div>
     <div class="card"><h3>Volumes pin pods</h3><p>A local-path volume is a directory on one node, so its PersistentVolume
       has a node affinity. TimescaleDB can only ever run on <span id="db-node">that node</span>:
       <a href="state.html#volumes">State &amp; storage</a> shows the chain.</p></div>
-    <div class="card"><h3>Nothing spreads replicas</h3><p>No pod here asks to be spread out (topology spread
+    <div class="card"><h3>Nothing guarantees spread</h3><p>No pod here asks to be spread out (topology spread
       constraints or anti-affinity), so with more replicas two can land on the same worker, and losing that node takes
       both.</p></div>
   </div>
