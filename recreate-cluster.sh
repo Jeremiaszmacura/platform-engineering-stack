@@ -102,9 +102,11 @@ done
 
 # The shared Gateway every *.localhost URL enters through; Programmed means its Envoy proxy is running
 echo "🚪 Creating the shared Gateway..."
-kubectl rollout status deployment/envoy-gateway -n envoy-gateway-system --timeout=180s
+kubectl rollout status deployment/envoy-gateway -n envoy-gateway-system --timeout=180s \
+    || fail "envoy-gateway did not finish rolling out within 180s" envoy-gateway-system
 kubectl apply -f platform/gateway/
-kubectl wait --for=condition=Programmed gateway/shared-gateway -n envoy-gateway-system --timeout=180s
+kubectl wait --for=condition=Programmed gateway/shared-gateway -n envoy-gateway-system --timeout=180s \
+    || fail "shared-gateway was not Programmed within 180s" envoy-gateway-system
 
 echo "🚀 Deploying components..."
 for dir in "${COMPONENTS[@]}"; do
@@ -117,7 +119,8 @@ for dir in "${COMPONENTS[@]}"; do
     fi
     # stock-app's migration initContainer needs a database that accepts connections
     if [ "$dir" = timescaledb/k8s ]; then
-        kubectl rollout status statefulset/timescaledb -n data --timeout=300s
+        kubectl rollout status statefulset/timescaledb -n data --timeout=300s \
+            || fail "timescaledb did not finish rolling out within 300s" data
     fi
 done
 
@@ -139,7 +142,7 @@ echo "⏳ Checking *.localhost URLs..."
 for entry in "${URLS[@]}"; do
     read -r name url <<< "$entry"
     wait_for_url "$name" "$url" 60 \
-        || fail "${name} not reachable at ${url} within 60s" "${NAMESPACES[@]}"
+        || fail "${name} not reachable at ${url} within 60s" "${NAMESPACES[@]}" data envoy-gateway-system
 done
 
 echo "✅ Cluster ready. Start at http://docs.localhost (Grafana login: admin/admin, Vault token: root)"
