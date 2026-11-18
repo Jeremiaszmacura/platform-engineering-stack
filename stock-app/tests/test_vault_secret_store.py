@@ -1,4 +1,4 @@
-"""Tests for the Vault adapter: sign-in, error translation and per-service key paths, with a fake hvac client."""
+"""Tests for the Vault adapter, with a fake hvac client."""
 
 import tempfile
 import unittest
@@ -18,10 +18,10 @@ SERVICE_ACCOUNT_JWT = "header.payload.signature"  # nosec B105 - fake token
 
 
 class FakeKeyValueEngine:
-    """Fake hvac KV v2 engine that records calls and raises the given errors on the next calls, in order."""
+    """Fake hvac KV v2 engine; raises the given errors on its next calls."""
 
     def __init__(self, errors):
-        """Create the fake with the errors to raise, one per call (None lets that call succeed)."""
+        """Create the fake; a None error lets that call succeed."""
         self.stored = {}
         self.errors = list(errors)
         self.calls = []
@@ -41,14 +41,14 @@ class FakeKeyValueEngine:
         return {"data": {"data": self.stored[path]}}
 
     def _fail_if_configured(self):
-        """Raise the next configured error, if any is left."""
+        """Raise the next configured error, if any."""
         error = self.errors.pop(0) if self.errors else None
         if error is not None:
             raise error
 
 
 class FakeKubernetesAuth:
-    """Fake hvac kubernetes auth method: each login records its arguments and gives the client a new token."""
+    """Fake hvac kubernetes auth: each login sets a new client token."""
 
     def __init__(self, client):
         """Create the fake for client."""
@@ -56,16 +56,16 @@ class FakeKubernetesAuth:
         self.logins = []
 
     def login(self, role, jwt):
-        """Record the login and set a new Vault token on the client."""
+        """Record the login and set a new token."""
         self.logins.append((role, jwt))
         self.client.token = f"vault-token-{len(self.logins)}"
 
 
 class FakeClient:
-    """Fake hvac.Client with a KV v2 engine, a kubernetes auth method and the token it holds."""
+    """Fake hvac.Client: KV v2 engine, kubernetes auth and token."""
 
     def __init__(self, errors):
-        """Create a client without a token whose engine raises errors on its next calls."""
+        """Create a client without a token."""
         self.token = None
         self.engine = FakeKeyValueEngine(errors)
         self.kubernetes = FakeKubernetesAuth(self)
@@ -74,7 +74,7 @@ class FakeClient:
 
 
 class VaultStoreTestCase(unittest.TestCase):
-    """Base class: writes the ServiceAccount token file into a temporary directory."""
+    """Base class with a ServiceAccount token file in a temporary directory."""
 
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
@@ -83,7 +83,7 @@ class VaultStoreTestCase(unittest.TestCase):
         self.jwt_path.write_text(SERVICE_ACCOUNT_JWT, encoding="utf-8")
 
     def build_store(self, *errors):
-        """Return a store whose fake client's next KV calls raise errors, in order, and the fake client."""
+        """Return a store whose next KV calls raise errors, and its fake client."""
         client = FakeClient(errors)
         with patch("src.adapters.secrets.vault.hvac.Client", return_value=client):
             store = VaultSecretStore("http://vault.invalid", ROLE, str(self.jwt_path), SECRET_PATH)
@@ -110,7 +110,7 @@ class TestRoundTrip(VaultStoreTestCase):
 
 
 class TestSignIn(VaultStoreTestCase):
-    """Tests that the store signs in with the ServiceAccount token only when it needs a Vault token."""
+    """Tests that the store signs in only when it needs a Vault token."""
 
     def test_the_first_request_signs_in_with_the_role_and_the_token_file(self):
         store, client = self.build_store()

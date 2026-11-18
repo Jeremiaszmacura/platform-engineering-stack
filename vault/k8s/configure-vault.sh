@@ -1,7 +1,5 @@
 #!/bin/sh
-# postStart hook of the Vault container (vault-deployment.yaml). Dev mode keeps everything in memory, so every
-# container start begins empty; this sets up again what the apps rely on: the KV v2 mounts, and the kubernetes auth
-# method with a policy and a role per service. Every step is safe to repeat.
+# postStart hook (vault-deployment.yaml): dev mode starts empty, so set up mounts and auth on every start.
 set -eu
 
 # Wait up to 60s for the server, which starts alongside this hook; return 1 if it never answers.
@@ -26,8 +24,7 @@ enable_kv_mount() {
     fi
 }
 
-# Let pods sign in with their ServiceAccount token. Given no reviewer token or CA, Vault checks each pod's token with
-# the API's TokenReview using its own mounted ServiceAccount token and CA.
+# Let pods sign in with their ServiceAccount token; Vault checks it with its own mounted token.
 enable_kubernetes_auth() {
     if vault auth list | grep -q "^kubernetes/"; then
         echo "postStart: kubernetes auth already enabled"
@@ -37,8 +34,7 @@ enable_kubernetes_auth() {
     vault write auth/kubernetes/config kubernetes_host=https://kubernetes.default.svc
 }
 
-# Let ServiceAccount $1 in namespace apps sign in with a token for audience "vault", and get a 1-hour Vault token
-# carrying only the policy in $1-policy.hcl.
+# Let ServiceAccount $1 in apps sign in, with the policy in $1-policy.hcl.
 add_service_role() {
     vault policy write "$1" "/vault/hooks/$1-policy.hcl"
     vault write "auth/kubernetes/role/$1" bound_service_account_names="$1" bound_service_account_namespaces=apps \

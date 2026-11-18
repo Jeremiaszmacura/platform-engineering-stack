@@ -1,5 +1,4 @@
-# Dev root token, for Vault's postStart hook and for people at vault.localhost. Apps never get it: they sign in with
-# their ServiceAccount token. Dev only.
+# Dev root token, for Vault's postStart hook and people at vault.localhost; apps never get it.
 apiVersion: v1
 kind: Secret
 metadata:

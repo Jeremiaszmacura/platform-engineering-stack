@@ -1,6 +1,4 @@
-# Lets Vault (ServiceAccount in vault/k8s/) ask the API whether a pod's ServiceAccount token is genuine, for its
-# kubernetes auth method. The built-in system:auth-delegator allows only creating TokenReviews and
-# SubjectAccessReviews, which read nothing and change nothing.
+# Lets Vault's kubernetes auth method check pods' tokens (TokenReview only).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:

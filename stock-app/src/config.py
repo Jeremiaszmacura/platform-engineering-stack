@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     # Unprefixed: every service uses the same VAULT_* variable names.
     vault_addr: str = Field(default="http://vault-service.vault:8200", validation_alias="VAULT_ADDR")
-    # Vault's kubernetes auth role, and where the Deployment mounts the ServiceAccount token issued for Vault.
+    # Kubernetes auth: the role, and the token file the Deployment mounts.
     vault_role: str = Field(default="stock-app", validation_alias="VAULT_ROLE")
     vault_jwt_path: str = Field(default="/var/run/secrets/vault/token", validation_alias="VAULT_JWT_PATH")
     vault_secret_path: str = Field(default="stock-app", validation_alias="VAULT_SECRET_PATH")

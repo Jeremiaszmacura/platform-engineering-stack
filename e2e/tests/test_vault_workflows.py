@@ -1,4 +1,4 @@
-"""Vault, its kubernetes auth method, and stock-app's /secret endpoints (its keys live under services/stock-app/).
+"""Vault, its kubernetes auth, and stock-app's /secret endpoints (its keys live under services/stock-app/).
 
 Keys are random because dev-mode Vault keeps data until its container restarts.
 """
@@ -33,7 +33,7 @@ def read_secret(key):
 
 
 def service_account_token(name, audience=None):
-    """Return a 10-minute token for ServiceAccount name in apps, like the one the kubelet mounts into its pods."""
+    """Return a 10-minute token for ServiceAccount name in apps."""
     command = ["kubectl", "--context", KUBE_CONTEXT, "create", "token", name, "-n", "apps", "--duration=10m"]
     if audience:
         command += ["--audience", audience]
@@ -44,7 +44,7 @@ def service_account_token(name, audience=None):
 
 
 def sign_in_as_stock_app(jwt):
-    """Exchange jwt for a Vault token through the kubernetes auth method's stock-app role; return the response."""
+    """Sign in to Vault as role stock-app with jwt; return the response."""
     return requests.post(
         f"{VAULT_URL}/v1/auth/kubernetes/login",
         json={"role": "stock-app", "jwt": jwt},
@@ -84,7 +84,7 @@ def test_kv_mounts_for_services_and_infra_exist():
 
 
 def test_stock_app_vault_token_opens_only_its_own_path():
-    """stock-app's ServiceAccount token signs in, and the Vault token it gets can't reach other paths."""
+    """stock-app's Vault token opens its own path and nothing else."""
     response = sign_in_as_stock_app(service_account_token("stock-app", audience="vault"))
     assert response.status_code == 200
     headers = {"X-Vault-Token": response.json()["auth"]["client_token"]}
@@ -100,7 +100,7 @@ def test_stock_app_vault_token_opens_only_its_own_path():
 
 
 def test_vault_rejects_tokens_not_issued_to_stock_app_for_vault():
-    """A token for the Kubernetes API, or another ServiceAccount's token, can't sign in as stock-app."""
+    """Only stock-app's token for audience vault signs in as stock-app."""
     api_token = service_account_token("stock-app")
     other_account_token = service_account_token("traffic-generator", audience="vault")
     for jwt in (api_token, other_account_token):
@@ -130,7 +130,7 @@ def test_invalid_secret_payload_is_rejected():
 
 
 def test_secrets_work_again_after_vault_restarts():
-    """After a Vault restart, secrets work again: stock-app signs in to the new, empty Vault, which has its mounts."""
+    """After a Vault restart, stock-app signs in again and secrets work."""
     old_key = unique_key("e2e-before-restart")
     assert write_secret(old_key).status_code == 201
 

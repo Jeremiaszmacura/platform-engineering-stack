@@ -49,7 +49,7 @@ spec:
             - name: VAULT_ADDR
               value: http://vault-service.vault:8200  # Cross-namespace: Vault runs in the vault namespace
             - name: VAULT_ROLE
-              value: stock-app  # Vault role bound to this ServiceAccount; its policy allows only services/stock-app/
+              value: stock-app  # Vault kubernetes auth role
             - name: VAULT_SECRET_PATH
               value: stock-app  # Namespaces this service's keys within the `services/` KV mount
             # Standard OpenTelemetry variable: request traces go to the Collector (monitoring namespace) over OTLP/HTTP
@@ -83,7 +83,7 @@ spec:
             - name: home
               mountPath: /home/stockapp
             - name: vault-token
-              mountPath: /var/run/secrets/vault  # The app signs in to Vault with the token file here
+              mountPath: /var/run/secrets/vault
               readOnly: true
           # No livenessProbe: /health checks the database, and a DB outage must not restart the app.
           readinessProbe:
@@ -96,8 +96,7 @@ spec:
           emptyDir: {}
         - name: home
           emptyDir: {}
-        # This pod's ServiceAccount token, issued for Vault only: the Kubernetes API rejects it, so the ServiceAccount
-        # still has no API access. The kubelet replaces it before it expires.
+        # For Vault only: the Kubernetes API rejects this audience.
         - name: vault-token
           projected:
             sources:
