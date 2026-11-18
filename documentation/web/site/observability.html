@@ -57,7 +57,8 @@
       directly.</p>
   </div>
   <figure class="figure"><div class="scroll-x" id="scrape-flow"></div>
-    <figcaption>One scrape job, <code>kubernetes-services</code>, covers every component; <code>self</code> is the only static target.</figcaption></figure>
+    <figcaption>One scrape job, <code>kubernetes-services</code>, covers every component; <code>kubelet</code> covers the
+      nodes and <code>self</code> is the only static target.</figcaption></figure>
   <div class="table-wrap"><table>
     <thead><tr><th>Annotation on the Service</th><th>Effect</th></tr></thead>
     <tbody>
@@ -71,6 +72,12 @@
     <code>k8s.pod.name</code>, so a metric and a trace point at the same pod. Discovery is limited to the namespaces listed in
     <code>prometheus.yml</code>, because <code>kube-system</code>'s DNS Service carries the same annotation; a new namespace
     must be added there.</p>
+  <p class="prose" id="kubelet">A second job, <code>kubelet</code>, discovers the nodes (<code>role: node</code>) and scrapes
+    each kubelet's <code>/metrics/resource</code> on port 10250: CPU and memory of the node, of each pod and of each
+    container, measured from their cgroups. These are the per-node numbers to trust, because node-exporter can't tell kind's
+    nodes apart (<a href="components.html#node-exporter">why</a>). The kubelet asks the API server whether Prometheus' token
+    may <code>get nodes/metrics</code>, a permission that, unlike <code>nodes/proxy</code>, reaches no exec or logs. kind's
+    kubelets serve a self-signed certificate, so this job skips TLS verification.</p>
   <div class="table-wrap"><table>
     <thead><tr><th>Job</th><th>Namespace</th><th>Pod</th><th>Node</th><th>Target</th><th>Up</th></tr></thead>
     <tbody id="target-rows"></tbody></table></div>
@@ -123,7 +130,8 @@
       <p>Rate and duration per route measured from traces, tables of recent, slow and failed requests, and whether the
         Collector delivers spans to Tempo.</p></a>
     <a class="comp" href="http://grafana.localhost/d/infrastructure" style="--c:var(--ns-monitoring)"><b>Infrastructure Overview</b>
-      <p>CPU and memory per node, from node-exporter, and how many scrape targets are down.</p></a>
+      <p>CPU and memory of each node and pod, measured by the kubelet; the Docker host as one line, from node-exporter; and
+        how many scrape targets are down.</p></a>
   </div>
   <p class="prose">Provisioned dashboards are read-only in the UI: change one there, <i>Export → Export as JSON</i>, save it
     over the file and apply it. Logins and preferences live in Grafana's SQLite database on an <code>emptyDir</code>, so a

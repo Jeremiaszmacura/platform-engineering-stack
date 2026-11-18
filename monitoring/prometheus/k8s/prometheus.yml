@@ -10,6 +10,21 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
+  # Each node's kubelet: CPU and memory of the node, its pods and their containers, measured per cgroup.
+  - job_name: 'kubelet'
+    scheme: https
+    metrics_path: /metrics/resource
+    authorization:
+      credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    tls_config:
+      # kind's kubelets serve a self-signed certificate; the token still authenticates every scrape.
+      insecure_skip_verify: true
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: node
+
   # Scrapes Services annotated prometheus.io/scrape: "true"; prometheus.io/job sets the job label.
   - job_name: 'kubernetes-services'
     scrape_interval: 5s

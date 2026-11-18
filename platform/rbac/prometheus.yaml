@@ -1,4 +1,4 @@
-# Read-only API access for Prometheus service discovery (its ServiceAccount lives in monitoring/prometheus/k8s/).
+# Read-only API access for Prometheus service discovery and kubelet metrics (its ServiceAccount lives in monitoring/prometheus/k8s/).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -11,6 +11,10 @@ rules:
       - endpoints
       - pods
     verbs: ["get", "list", "watch"]
+  # The kubelet's /metrics/resource; unlike nodes/proxy it grants no exec or logs.
+  - apiGroups: [""]
+    resources: [nodes/metrics]
+    verbs: ["get"]
   - nonResourceURLs: ["/metrics"]
     verbs: ["get"]
 ---

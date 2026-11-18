@@ -3,22 +3,24 @@
   "tags": [
     "infrastructure",
     "prometheus",
+    "kubelet",
     "node-exporter",
     "kubernetes"
   ],
   "timezone": "browser",
   "panels": [
     {
-      "id": 1,
-      "title": "CPU Usage",
+      "id": 4,
+      "title": "Node CPU (cores)",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Measured by each node's kubelet (job kubelet) from the node container's cgroup, so each line is one kind node. 1 = one CPU busy.",
       "targets": [
         {
-          "expr": "100 - (avg by (node) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "expr": "rate(node_cpu_usage_seconds_total{job=\"kubelet\"}[1m])",
           "refId": "A",
           "legendFormat": "{{ node }}",
           "datasource": {
@@ -35,23 +37,23 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
-          "min": 0,
-          "max": 100
+          "unit": "short",
+          "min": 0
         }
       }
     },
     {
-      "id": 2,
-      "title": "Memory Usage",
+      "id": 5,
+      "title": "Node Memory (working set)",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Measured by each node's kubelet (job kubelet) from the node container's cgroup, so each line is one kind node. Working set: memory in use that can't be reclaimed, what the kubelet evicts on.",
       "targets": [
         {
-          "expr": "100 * (1 - ((node_memory_MemAvailable_bytes or node_memory_MemFree_bytes) / node_memory_MemTotal_bytes))",
+          "expr": "node_memory_working_set_bytes{job=\"kubelet\"}",
           "refId": "A",
           "legendFormat": "{{ node }}",
           "datasource": {
@@ -65,6 +67,161 @@
         "w": 12,
         "x": 12,
         "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Pod CPU (cores)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "CPU of each pod, all its containers together, measured by the kubelet of its node. Per container: container_cpu_usage_seconds_total.",
+      "targets": [
+        {
+          "expr": "rate(pod_cpu_usage_seconds_total{job=\"kubelet\"}[1m])",
+          "refId": "A",
+          "legendFormat": "{{ namespace }}/{{ pod }}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Pod Memory (working set)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Memory working set of each pod, all its containers together, measured by the kubelet of its node. Per container: container_memory_working_set_bytes.",
+      "targets": [
+        {
+          "expr": "pod_memory_working_set_bytes{job=\"kubelet\"}",
+          "refId": "A",
+          "legendFormat": "{{ namespace }}/{{ pod }}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        }
+      }
+    },
+    {
+      "id": 1,
+      "title": "Docker Host CPU Usage",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "On kind the three nodes are containers on one kernel, the Docker host's (on macOS the Docker Desktop VM). node-exporter reads that kernel's /proc, so it sees the whole host, including every other container on it, never one node. This is the host's CPU in use, averaged over its CPUs and the three identical node-exporters.",
+      "targets": [
+        {
+          "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"node-exporter\", mode=\"idle\"}[1m])))",
+          "refId": "A",
+          "legendFormat": "Docker host",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 0,
+        "y": 18
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Docker Host Memory Usage",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "On kind the three nodes are containers on one kernel, the Docker host's (on macOS the Docker Desktop VM). node-exporter reads that kernel's /proc, so it sees the whole host, including every other container on it, never one node. This is the host's memory in use (1 - MemAvailable / MemTotal).",
+      "targets": [
+        {
+          "expr": "avg(100 * (1 - node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"}))",
+          "refId": "A",
+          "legendFormat": "Docker host",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 9,
+        "y": 18
       },
       "fieldConfig": {
         "defaults": {
@@ -95,10 +252,10 @@
         }
       ],
       "gridPos": {
-        "h": 5,
+        "h": 8,
         "w": 6,
-        "x": 0,
-        "y": 8
+        "x": 18,
+        "y": 18
       },
       "fieldConfig": {
         "defaults": {

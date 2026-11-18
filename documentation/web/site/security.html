@@ -198,8 +198,7 @@ kubectl get pod -n apps -l app=stock-app -o jsonpath='{.items[0].spec.volumes[*]
       <p class="fix">Exercise: enable Vault's Kubernetes auth method with one policy per service, and let stock-app sign in
         with its own ServiceAccount token (the second diagram above).</p></div>
     <div class="finding"><span class="sev">Broad · RBAC</span><h3>Prometheus can read more than it uses</h3>
-      <p>Discovery looks at five namespaces, but the ClusterRole allows reading pods, Services and Endpoints everywhere,
-        plus nodes, which the config never uses. <code>v1 Endpoints</code> is also deprecated in favour of EndpointSlices.</p>
+      <p>Discovery looks at six namespaces, but the ClusterRole allows reading pods, Services and Endpoints everywhere. <code>v1 Endpoints</code> is also deprecated in favour of EndpointSlices.</p>
       <p class="fix">Exercise: one Role and RoleBinding per scraped namespace, and <code>role: endpointslice</code>.</p></div>
   </div>
 </section>
