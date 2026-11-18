@@ -136,9 +136,9 @@
   <div class="prose">
     <p>The kube-proxy rules for <code>timescaledb-service</code> look like this (see the real ones under <i>Try it</i>):</p>
     <pre id="iptables"></pre>
-    <p>With two replicas the <code>KUBE-SVC</code> chain gets one <code>-m statistic --mode random --probability 0.5</code>
-      rule per endpoint. That is all kube-proxy load balancing is: a random pick per new connection. A long-lived
-      connection, like a database pool, stays on the pod it first got.</p>
+    <p>With two replicas the first <code>KUBE-SVC</code> rule matches with <code>-m statistic --mode random --probability 0.5</code>
+      and the second, with no probability, takes every other new connection. That is all kube-proxy load balancing is: a
+      random pick per new connection. A long-lived connection, like a database pool, stays on the pod it first got.</p>
   </div>
 </section>
 
@@ -238,8 +238,9 @@ kubectl delete httproute,service demo -n data</pre></div></div>
       <code>ResolvedRefs: False</code> means the backend Service or port is wrong. Then check the EndpointSlice has ready
       pods, and Envoy's <code>/clusters</code>. <code>curl -H 'Host: x.localhost' 127.0.0.1</code> takes DNS out of the picture.</p></div></details>
     <details class="qa"><summary>How does kube-proxy load-balance a ClusterIP, and what are its limits?</summary><div>
-      <p>In iptables mode, one random-probability rule per endpoint picks a pod per new connection. It knows nothing about
-      load or health beyond readiness, and long-lived connections stick to one pod. IPVS and nftables modes scale better;
+      <p>In iptables mode, random-probability rules (1/n, 1/(n-1), …; the last rule has none) pick a pod per new connection.
+      They know nothing about load or health beyond readiness, and long-lived connections stick to one pod. nftables mode
+      scales better (IPVS is deprecated since 1.35);
       L7 balancing (per request, with retries) needs a proxy such as Envoy or a service mesh.</p></div></details>
     <details class="qa"><summary>What does <code>ndots:5</code> cost, and how would you reduce it?</summary><div>
       <p>Names with fewer than five dots try every search domain first, so <code>query1.finance.yahoo.com</code> costs three
