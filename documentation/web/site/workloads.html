@@ -149,9 +149,9 @@ kubectl scale deploy/traffic-generator -n apps --replicas=1</pre></div></div>
 kubectl rollout status deploy/stock-ui -n apps
 kubectl get rs -n apps -l app=stock-ui
 kubectl rollout history deploy/stock-ui -n apps</pre></div></div>
-    <div><p>Make stock-app unready without restarting it: stop the database and watch the dot on the Overview turn orange.</p>
+    <div><p>Make stock-app unready without restarting it: stop the database and watch the dot on the Overview turn red. The pod IP stays in the EndpointSlice, marked not ready.</p>
       <div class="cmd"><pre>kubectl scale statefulset/timescaledb -n data --replicas=0
-kubectl get endpointslices -n apps -l kubernetes.io/service-name=stock-app-service --watch
+kubectl get endpointslices -n apps -l kubernetes.io/service-name=stock-app-service -o jsonpath='{range .items[*].endpoints[*]}{.addresses[0]} ready={.conditions.ready}{"\n"}{end}'
 kubectl scale statefulset/timescaledb -n data --replicas=1</pre></div></div>
   </div>
 </section>

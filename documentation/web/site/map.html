@@ -99,7 +99,7 @@ kubectl delete pod -n apps -l app=stock-ui</pre></div></div>
       <code>kindest/node</code> image. The three containers sit on Docker's <code>kind</code> bridge network, so node IPs
       are Docker addresses. On a cloud a node would be a VM; nothing above the kubelet changes.</p></div></details>
     <details class="qa"><summary>A pod shows Running but not Ready. What happens to its traffic?</summary><div>
-      <p>The EndpointSlice controller drops it from every Service it backs, so kube-proxy and Envoy stop sending it new
+      <p>The EndpointSlice controller marks its endpoint not ready in every Service it backs, so kube-proxy and Envoy stop sending it new
       connections. The kubelet does not restart it; only a failing liveness probe would.</p></div></details>
     <details class="qa"><summary>Why does node-exporter run on the control-plane node when stock-app can't?</summary><div>
       <p>The control-plane node is tainted <code>NoSchedule</code>. node-exporter's DaemonSet tolerates that taint so every
