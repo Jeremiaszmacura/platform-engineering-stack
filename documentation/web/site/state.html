@@ -96,17 +96,18 @@
   <div class="head">
     <span class="eyebrow">Application state</span>
     <h2>stock-app's cache-aside</h2>
-    <p>stock-app answers from TimescaleDB and fetches from Yahoo Finance only the part of a request it has never been asked
-      for, at most one provider call per request. TimescaleDB is a cache that can be thrown away: an empty database after
-      <code>./recreate-cluster.sh</code> just means the first requests are slower.</p>
+    <p>stock-app answers from TimescaleDB and calls Yahoo Finance only when a request reaches outside the dates it has
+      synced: one instrument lookup, then one call for the bars of a single date range. TimescaleDB is a cache that can be
+      thrown away: an empty database after <code>./recreate-cluster.sh</code> just means the first requests are slower.</p>
   </div>
   <figure class="figure"><div class="scroll-x" id="cache-seq"></div>
     <figcaption>A cold request for MSFT. Ask again and steps 3 to 5 disappear.</figcaption></figure>
   <figure class="figure"><div class="scroll-x" id="window"></div>
     <figcaption>The <code>instruments</code> table records which dates were <i>requested</i>, not which bars came back.
       Weekends and holidays have no bars, so a ledger of bar dates would refetch them forever. The window is one contiguous
-      range: a request beyond it also fetches the gap in between. Today's bar keeps moving, so the trailing edge refetches
-      after an hour (<code>STOCK_STALE_AFTER_SECONDS</code>).</figcaption></figure>
+      range: a request beyond it also fetches the gap in between, and one that starts before it fetches from its start,
+      stored days included. Today's bar keeps moving, so the trailing edge refetches after an hour
+      (<code>STOCK_STALE_AFTER_SECONDS</code>).</figcaption></figure>
   <div class="tiles" id="cache-tiles"></div>
 </section>
 

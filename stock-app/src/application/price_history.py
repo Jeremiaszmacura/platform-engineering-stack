@@ -25,7 +25,7 @@ def missing_range(
     """Return the range to fetch from the provider, or None if the store covers the request.
 
     Decided from the sync ledger, not by counting bars (markets close on weekends and holidays).
-    Missing parts on both ends are fetched as one range, so a request makes at most one provider call.
+    Missing parts on both ends are fetched as one range, so a request makes at most one call for bars.
     The ledger is one window, so a fetch before it runs up to it; otherwise the gap would look synced.
     """
     if coverage is None or coverage.first_synced_date is None or coverage.last_synced_date is None:

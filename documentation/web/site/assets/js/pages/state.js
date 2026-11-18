@@ -42,7 +42,7 @@ function volumeTable(map) {
     <td>${p.volumes.map((v) => esc(v)).join("<br>")}</td></tr>`, 3);
 }
 
-// Three requests against one ledger: inside it, overlapping its end, and beyond it with a gap.
+// Four requests against one ledger: inside it, overlapping its end, beyond it with a gap, and starting before it.
 function windowDiagram() {
   const x = (day) => 150 + day * 18;
   const bar = (y, from, to, cls, text) => `<rect x="${x(from)}" y="${y}" width="${x(to) - x(from)}" height="16" rx="3" class="${cls}"/>
@@ -52,8 +52,9 @@ function windowDiagram() {
     ["inside it", [bar(48, 8, 16, "req", "served from TimescaleDB, no provider call")]],
     ["past its end", [bar(82, 14, 26, "req", ""), bar(82, 20, 26, "gap", "fetch only days 20–26")]],
     ["beyond, with a gap", [bar(116, 29, 35, "req", ""), bar(116, 20, 35, "gap", "fetch 20–35: the window stays one range")]],
+    ["before its start", [bar(150, 2, 15, "req", ""), bar(150, 2, 15, "gap", "fetch 2–15: stored days 4–15 again")]],
   ].map(([label, parts], i) => `<text class="t" x="16" y="${26 + i * 34}">${esc(label)}</text>${parts.join("")}`);
-  fill("#window", `<svg class="dg win" viewBox="0 0 1100 140" role="img" aria-label="How the synced window decides what to fetch">
+  fill("#window", `<svg class="dg win" viewBox="0 0 1100 174" role="img" aria-label="How the synced window decides what to fetch">
     <style>.win .led{fill:var(--ns-data)}.win .req{fill:none;stroke:var(--ns-apps);stroke-width:2}.win .gap{fill:var(--ns-outside);opacity:.55}</style>
     <g class="nd">${rowsSvg.join("")}</g></svg>`);
 }
@@ -80,7 +81,7 @@ sequence(document.getElementById("cache-seq"), {
   steps: [
     { from: "b", to: "s", label: "GET /api/v1/instruments/MSFT/bars?start=…&end=…" },
     { from: "s", to: "d", label: "SELECT the synced window", note: "none: a miss" },
-    { from: "s", to: "y", label: "fetch instrument + daily bars", note: "only the missing range, one call" },
+    { from: "s", to: "y", label: "fetch instrument + daily bars", note: "two calls: the listing, then one date range of bars" },
     { from: "y", to: "s", label: "bars for the range" },
     { from: "s", to: "d", label: "INSERT bars, UPDATE the window", note: "one transaction" },
     { from: "s", to: "d", label: "SELECT bars in the requested range" },
