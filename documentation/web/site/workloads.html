@@ -189,8 +189,9 @@ kubectl scale statefulset/timescaledb -n data --replicas=1</pre></div></div>
       (a <code>preStop</code> hook and enough <code>terminationGracePeriodSeconds</code>).</p></div></details>
     <details class="qa"><summary>Why run database migrations in an init container, and what is the risk?</summary><div>
       <p>The schema is in place before the app starts, and a failed migration stops the rollout. With several replicas,
-      every pod runs it, so migrations must be idempotent and safe to run concurrently (Alembic takes a lock); many teams
-      prefer a separate Job that the rollout waits for.</p></div></details>
+      every pod runs it at the same time. Alembic takes no lock, so one run can fail and its init container is retried.
+      Take a database lock first (a PostgreSQL advisory lock) or run migrations once in a Job that the rollout waits for.
+      stock-app runs one replica, so it needs neither.</p></div></details>
     <details class="qa"><summary>When would you choose a DaemonSet over a Deployment?</summary><div>
       <p>When you need exactly one pod per node because the work is per node: node-exporter, log shippers, CNI agents,
       kube-proxy. A Deployment places replicas wherever there is room and gives no per-node guarantee.</p></div></details>
