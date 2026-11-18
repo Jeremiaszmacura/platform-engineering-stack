@@ -101,13 +101,13 @@ npm ci &amp;&amp; npm run dev    # or npm run build, into dist/</pre></div>
 <section class="chapter" id="vault" style="--c:var(--ns-vault)">
   <div class="head"><span class="eyebrow">vault · secrets</span><h2>Vault</h2>
     <p>HashiCorp Vault in <b>dev mode</b> at <a href="http://vault.localhost">vault.localhost</a>, token <code>root</code>:
-      in memory and auto-unsealed, a playground only. Every restart (a new pod, a crash, an OOM kill) empties it, mounts
+      in memory and auto-unsealed, a playground only. Every restart (a new pod, a crash, an OOM kill) empties it, setup
       included, so a <a href="workloads.html#startup"><code>postStart</code> hook</a> runs
-      <code>vault/k8s/enable-kv-mounts.sh</code> (mounted from a ConfigMap) on every start, before the pod turns ready. It
-      enables the KV v2 mounts <code>services/</code> (one path per service, ready for per-service policies) and
-      <code>infra/</code> (reserved); the secrets themselves are gone (<a href="state.html#survival">what survives what</a>).
-      Prometheus scrapes <code>/v1/sys/metrics</code>. How it's used and how it should be:
-      <a href="security.html#vault">Identity &amp; secrets</a>.</p></div>
+      <code>vault/k8s/configure-vault.sh</code> (mounted from a ConfigMap) on every start, before the pod turns ready. It
+      enables the KV v2 mounts <code>services/</code> (one path per service) and <code>infra/</code> (reserved), and the
+      kubernetes auth method with a role and a policy per service (<code>stock-app-policy.hcl</code>); the secrets themselves
+      are gone (<a href="state.html#survival">what survives what</a>). Prometheus scrapes <code>/v1/sys/metrics</code>.
+      How services sign in: <a href="security.html#vault">Identity &amp; secrets</a>.</p></div>
   <dl class="spec" data-app="vault"></dl>
 </section>
 

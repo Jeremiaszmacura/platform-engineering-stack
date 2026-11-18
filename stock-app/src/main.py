@@ -60,7 +60,7 @@ def create_app(settings: Settings | None = None, tracer_provider: TracerProvider
     provider = TracedMarketDataProvider(build_provider(settings.provider), tracer_provider.get_tracer(__name__))
     service = PriceHistoryService(provider, repository, timedelta(seconds=settings.stale_after_seconds))
     secret_store = VaultSecretStore(
-        settings.vault_addr, settings.vault_token.get_secret_value(), settings.vault_secret_path
+        settings.vault_addr, settings.vault_role, settings.vault_jwt_path, settings.vault_secret_path
     )
 
     # Title and version come from the contract. openapi_url=None: serve_contract publishes the YAML instead.

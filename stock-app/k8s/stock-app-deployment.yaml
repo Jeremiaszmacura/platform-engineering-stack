@@ -48,9 +48,8 @@ spec:
             # Shared across every service that talks to Vault, hence no STOCK_ prefix
             - name: VAULT_ADDR
               value: http://vault-service.vault:8200  # Cross-namespace: Vault runs in the vault namespace
-            - name: VAULT_TOKEN
-              valueFrom:
-                secretKeyRef: {name: vault-dev-token, key: token}
+            - name: VAULT_ROLE
+              value: stock-app  # Vault kubernetes auth role
             - name: VAULT_SECRET_PATH
               value: stock-app  # Namespaces this service's keys within the `services/` KV mount
             # Standard OpenTelemetry variable: request traces go to the Collector (monitoring namespace) over OTLP/HTTP
@@ -78,7 +77,14 @@ spec:
           env: *stockAppEnv
           securityContext: *stockAppSecurity
           resources: *stockAppResources
-          volumeMounts: *stockAppVolumeMounts
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: home
+              mountPath: /home/stockapp
+            - name: vault-token
+              mountPath: /var/run/secrets/vault
+              readOnly: true
           # No livenessProbe: /health checks the database, and a DB outage must not restart the app.
           readinessProbe:
             httpGet: {path: /health, port: 8000}
@@ -90,6 +96,14 @@ spec:
           emptyDir: {}
         - name: home
           emptyDir: {}
+        # For Vault only: the Kubernetes API rejects this audience.
+        - name: vault-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: vault
+                  expirationSeconds: 3600
+                  path: token
 ---
 apiVersion: v1
 kind: Service

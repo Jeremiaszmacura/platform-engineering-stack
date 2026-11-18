@@ -1,4 +1,4 @@
-# Applied with `kubectl apply -k`, which builds the ConfigMap from the plain enable-kv-mounts.sh next to it.
+# Applied with `kubectl apply -k`, which builds the ConfigMap from the plain files next to it.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -10,7 +10,8 @@ configMapGenerator:
   - name: vault-hooks
     namespace: vault
     files:
-      - enable-kv-mounts.sh
+      - configure-vault.sh
+      - stock-app-policy.hcl
     options:
       labels:
         app: vault

@@ -181,6 +181,7 @@ const ROUTES = {
   "documentation|kube-apiserver": { sides: ["b", "t"], ta: 0.375, tb: 0.84, via: [[979, 620], [720, 620]] },
   "prometheus|kube-apiserver": { sides: ["b", "t"], ta: 0.3, tb: 0.64, via: [[850, 614], [680, 614]] },
   "otel-collector|kube-apiserver": { sides: ["b", "t"], ta: 0.5, tb: 0.24, via: [[318, 626], [600, 626]] },
+  "vault|kube-apiserver": { sides: ["r", "t"], ta: 0.75, tb: 0.94, via: [[864, 235], [864, 490], [740, 490]] },
 };
 
 /** The diagram spec for one layer, from the live map and the latest Prometheus results m. */

@@ -1,20 +1,9 @@
-# Dev root token, declared for Vault (namespace vault) and its clients (namespace apps). Dev only.
+# Dev root token, for Vault's postStart hook and people at vault.localhost; apps never get it.
 apiVersion: v1
 kind: Secret
 metadata:
   name: vault-dev-token
   namespace: vault
-  labels:
-    app: vault
-type: Opaque
-stringData:
-  token: root
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: vault-dev-token
-  namespace: apps
   labels:
     app: vault
 type: Opaque
