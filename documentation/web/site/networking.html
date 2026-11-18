@@ -214,9 +214,9 @@ kubectl delete httproute,service demo -n data</pre></div></div>
       <p class="fix">Exercise: add an HTTPS listener on 443 with a self-signed certificate Secret
         (<code>tls.certificateRefs</code>), publish its nodePort in <code>kind-cluster.yaml</code>, and redirect HTTP to
         HTTPS with a <code>RequestRedirect</code> filter.</p></div>
-    <div class="finding"><span class="sev">Open · limits</span><h3>No rate limits or timeouts at the edge</h3>
-      <p>Any client can open as many requests as it likes, and a slow backend holds Envoy connections for as long as it takes.</p>
-      <p class="fix">Exercise: set a request timeout on <code>stock-app-route</code> (<code>timeouts.request</code>) and a
+    <div class="finding"><span class="sev">Open · limits</span><h3>No rate limits and only the default timeout at the edge</h3>
+      <p>Any client can open as many requests as it likes, and Envoy ends a request after its default 15 s route timeout and answers 504, even if the app is still working.</p>
+      <p class="fix">Exercise: set an explicit request timeout that fits stock-app on <code>stock-app-route</code> (<code>timeouts.request</code>) and a
         local rate limit with Envoy Gateway's <code>BackendTrafficPolicy</code>; fire traffic-generator at it.</p></div>
   </div>
 </section>
