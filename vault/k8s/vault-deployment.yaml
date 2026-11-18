@@ -30,9 +30,6 @@ spec:
               value: "true"
           ports:
             - containerPort: 8200
-          securityContext:
-            capabilities:
-              add: ["IPC_LOCK"]
           resources:
             requests: {cpu: 50m, memory: 64Mi}
             limits: {cpu: 250m, memory: 256Mi}

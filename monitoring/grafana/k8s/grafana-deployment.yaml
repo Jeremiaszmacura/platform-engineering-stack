@@ -40,6 +40,8 @@ spec:
               value: 900MiB
           securityContext:
             allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           # Grafana 13 idles at ~330Mi; 512Mi was OOM-killed with auto-refreshing dashboards open
           resources:
             requests: {cpu: 100m, memory: 384Mi}
