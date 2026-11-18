@@ -78,7 +78,8 @@
 <section class="chapter" id="conventions">
   <div class="head"><span class="eyebrow">Conventions</span><h2>How things are named and built</h2></div>
   <ul class="prose">
-    <li>Deployment and <code>app</code> label = the component's name; Service <code>&lt;component&gt;-service</code>; HTTPRoute
+    <li>Deployment and <code>app</code> label = the component's name; Service <code>&lt;component&gt;-service</code> (a
+      StatefulSet's <code>serviceName</code> is a second, headless one, <code>&lt;component&gt;-headless</code>); HTTPRoute
       <code>&lt;component&gt;-route</code>; ServiceAccount <code>&lt;component&gt;</code>.</li>
     <li>Every workload has requests, limits and a readiness probe; own images run as non-root; every image is pinned.</li>
     <li>A config file a container reads (e.g. <code>prometheus.yml</code>) is a plain file in <code>k8s/</code>; a

@@ -6,7 +6,7 @@ metadata:
   labels:
     app: timescaledb
 spec:
-  serviceName: timescaledb-service
+  serviceName: timescaledb-headless  # Must be headless; immutable, so changing it means re-creating the StatefulSet
   replicas: 1
   selector:
     matchLabels:
@@ -127,4 +127,23 @@ spec:
     - name: metrics
       port: 9187
       targetPort: 9187
+      protocol: TCP
+---
+# The StatefulSet's governing Service: no ClusterIP, so DNS answers with pod IPs and gives each pod its own name,
+# timescaledb-0.timescaledb-headless.data. Clients keep using timescaledb-service above.
+apiVersion: v1
+kind: Service
+metadata:
+  name: timescaledb-headless
+  namespace: data
+  labels:
+    app: timescaledb
+spec:
+  clusterIP: None
+  selector:
+    app: timescaledb
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
       protocol: TCP
