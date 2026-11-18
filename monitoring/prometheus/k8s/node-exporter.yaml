@@ -15,7 +15,8 @@ spec:
         app: node-exporter
     spec:
       serviceAccountName: node-exporter
-      # Host network/PID: node-exporter reports the node itself, not the pod
+      # Host network/PID: node-exporter reports the kernel, not the pod. On kind every node shares the
+      # Docker host's kernel, so all three pods report that one machine; per-node usage comes from the kubelet.
       hostNetwork: true
       hostPID: true
       tolerations:
@@ -59,7 +60,7 @@ spec:
           hostPath:
             path: /
 ---
-# Prometheus scrapes every endpoint of this Service, i.e. each node separately
+# Prometheus scrapes every endpoint of this Service, one per node (on kind, three copies of the Docker host)
 apiVersion: v1
 kind: Service
 metadata:

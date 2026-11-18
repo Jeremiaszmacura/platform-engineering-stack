@@ -44,11 +44,12 @@
       <code>vault</code>, <code>data</code> (TimescaleDB) and <code>docs</code> (this site). Every manifest sets its namespace;
       cross-namespace calls use <code>&lt;service&gt;.&lt;namespace&gt;</code>.</li>
     <li><b>Least privilege.</b> Each workload has its own ServiceAccount with no API token. Only Prometheus (service
-      discovery), the documentation site (the live diagrams) and the OpenTelemetry Collector (pods in <code>apps</code>, to
+      discovery, kubelet metrics), the documentation site (the live diagrams) and the OpenTelemetry Collector (pods in <code>apps</code>, to
       label spans) get read-only API access; none can read Secrets. <a href="security.html#api-access">Live view</a>.</li>
     <li><b>Metrics discovery.</b> A Service is scraped when annotated <code>prometheus.io/scrape: "true"</code> and
       <code>prometheus.io/job: &lt;name&gt;</code> (optionally <code>prometheus.io/port</code> and
-      <code>prometheus.io/path</code>), so a new service needs no Prometheus change. A new namespace must be added to the
+      <code>prometheus.io/path</code>), so a new service needs no Prometheus change. Each node's kubelet is scraped too
+      (job <code>kubelet</code>), for the CPU and memory of nodes, pods and containers. A new namespace must be added to the
       scrape list in <code>prometheus.yml</code>.</li>
     <li><b>Tracing.</b> stock-app traces every HTTP request with OpenTelemetry and sends it over OTLP to the OpenTelemetry
       Collector, which adds Kubernetes metadata and forwards it to Tempo; Grafana reads Tempo. Apps only know the

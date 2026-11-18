@@ -16,6 +16,7 @@ from cluster import (
 
 EXPECTED_PROMETHEUS_JOBS = {
     "self",
+    "kubelet",
     "node-exporter",
     "stock-app",
     "documentation",
@@ -33,8 +34,9 @@ EXPECTED_DASHBOARD_TITLES = {
     "Tracing",
 }
 
-# One node-exporter per kind node.
-EXPECTED_TARGETS_PER_JOB = {"node-exporter": 3}
+# One node-exporter and one kubelet per kind node.
+KIND_NODE_COUNT = 3
+EXPECTED_TARGETS_PER_JOB = {"node-exporter": KIND_NODE_COUNT, "kubelet": KIND_NODE_COUNT}
 KUBERNETES_TARGET_LABELS = {"namespace", "pod", "service", "node"}
 
 
@@ -85,6 +87,18 @@ def test_discovered_targets_name_their_kubernetes_source():
     for target in discovered:
         missing = KUBERNETES_TARGET_LABELS - target["labels"].keys()
         assert not missing, f"target {target['labels']} has no {sorted(missing)} label"
+
+
+def test_kubelet_reports_each_node_and_pod():
+    """The kubelet job measures every node by name and every pod, which node-exporter can't on kind."""
+    wait_until(
+        lambda: query_prometheus_value('count(count by (node) (node_memory_working_set_bytes{job="kubelet"}))')
+        == KIND_NODE_COUNT,
+        TARGETS_UP_TIMEOUT_SECONDS,
+        description=f"memory of {KIND_NODE_COUNT} nodes from the kubelet",
+    )
+    stock_app_memory = 'sum(pod_memory_working_set_bytes{job="kubelet", namespace="apps", pod=~"stock-app-.*"})'
+    assert query_prometheus_value(stock_app_memory) > 0
 
 
 def test_alert_rules_are_loaded():
