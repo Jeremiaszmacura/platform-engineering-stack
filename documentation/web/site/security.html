@@ -160,8 +160,8 @@ curl http://stock.localhost/secret/demo</pre></div></div>
     <thead><tr><th>Pod</th><th>Namespace</th><th>Non-root</th><th>No escalation</th><th>Drops ALL</th><th>Seccomp</th><th>Host access</th><th>Read-only root</th><th>Limits</th><th>Restricted</th></tr></thead>
     <tbody id="hardening-rows"></tbody></table></div>
   <p class="prose">Most failures are one missing line: <code>seccompProfile: {type: RuntimeDefault}</code> on the pod. The
-    others are real trade-offs: TimescaleDB's image starts as root and drops to <code>postgres</code> itself; Vault adds
-    <code>IPC_LOCK</code>; node-exporter needs the host's network and process table to report on the node.</p>
+    others are real trade-offs: the TimescaleDB and Vault images start as root and drop to <code>postgres</code> and
+    <code>vault</code> themselves; node-exporter needs the host's network and process table to report on the node.</p>
 </section>
 
 <section class="chapter" id="network-policy">
