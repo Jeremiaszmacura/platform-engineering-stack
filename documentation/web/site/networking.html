@@ -147,7 +147,9 @@
     <span class="eyebrow">Discovery</span>
     <h2>Services and DNS names</h2>
     <p>A <code>ClusterIP</code> Service is reachable only from inside the cluster; it is reachable from your machine only
-      if an accepted HTTPRoute sends traffic to it. The DNS name works from any pod.</p>
+      if an accepted HTTPRoute sends traffic to it. The DNS name works from any pod. A headless Service (ClusterIP
+      <code>None</code>) has no virtual IP: its name resolves straight to the ready pods' IPs, and a StatefulSet's pods
+      get a name each (<a href="state.html#statefulset">TimescaleDB's</a>).</p>
   </div>
   <div class="table-wrap"><table>
     <thead><tr><th>Service</th><th>Namespace</th><th>ClusterIP</th><th>port → targetPort</th><th>DNS name</th><th>Hostname</th><th class="num">Ready pods</th></tr></thead>

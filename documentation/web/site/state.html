@@ -81,8 +81,10 @@
   </div>
   <div class="grid-3">
     <div class="card"><h3>Stable name</h3><p>The pod is always <code>timescaledb-0</code>, not a random hash, and keeps
-      that name across restarts. With a headless governing Service (<code>clusterIP: None</code>) each replica would also get
-      its own DNS name; <code>timescaledb-service</code> is a normal ClusterIP Service, because one replica needs no more.</p></div>
+      that name across restarts. Kubernetes requires the StatefulSet's <code>serviceName</code> to be a headless Service
+      (<code>clusterIP: None</code>): <code>timescaledb-headless</code> gives the pod its own DNS name,
+      <code>timescaledb-0.timescaledb-headless.data</code>. Clients use <code>timescaledb-service</code>, a normal ClusterIP
+      Service.</p></div>
     <div class="card"><h3>Its own volume</h3><p><code>volumeClaimTemplates</code> gives each replica its own PVC
       (<code>data-timescaledb-0</code>) that follows the pod across restarts. A Deployment's replicas would all share one claim.</p></div>
     <div class="card"><h3>Order</h3><p>Replicas start one after another and stop in reverse, which clustered databases
