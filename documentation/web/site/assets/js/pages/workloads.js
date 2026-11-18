@@ -54,7 +54,7 @@ graph(document.getElementById("probe-flow")).render({
     { id: "kubelet", x: 16, y: 72, w: 180, h: 52, title: "kubelet", sub: "runs the probes", color: nsColor("kube-system") },
     { id: "ready", x: 268, y: 16, w: 200, h: 52, title: "readiness fails", sub: "Ready condition: False", color: nsColor("apps") },
     { id: "live", x: 268, y: 128, w: 200, h: 52, title: "liveness fails", sub: "failureThreshold times", color: nsColor("apps") },
-    { id: "eps", x: 540, y: 16, w: 210, h: 52, title: "EndpointSlice", sub: "pod removed: no new traffic", color: nsColor("kube-system") },
+    { id: "eps", x: 540, y: 16, w: 210, h: 52, title: "EndpointSlice", sub: "endpoint marked not ready", color: nsColor("kube-system") },
     { id: "restart", x: 540, y: 128, w: 210, h: 52, title: "container restarted", sub: "same pod, restart count + 1", color: nsColor("kube-system") },
     { id: "proxy", x: 800, y: 16, w: 184, h: 52, title: "kube-proxy, Envoy", sub: "stop sending to it", color: nsColor("envoy-gateway-system") },
   ],
