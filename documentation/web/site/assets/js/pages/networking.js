@@ -4,8 +4,8 @@ import { onMap } from "../live.js";
 import { graph, journey, sequence } from "../diagram.js";
 import { brokenRoutes, firstPod, nodeOf, nodeShort, routeTo, service } from "../model.js";
 
-const north = journey(document.getElementById("journey-north"));
-const east = journey(document.getElementById("journey-east"));
+const incoming = journey(document.getElementById("journey-incoming"));
+const inCluster = journey(document.getElementById("journey-in-cluster"));
 const tree = graph(document.getElementById("gateway-tree"));
 const planes = graph(document.getElementById("planes"));
 
@@ -25,17 +25,17 @@ function ranges(map) {
   const prefixes = map.nodes.map((n) => n.ip.split(".").slice(0, 3).join("."));
   const nodeRange = prefixes.length && prefixes.every((p) => p === prefixes[0]) ? `${prefixes[0]}.x` : "per node";
   fill("#ranges", [
-    ["Node IPs", nodeRange, "The Docker bridge network kind creates. Each node container gets one address.",
+    ["Node IPs", nodeRange, "One per machine, from the network the nodes sit on: a VPC subnet on a cloud, here the Docker network kind creates (each node is a container). Set up by the infrastructure, not by Kubernetes.",
       map.nodes.map((n) => `${esc(nodeShort(n.name))} ${code(n.ip)}`)],
-    ["Pod IPs", map.ranges.pods || "per node", "Handed out by the CNI plugin, <b>kindnet</b>. Each node owns a slice, and kindnet adds routes so any pod reaches any other pod directly: no NAT, no overlay.",
+    ["Pod IPs", map.ranges.pods || "per node", "One per pod, handed out by the CNI plugin. Here <b>kindnet</b> gives each node a slice of a private range and adds routes between nodes; on EKS the AWS VPC CNI gives pods addresses from the VPC itself. Either way any pod reaches any other pod without NAT.",
       map.nodes.map((n) => `${esc(nodeShort(n.name))} ${code(n.pod_cidr)}`)],
-    ["Service IPs", map.ranges.services || "unknown", "Virtual IPs the API server hands to Services. No interface owns them: <b>kube-proxy</b> rewrites packets sent to them into a real pod IP.",
+    ["Service IPs", map.ranges.services || "unknown", "Virtual IPs the API server hands to Services from its service range. No interface owns them: <b>kube-proxy</b> rewrites packets sent to them into a real pod IP. This part works the same on every cluster.",
       [api && `API server ${code(api.cluster_ip + ":443")}`, dns && `CoreDNS ${code(dns.cluster_ip + ":53")}`].filter(Boolean)],
   ].map(([label, cidr, text, items]) => `<div class="range"><span class="eyebrow">${label}</span><span class="cidr">${esc(cidr)}</span>
     <p>${text}</p><ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul></div>`).join(""));
 }
 
-function northJourney(map) {
+function incomingJourney(map) {
   const proxyPod = map.pods.find((p) => map.gateways.some((g) => g.proxy_pods.includes(p.id)));
   const proxySvc = map.services.find((s) => map.gateways.some((g) => g.proxy_service === s.id));
   const entry = map.nodes.find((n) => n.roles.includes("control-plane"));
@@ -48,7 +48,7 @@ function northJourney(map) {
   const snat = proxyNode && entry && proxyNode.name !== entry.name
     ? ` That pod runs on ${esc(nodeShort(proxyNode.name))}, so kube-proxy also SNATs the packet to this node's IP (<code>externalTrafficPolicy: Cluster</code>) and the reply comes back through here.`
     : " That pod runs on this node.";
-  north.update({
+  incoming.update({
     hops: [
       { title: "Your browser", sub: "stock-ui.localhost", color: nsColor("outside") },
       { title: "Docker", sub: `:80 → node :${nodePort}`, color: nsColor("outside") },
@@ -69,19 +69,19 @@ function northJourney(map) {
   });
 }
 
-function eastJourney(map) {
+function inClusterJourney(map) {
   const api = firstPod(map, "stock-app");
   const db = firstPod(map, "timescaledb");
   const dbSvc = service(map, "timescaledb-service", "data");
   const dns = service(map, "kube-dns", "kube-system");
   const from = nodeOf(map, api);
   const to = nodeOf(map, db);
-  east.update({
+  inCluster.update({
     hops: [
       { title: "stock-app pod", sub: ip(api), color: nsColor("apps") },
       { title: "CoreDNS", sub: `${dns ? dns.cluster_ip : "?"}:53`, color: nsColor("kube-system") },
       { title: "kube-proxy", sub: `on ${nodeShort(from?.name)}`, color: nsColor("kube-system") },
-      { title: "kindnet", sub: `${nodeShort(from?.name)} → ${nodeShort(to?.name)}`, color: nsColor("kube-system") },
+      { title: "CNI: kindnet", sub: `${nodeShort(from?.name)} → ${nodeShort(to?.name)}`, color: nsColor("kube-system") },
       { title: "timescaledb-0", sub: `${ip(db)}:5432`, color: nsColor("data") },
     ],
     steps: [
@@ -155,7 +155,7 @@ function planesDiagram(map) {
     ],
     edges: [
       { from: "you", to: "api", color: nsColor("outside"), label: "HTTPRoute" },
-      { from: "ctl", to: "api", color: nsColor("kube-system"), dashed: true, label: "watch" },
+      { from: "api", to: "ctl", color: nsColor("kube-system"), dashed: true, label: "object changes", tip: "Envoy Gateway watches the API; changes stream to it" },
       { from: "ctl", to: "proxy", color: nsColor("envoy-gateway-system"), dashed: true, label: "xDS · gRPC :18000" },
       { from: "browser", to: "proxy", color: nsColor("outside"), label: "HTTP via NodePort", flow: 0.3 },
       { from: "proxy", to: "pods", color: nsColor("apps"), label: "pod IPs", flow: 0.3 },
@@ -208,8 +208,8 @@ sequence(document.getElementById("cors-seq"), {
 
 onMap((map) => {
   ranges(map);
-  northJourney(map);
-  eastJourney(map);
+  incomingJourney(map);
+  inClusterJourney(map);
   gatewayTree(map);
   planesDiagram(map);
   tables(map);

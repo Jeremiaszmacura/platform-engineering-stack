@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Networking · Platform Engineering Stack</title>
-<meta name="description" content="How a request gets from your browser to a pod and between pods: Gateway API, Envoy, NodePort, kube-proxy, kindnet, CoreDNS and CORS, with your cluster's live addresses.">
+<meta name="description" content="How traffic gets from your browser to a pod, between pods and out to the internet: Gateway API, Envoy, NodePort, kube-proxy, kindnet, CoreDNS and CORS, with your cluster's live addresses.">
 <link rel="icon" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,29 +23,41 @@
 <header class="page-head">
   <span class="eyebrow">Learn · networking</span>
   <h1>How a request finds its pod</h1>
-  <p class="lede">Traffic from outside into the cluster is <b>north-south</b>; traffic between pods is <b>east-west</b>.
-    This chapter follows both, packet by packet, with the addresses your cluster uses right now.</p>
+  <p class="lede">Traffic moves in three directions: <b>incoming</b> traffic enters the cluster from outside,
+    <b>in-cluster</b> traffic goes from pod to pod, and <b>outgoing</b> traffic leaves the cluster for the internet. This
+    chapter follows each one hop by hop, with the addresses your cluster uses right now.</p>
   <nav class="toc" id="toc" aria-label="On this page"></nav>
 </header>
 
 <section class="chapter" id="addresses">
   <div class="head">
     <span class="eyebrow">Basics</span>
-    <h2>Three address ranges</h2>
-    <p>Kubernetes networking gets easier once you keep these apart. They never overlap, and a different component manages each.</p>
+    <h2>Three kinds of IP address</h2>
+    <p>Every IP address in a cluster is one of three kinds, and each kind comes from somewhere else and behaves differently.
+      Node and pod IPs belong to real network interfaces; a Service IP belongs to none. An address is never two kinds at
+      once, so their ranges must not overlap with each other or with networks the pods need to reach. The cards show the
+      ranges of this cluster.</p>
   </div>
   <div class="ranges" id="ranges"></div>
   <p class="callout">A pod IP changes every time the pod is recreated. A Service's ClusterIP and DNS name last as long as
     the Service. Apps call the Service name, never a pod IP.</p>
 </section>
 
-<section class="chapter" id="north-south">
+<section class="chapter" id="incoming">
   <div class="head">
-    <span class="eyebrow">North-south</span>
+    <span class="eyebrow">Incoming traffic</span>
     <h2>Your browser to a pod</h2>
     <p>You open <code>http://stock-ui.localhost</code>. Step through the hops: the packet moves, and every address is live.</p>
   </div>
-  <div class="figure" data-source="live"><div id="journey-north"></div></div>
+  <div class="figure" data-source="live"><div id="journey-incoming"></div></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Hop</th><th>Here (kind on a laptop)</th><th>On a cloud, e.g. AWS EKS</th></tr></thead>
+    <tbody>
+      <tr><td>Name to address</td><td><code>*.localhost</code> is always <code>127.0.0.1</code></td><td>public DNS (Route 53) points the hostname at the load balancer</td></tr>
+      <tr><td>Into the cluster</td><td>Docker publishes host port 80 to NodePort 30080 of one node</td><td>a cloud load balancer (an NLB on AWS), created for the Gateway's <code>type: LoadBalancer</code> Service, sends to the nodes or straight to the Envoy pods</td></tr>
+      <tr><td>Routing by hostname</td><td colspan="2">the same on both: Envoy picks the HTTPRoute and a ready pod IP</td></tr>
+      <tr><td>Node to pod</td><td>kindnet routes the packet to the pod's node</td><td>the VPC delivers it: the AWS VPC CNI gives pods VPC addresses</td></tr>
+    </tbody></table></div>
   <div class="grid-2">
     <div class="card"><h3>Why a NodePort?</h3><p>On a cloud the Gateway's Service would be <code>type: LoadBalancer</code>
       with an external IP. kind has no load balancer, so <code>platform/gateway/envoyproxy.yaml</code> makes it a NodePort
@@ -65,6 +77,32 @@
       Gateway API describes it with three kinds of objects, each owned by a different role. This is the tree in your
       cluster right now; a rejected route turns red.</p>
   </div>
+  <div class="prose">
+    <p>A <b>controller</b> is a program running in the cluster, usually a Deployment, that watches some kinds of objects
+      through the Kubernetes API, changes the real world until it matches them and writes the result into each object's
+      <code>status</code>. Kubernetes itself is built from controllers: the Deployment controller creates ReplicaSets, and
+      they create pods (<a href="workloads.html#kinds">Workloads</a>). A Gateway API object is only data until a controller
+      acts on it; here that controller is Envoy Gateway.</p>
+    <p>A <b>GatewayClass</b> says which controller acts on a Gateway, the way a StorageClass says who creates a volume. Ours
+      names <code>controllerName: gateway.envoyproxy.io/gatewayclass-controller</code>; every controller ignores Gateways of
+      other classes, so one cluster can run several. The class has no network layer of its own: a Gateway's listeners and
+      the kinds of route attached to it decide. HTTPRoute and GRPCRoute work at layer 7 (HTTP: hostnames, paths, headers);
+      TCPRoute, UDPRoute and TLSRoute at layer 4 (addresses and ports). This cluster uses only HTTP.</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>GatewayClass</th><th>The controller turns a Gateway into</th><th>Layer</th></tr></thead>
+    <tbody>
+      <tr><td>Proxy in the cluster: <code>envoy-gateway</code> here; Istio, Cilium, NGINX Gateway Fabric</td><td>proxy pods inside the
+        cluster. On a cloud their Service is <code>type: LoadBalancer</code>, so the cloud puts a layer-4 load balancer in
+        front (an NLB on AWS). Works the same on a laptop and on any cloud.</td><td>7 in the proxy</td></tr>
+      <tr><td>AWS Load Balancer Controller: <code>gateway.k8s.aws/alb</code>, <code>gateway.k8s.aws/nlb</code></td><td>an
+        Application Load Balancer (ALB) or a Network Load Balancer (NLB) outside the cluster, sending straight to pod IPs.
+        Nothing to run in the cluster, but you get only the features that load balancer has.</td><td>7 (ALB) or 4 (NLB)</td></tr>
+      <tr><td>AWS Gateway API Controller: <code>amazon-vpc-lattice</code></td><td>a VPC Lattice service network, for calls
+        between services across clusters and VPCs</td><td>7</td></tr>
+      <tr><td>Google GKE: <code>gke-l7-global-external-managed</code>, <code>gke-l7-rilb</code> (internal)</td><td>a Google
+        Cloud Application Load Balancer</td><td>7</td></tr>
+    </tbody></table></div>
   <figure class="figure" data-source="live">
     <div class="scroll-x" id="gateway-tree"></div>
     <figcaption>GatewayClass → Gateway → HTTPRoutes → Services, as the Envoy Gateway controller reports them.</figcaption>
@@ -72,7 +110,7 @@
   <div class="table-wrap"><table>
     <thead><tr><th>Object</th><th>Owner here</th><th>Decides</th></tr></thead>
     <tbody>
-      <tr><td><b>GatewayClass</b> <code>envoy-gateway</code></td><td>whoever installs the implementation (<code>platform/gateway/</code>)</td><td>which controller runs Gateways of this class</td></tr>
+      <tr><td><b>GatewayClass</b> <code>envoy-gateway</code></td><td>whoever installs the implementation (<code>platform/gateway/</code>)</td><td>which controller turns Gateways of this class into a working proxy or load balancer</td></tr>
       <tr><td><b>Gateway</b> <code>shared-gateway</code></td><td>the platform team (<code>platform/gateway/</code>)</td><td>listeners (HTTP :80, <code>*.localhost</code>) and which namespaces may attach routes</td></tr>
       <tr><td><b>EnvoyProxy</b> <code>shared-gateway</code></td><td>the platform team (<code>platform/gateway/</code>)</td><td>how the proxy runs: Deployment size, NodePort Service (an Envoy Gateway resource, not Gateway API)</td></tr>
       <tr><td><b>HTTPRoute</b> <code>&lt;component&gt;-route</code></td><td>each app team (<code>&lt;component&gt;/k8s/</code>)</td><td>hostnames, matches, filters (CORS, redirects, headers) and the backend Service</td></tr>
@@ -126,14 +164,14 @@
   </ul>
 </section>
 
-<section class="chapter" id="east-west">
+<section class="chapter" id="in-cluster">
   <div class="head">
-    <span class="eyebrow">East-west</span>
+    <span class="eyebrow">In-cluster traffic</span>
     <h2>Pod to Service to pod</h2>
     <p>stock-app runs a query against TimescaleDB. In-cluster traffic never touches the Gateway: DNS turns the name into a
       ClusterIP, and kube-proxy's NAT rules on the sending node turn that into a pod IP.</p>
   </div>
-  <div class="figure" data-source="live"><div id="journey-east"></div></div>
+  <div class="figure" data-source="live"><div id="journey-in-cluster"></div></div>
   <div class="prose">
     <p>The kube-proxy rules for <code>timescaledb-service</code> look like this (see the real ones under <i>Try it</i>):</p>
     <pre id="iptables"></pre>
@@ -141,6 +179,22 @@
       and the second, with no probability, takes every other new connection. That is all kube-proxy load balancing is: a
       random pick per new connection. A long-lived connection, like a database pool, stays on the pod it first got.</p>
   </div>
+</section>
+
+<section class="chapter" id="outgoing">
+  <div class="head">
+    <span class="eyebrow">Outgoing traffic</span>
+    <h2>A pod to the internet</h2>
+    <p>stock-app fetches prices from Yahoo Finance. The internet can't send a reply to a private pod IP, so on the way out
+      the source address is rewritten (SNAT) to one the outside world can answer.</p>
+  </div>
+  <ul class="prose">
+    <li><b>Here:</b> kindnet rewrites the pod IP to the node's IP, and Docker rewrites that to your machine's.</li>
+    <li><b>On AWS EKS:</b> the VPC CNI rewrites the pod IP to the node's IP; nodes in private subnets go out through a NAT
+      Gateway, which rewrites it again to its public IP.</li>
+    <li>Outgoing traffic passes no Gateway, so nothing limits which hosts a pod may call. A NetworkPolicy with
+      <code>egress</code> rules can (<a href="security.html#network-policy">Identity</a>).</li>
+  </ul>
 </section>
 
 <section class="chapter" id="dns">
