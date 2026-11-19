@@ -185,7 +185,10 @@ npm ci &amp;&amp; npm run dev    # or npm run build, into dist/</pre></div>
       <li><code>web/test</code>: unit tests for the JavaScript model, run by Node's own test runner</li></ul></div>
   </div>
   <p class="prose">Change the docs by editing <code>documentation/web/site/</code>: each fact belongs on one page, others
-    link to it. A new page goes into the <code>PAGES</code> list in <code>assets/js/site.js</code>. Outside the cluster
+    link to it. A new page goes into the <code>PAGES</code> list in <code>assets/js/site.js</code>. The first mention of a
+    Kubernetes term or an abbreviation in each section explains itself on hover. A term or abbreviation a page starts
+    using goes into <code>assets/js/glossary.js</code>: a term with two to four sentences and a link to kubernetes.io, an
+    abbreviation with its full form (the tests fail on one without). Outside the cluster
     <code>go run .</code> uses your kubeconfig and reaches Prometheus through <code>prometheus.localhost</code>. Without any
     API (GitHub Pages publishes <code>web/site</code> as it is), the pages render <code>assets/snapshot.json</code>; refresh it
     from a running cluster with the command below.</p>
