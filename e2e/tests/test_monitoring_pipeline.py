@@ -97,8 +97,13 @@ def test_kubelet_reports_each_node_and_pod():
         TARGETS_UP_TIMEOUT_SECONDS,
         description=f"memory of {KIND_NODE_COUNT} nodes from the kubelet",
     )
+    # A pod shows up in the kubelet's metrics a few seconds after its node does, so wait for it too.
     stock_app_memory = 'sum(pod_memory_working_set_bytes{job="kubelet", namespace="apps", pod=~"stock-app-.*"})'
-    assert query_prometheus_value(stock_app_memory) > 0
+    wait_until(
+        lambda: query_prometheus_value(stock_app_memory) > 0,
+        TARGETS_UP_TIMEOUT_SECONDS,
+        description="memory of the stock-app pod from the kubelet",
+    )
 
 
 def test_alert_rules_are_loaded():
