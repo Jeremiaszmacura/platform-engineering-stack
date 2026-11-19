@@ -2,6 +2,7 @@
 
 import { $, $$, esc } from "./util.js";
 import { live, onMap, onStatus } from "./live.js";
+import { explainTerms } from "./terms.js";
 
 /** Every page, in reading order. */
 export const PAGES = [
@@ -168,3 +169,4 @@ pageContents();
 pager();
 copyButtons();
 liveStatus();
+explainTerms($("article.page"));
