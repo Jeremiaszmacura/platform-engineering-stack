@@ -49,7 +49,7 @@
       endpoints, so it gets no new traffic, and nothing restarts. A failing <b>liveness</b> probe restarts the container.
       Mixing them up turns a database blip into a restart storm.</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="probe-flow"></div></figure>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="probe-flow"></div></figure>
   <div class="table-wrap"><table>
     <thead><tr><th>Component</th><th>Readiness</th><th>Liveness</th><th class="num">Ready</th><th class="num">Restarts</th></tr></thead>
     <tbody id="probe-rows"></tbody></table></div>
@@ -70,7 +70,7 @@
       with Alembic and must exit 0, so the app never starts against an old schema. The app then waits for its readiness
       probe before any traffic arrives.</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="startup-seq"></div>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="startup-seq"></div>
     <figcaption>Init containers run one after another, each to completion; regular containers start together after them.</figcaption></figure>
   <p class="prose">Vault's container has a <b><code>postStart</code> hook</b> instead: the kubelet runs it inside the
     container as soon as the container starts, and treats the container as running, so probes it and can mark it ready,
@@ -93,7 +93,8 @@
       <code>GOMEMLIMIT</code>, which makes Go collect garbage harder before it reaches the limit.</p></div>
     <div class="card"><h3>QoS classes</h3><p>Requests equal to limits make a pod <b>Guaranteed</b>; lower requests make it
       <b>Burstable</b> (every pod here); none at all, <b>BestEffort</b>. Under memory pressure the kubelet evicts
-      BestEffort pods first, Guaranteed last.</p></div>
+      first the pods using most memory above their requests, so the QoS class predicts the likely order: BestEffort first,
+      Guaranteed last.</p></div>
   </div>
   <p class="callout">Every workload here sets requests and limits; the <a href="security.html#hardening">hardening
     scorecard</a> checks it live. What the cluster can't show you yet is actual usage:
@@ -108,7 +109,7 @@
       the manifests. A <code>kustomization.yaml</code> turns each into a ConfigMap and adds a hash of the content to its
       name. A changed file means a new name, so the pod template changes and the Deployment rolls out.</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="config-flow"></div>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="config-flow"></div>
     <figcaption>The rolling update starts the new pod first and removes the old one only once the new one is ready
       (<code>maxSurge</code> 25%, <code>maxUnavailable</code> 25%, which round to one extra pod and none missing).</figcaption></figure>
   <div class="grid-2">

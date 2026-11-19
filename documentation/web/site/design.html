@@ -43,9 +43,9 @@
     <li><b>Namespaces.</b> <code>apps</code> (stock-app, traffic-generator, stock-ui), <code>monitoring</code>,
       <code>vault</code>, <code>data</code> (TimescaleDB) and <code>docs</code> (this site). Every manifest sets its namespace;
       cross-namespace calls use <code>&lt;service&gt;.&lt;namespace&gt;</code>.</li>
-    <li><b>Least privilege.</b> Each workload has its own ServiceAccount with no API token. Only Prometheus (service
-      discovery, kubelet metrics), the documentation site (the live diagrams) and the OpenTelemetry Collector (pods in <code>apps</code>, to
-      label spans) get read-only API access, and Vault may only check tokens (TokenReview); none can read Secrets.
+    <li><b>Least privilege.</b> Each workload has its own ServiceAccount, with no API token unless it needs one: Prometheus
+      (service discovery, kubelet metrics), the documentation site (the live diagrams) and the OpenTelemetry Collector (pods in
+      <code>apps</code>, to label spans) get read-only API access, and Vault may only check tokens (TokenReview); none can read Secrets.
       <a href="security.html#api-access">Live view</a>.</li>
     <li><b>Metrics discovery.</b> A Service is scraped when annotated <code>prometheus.io/scrape: "true"</code> and
       <code>prometheus.io/job: &lt;name&gt;</code> (optionally <code>prometheus.io/port</code> and
@@ -81,7 +81,7 @@
     <li>Deployment and <code>app</code> label = the component's name; Service <code>&lt;component&gt;-service</code> (a
       StatefulSet's <code>serviceName</code> is a second, headless one, <code>&lt;component&gt;-headless</code>); HTTPRoute
       <code>&lt;component&gt;-route</code>; ServiceAccount <code>&lt;component&gt;</code>.</li>
-    <li>Every workload has requests, limits and a readiness probe; own images run as non-root; every image is pinned.</li>
+    <li>Every workload has requests, limits and a readiness probe; own images run as non-root; every image is pinned (base images and GitHub Actions by digest).</li>
     <li>A config file a container reads (e.g. <code>prometheus.yml</code>) is a plain file in <code>k8s/</code>; a
       <code>kustomization.yaml</code> turns it into a ConfigMap, and <code>./recreate-cluster.sh</code> applies such
       directories with <code>kubectl apply -k</code>. Kustomize adds a hash of the content to the ConfigMap's name, so a

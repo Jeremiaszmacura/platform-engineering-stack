@@ -39,17 +39,17 @@
     <div class="card"><h3>Contract first</h3><p><code>stock-app/openapi.yaml</code> is the API's source of truth: the
       request and response models are generated from it (<code>tox -e api</code>) and <code>make lint</code> fails if they
       drift. The running service publishes it at <a href="http://stock.localhost/openapi.yaml">/openapi.yaml</a>, with
-      Swagger UI at <a href="http://stock.localhost/docs">/docs</a>, and the e2e tests validate every response against it.</p></div>
+      Swagger UI at <a href="http://stock.localhost/docs">/docs</a>, and the e2e tests validate every response against it, <code>/secret</code> included.</p></div>
     <div class="card"><h3>Providers</h3><p><code>STOCK_PROVIDER=yahoo</code> (the default) calls Yahoo Finance;
       <code>synthetic</code> generates prices for AAPL, MSFT, NVDA, AMZN and GOOGL without a network, which CI uses
       because Yahoo rate-limits its runners. Each symbol's prices are a random walk seeded by the symbol, so a date always
       gets the same bar and nothing expires; they are not real prices. How the cache decides what to fetch:
       <a href="state.html#cache-aside">State &amp; storage</a>.</p></div>
   </div>
-  <figure class="figure"><div class="scroll-x" id="hexagon"></div>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="hexagon"></div>
     <figcaption>Hexagonal layout: every arrow is an import, and they all point inwards. The domain and the application
-      know nothing about FastAPI, SQL, Yahoo or Vault; outbound adapters satisfy the application's ports
-      (<code>typing.Protocol</code>) without importing them, and <code>src/main.py</code> is the only place adapters are built.
+      know nothing about FastAPI, SQL, Yahoo or Vault. Outbound adapters satisfy the application's ports
+      (<code>typing.Protocol</code>) structurally; only the tracing decorator imports one, to type the provider it wraps. <code>src/main.py</code> is the only place adapters are built.
       <code>lint-imports</code> checks five such rules (<code>.importlinter</code>) in <code>make lint</code>.</figcaption></figure>
   <div class="cmd"><pre>cd stock-app
 tox -e tests          # unit tests: no database or network needed
@@ -69,7 +69,11 @@ kubectl rollout restart deployment stock-app -n apps   # migrations run in its i
     <li>The password Secret exists twice, in <code>data</code> and in <code>apps</code>, because Secrets can't cross namespaces.</li>
     <li>A <code>postgres_exporter</code> sidecar serves <code>pg_*</code> metrics on 9187 (job <code>timescaledb</code>). It logs in
       as <code>postgres_exporter</code>, a role with only <code>pg_monitor</code>, created on first start by
-      <code>k8s/create-exporter-role.sh</code>.</li>
+      <code>k8s/create-exporter-role.sh</code>. It connects to the <code>postgres</code> database, so its queries don't count
+      as <code>stockdata</code> transactions, the stock-app → TimescaleDB line on the Overview. That line still moves when
+      stock-app is idle (about 0.7 tx/s): its readiness probe checks the database every 5 s, and TimescaleDB's job
+      scheduler commits there too. Per-table statistics
+      (<code>pg_stat_user_tables</code>) only cover the database it connects to, so they aren't collected.</li>
   </ul>
   <div class="cmd"><pre>kubectl exec -it timescaledb-0 -n data -c timescaledb -- psql -U stockapp -d stockdata</pre></div>
 </section>
@@ -139,7 +143,7 @@ npm ci &amp;&amp; npm run dev    # or npm run build, into dist/</pre></div>
     <p>At <a href="http://grafana.localhost">grafana.localhost</a> (<code>admin</code> / <code>admin</code>). Datasources and
       dashboards are files in <code>monitoring/grafana/k8s/</code>, one JSON file per dashboard with a fixed
       <code>uid</code>, listed in its <code>kustomization.yaml</code> (<a href="observability.html#dashboards">dashboards as code</a>).
-      Memory limit 1Gi: Grafana 13 idles at about 330Mi and was OOM-killed at 512Mi.</p></div>
+      Memory limit 1Gi: idle, Grafana 13 uses about 350Mi after start and 500Mi after a day, and it was OOM-killed at 512Mi.</p></div>
   <dl class="spec" data-app="grafana"></dl>
 </section>
 
@@ -153,7 +157,7 @@ npm ci &amp;&amp; npm run dev    # or npm run build, into dist/</pre></div>
 
 <section class="chapter" id="tempo" style="--c:var(--ns-monitoring)">
   <div class="head"><span class="eyebrow">monitoring · trace storage</span><h2>Tempo</h2>
-    <p>A single binary with local storage on an <code>emptyDir</code>, so traces are lost when the pod restarts. No
+    <p>A single binary with local storage on an <code>emptyDir</code>, so traces survive a container restart and are lost when the pod is replaced. No
       HTTPRoute: Grafana is its UI. Search finds a new trace after about 30 seconds, once a block is cut; opening a trace by
       ID works at once.</p></div>
   <dl class="spec" data-app="tempo"></dl>

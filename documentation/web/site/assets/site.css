@@ -229,6 +229,11 @@ details.qa > div { padding: 10px 14px 12px 36px; display: grid; gap: 8px; font-s
 figure { margin: 0; }
 .figure { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 12px; min-width: 0; }
 .figure figcaption { font-size: 0.86rem; color: var(--muted); max-width: 90ch; }
+/* Every figure says where it comes from: the running cluster (Live) or a hand-drawn Example. */
+.figure[data-source]::before { justify-self: start; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 999px; color: var(--muted); background: var(--sunken); }
+.figure[data-source="live"]::before { content: "● Live"; color: var(--ok); background: var(--ok-soft); }
+.figure[data-source="example"]::before { content: "Example"; }
 .figure .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; }
 .scroll-x { overflow-x: auto; overscroll-behavior-x: contain; }
 .scroll-x > svg { min-width: 720px; }

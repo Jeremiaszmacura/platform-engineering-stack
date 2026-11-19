@@ -3,6 +3,7 @@
 import pytest
 
 from cluster import CLUSTER_READY_TIMEOUT_SECONDS, SERVICE_URLS, service_responds, wait_until
+from contract import fetch_contract
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -14,3 +15,9 @@ def cluster_ready():
             CLUSTER_READY_TIMEOUT_SECONDS,
             description=f"{name} to respond at {url}",
         )
+
+
+@pytest.fixture(scope="session")
+def contract():
+    """Return stock-app's published contract, once per run."""
+    return fetch_contract()

@@ -85,25 +85,31 @@ function provisioning() {
   });
 }
 
+// A real cold trace from Tempo (2026-11-19). SQL spans are named after the database; the table is in db.statement.
 function waterfall() {
   const spans = [
-    ["GET /api/v1/instruments/{symbol}/bars", 0, 1440, "stock-app handles the request", 0],
-    ["SELECT instruments", 2, 1, "is MSFT stored? no", 1],
-    ["yahoo fetch_instrument", 5, 1083, "ask Yahoo who MSFT is", 1],
-    ["yahoo fetch_daily_bars", 1092, 314, "ask Yahoo for the prices", 1],
-    ["INSERT price_bars", 1410, 19, "store them in TimescaleDB", 1],
+    ["GET /api/v1/instruments/{symbol}/bars", 0, 1333, "stock-app handles the request", 0],
+    ["connect", 6, 0.4, "take a pooled connection", 1],
+    ["SELECT stockdata", 11, 3, "is MSFT stored? no", 1],
+    ["yahoo fetch_instrument", 15, 943, "ask Yahoo who MSFT is", 1],
+    ["yahoo fetch_daily_bars", 958, 338, "ask Yahoo for the prices", 1],
+    ["connect", 1297, 0.4, "", 1],
+    ["INSERT stockdata", 1299, 2, "store the instrument", 1],
+    ["INSERT stockdata", 1308, 20, "store its prices", 1],
+    ["connect", 1329, 0.2, "", 1],
+    ["SELECT stockdata", 1330, 1, "read the bars back", 1],
   ];
   const x0 = 300;
   const width = 520;
-  const scale = width / 1440;
+  const scale = width / spans[0][2];
   const bars = spans.map(([name, start, ms, why, depth], i) => {
     const y = 20 + i * 34;
     const color = name.startsWith("yahoo") ? "var(--ns-outside)" : name.startsWith("GET") ? "var(--ns-apps)" : "var(--ns-data)";
     return `<text class="t" x="${16 + depth * 16}" y="${y + 13}">${esc(name)}</text>
       <rect x="${x0 + start * scale}" y="${y}" width="${Math.max(2, ms * scale)}" height="18" rx="3" fill="${color}"/>
-      <text class="s" x="${x0 + (start + ms) * scale + 8}" y="${y + 13}">${ms} ms · ${esc(why)}</text>`;
+      <text class="s" x="${x0 + (start + ms) * scale + 8}" y="${y + 13}">${ms} ms${why ? ` · ${esc(why)}` : ""}</text>`;
   });
-  fill("#waterfall", `<svg class="dg wf" viewBox="0 0 1100 196" role="img" aria-label="Trace waterfall of a cold stock-app request">
+  fill("#waterfall", `<svg class="dg wf" viewBox="0 0 1100 ${30 + spans.length * 34}" role="img" aria-label="Trace waterfall of a cold stock-app request">
     <g class="nd">${bars.join("")}</g></svg>`);
 }
 

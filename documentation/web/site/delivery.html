@@ -36,10 +36,10 @@
       loudly, printing events and the logs of unready pods, if anything doesn't come up. Running it again is always safe.
       Each step below is checked against the cluster as it is now.</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="pipeline-flow"></div></figure>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="pipeline-flow"></div></figure>
   <ol class="steps" id="pipeline-steps"></ol>
-  <p class="callout">Your <code>kind</code> decides the Kubernetes version: kind v0.33 creates 1.37 nodes, as CI does. An older
-    kind silently creates an older cluster, and can't load images into a newer one.</p>
+  <p class="callout">Before deleting anything, the script stops if <code>kind</code> is not v0.33.x (it decides the Kubernetes
+    version) or if something else holds host port 80 (<a href="index.html#run">Run it</a>).</p>
 </section>
 
 <section class="chapter" id="tests">
@@ -52,7 +52,7 @@
     <tbody>
       <tr><td><code>make test-unit</code></td><td>Go (<code>go test</code>) and Python (<code>tox -e tests</code>) unit tests, found by <code>go.mod</code> and <code>tox.ini</code>; for this site that includes a check of every link between pages</td></tr>
       <tr><td><code>make lint</code></td><td>golangci-lint, then pre-commit (black, bandit, YAML and JSON checks), stock-app's import rules and API-model drift check</td></tr>
-      <tr><td><code>make build-frontend test-unit-frontend</code></td><td>both Vite frontends, their Vitest tests, and this site's JavaScript tests (<code>node --test</code>)</td></tr>
+      <tr><td><code>make build-frontend test-unit-frontend</code></td><td>both Vite frontends, stock-ui's Vitest tests (traffic-generator has none), and this site's JavaScript tests (<code>node --test</code>)</td></tr>
       <tr><td><code>make test-e2e</code></td><td>pytest in <code>e2e/</code> against the running cluster, over HTTP; <code>kubectl</code>,
         pinned to the <code>kind-sample-cluster</code> context, only restarts Vault and issues ServiceAccount tokens</td></tr>
     </tbody></table></div>
@@ -87,21 +87,23 @@ make test-e2e E2E_PYTEST_ARGS='-k stock'   # scope with -k</pre></div>
       <code>*.localhost</code> still answers, wherever the new pod lands. Pushes to <code>main</code> that touch this site
       publish it to GitHub Pages, where it shows a recorded snapshot.</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="ci-flow"></div></figure>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="ci-flow"></div></figure>
 </section>
 
 <section class="chapter" id="renovate">
   <div class="head">
     <span class="eyebrow">Dependencies</span>
     <h2>Every version pinned, every pin updated</h2>
-    <p>Images, Go modules, Python and npm packages, pre-commit hooks, the Envoy Gateway release, kind in CI and
-      golangci-lint are all pinned. Renovate (<code>renovate.json</code>) opens update pull requests every day.</p>
+    <p>Images, Go modules, Python and npm packages, pre-commit hooks, GitHub Actions, the Envoy Gateway release, kind in CI
+      and golangci-lint are all pinned. Tags can be moved, so <code>Dockerfile</code> base images and GitHub Actions are
+      pinned by digest, with the tag kept as a label (<code>python:3.14-slim@sha256:…</code>, <code>actions/checkout@… # v6.1.0</code>);
+      the cluster's images use exact release tags. Renovate (<code>renovate.json</code>) opens update pull requests every day.</p>
   </div>
   <ul class="prose">
     <li>Minor, patch and digest updates merge automatically once CI is green; the e2e job deploys the whole cluster, so a
       broken image can't sneak in.</li>
-    <li>Major updates and language runtimes (Python, Go, Node) wait for a human, because their versions are also set in the
-      workflows.</li>
+    <li>Major updates and new language runtime versions (Python, Go, Node) wait for a human, because their versions are
+      also set in the workflows. A new digest of the same base-image tag merges automatically.</li>
     <li>A release must be three days old; the local <code>:dev</code> images are ignored.</li>
     <li>Renovate runs as the Mend Renovate GitHub App: Mend, the company behind Renovate, hosts it for free, so no workflow
       is needed. Run logs: <a href="https://developer.mend.io/github/Jeremiaszmacura">developer.mend.io</a>.</li>
@@ -115,7 +117,7 @@ make test-e2e E2E_PYTEST_ARGS='-k stock'   # scope with -k</pre></div>
     <p>Copy an existing component (<code>stock-app/</code> for a Python service, <code>documentation/</code> for Go), then:</p>
   </div>
   <ol class="steps">
-    <li><div><span class="where">code</span>A <code>Dockerfile</code> with a pinned base image that runs as non-root. Go needs
+    <li><div><span class="where">code</span>A <code>Dockerfile</code> with a base image pinned by digest that runs as non-root. Go needs
       <code>go.mod</code>, Python needs <code>tox.ini</code>: the Makefile finds them. A Vite frontend goes into
       <code>FRONTENDS</code> in the Makefile.</div></li>
     <li><div><span class="where">kubernetes</span>In <code>my-service/k8s/</code> (namespace <code>apps</code>): Deployment

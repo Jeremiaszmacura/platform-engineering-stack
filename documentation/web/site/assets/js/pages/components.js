@@ -41,11 +41,15 @@ graph(document.getElementById("hexagon")).render({
     layer("provider", 764, 124, "Yahoo · synthetic", "adapters/providers, traced"),
     layer("vault", 764, 200, "Vault secret store", "adapters/secrets · hvac"),
   ],
-  // Arrows are imports. Outbound adapters satisfy the ports structurally (Protocols), so they never import them.
+  // Arrows are imports. Outbound adapters satisfy the ports structurally (Protocols); only the tracing decorator
+  // imports one, to type the provider it wraps. It runs below the domain box so it doesn't cross it.
   edges: [
     ["http", "service", "calls"], ["http", "ports", ""], ["service", "ports", "uses"], ["service", "domain", ""], ["ports", "domain", ""],
     ["repo", "domain", ""], ["provider", "domain", "imports"], ["vault", "domain", ""],
-  ].map(([from, to, label]) => ({ from, to, label, color: nsColor("apps") })),
+  ].map(([from, to, label]) => ({ from, to, label, color: nsColor("apps") })).concat({
+    from: "provider", to: "ports", label: "traced wraps", color: nsColor("apps"),
+    sides: ["l", "b"], ta: 0.75, tb: 0.75, via: [[746, 163], [746, 262], [429.5, 262]],
+  }),
 });
 
 onMap((map) => {

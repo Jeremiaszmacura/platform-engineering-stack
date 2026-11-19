@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
   "schedule": ["before 6am"],
   "minimumReleaseAge": "3 days",
   "postUpdateOptions": ["gomodTidy"],
@@ -22,10 +22,13 @@
       "extractVersionTemplate": "^v(?<version>.+)$"
     },
     {
-      "description": "kind version installed in the e2e workflow (it decides the Kubernetes version CI runs)",
+      "description": "kind version installed in the e2e workflow and required by recreate-cluster.sh (it decides the Kubernetes version)",
       "customType": "regex",
-      "managerFilePatterns": ["/^\\.github/workflows/e2e\\.yaml$/"],
-      "matchStrings": ["kind-action@v\\d+\\s+with:\\s+version: v(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      "managerFilePatterns": ["/^\\.github/workflows/e2e\\.yaml$/", "/^recreate-cluster\\.sh$/"],
+      "matchStrings": [
+        "kind-action@[^\\n]*\\s+with:\\s+version: v(?<currentValue>\\d+\\.\\d+\\.\\d+)",
+        "KIND_VERSION=v(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
       "depNameTemplate": "kubernetes-sigs/kind",
       "datasourceTemplate": "github-releases",
       "extractVersionTemplate": "^v(?<version>.+)$"
@@ -42,6 +45,11 @@
   ],
   "packageRules": [
     {
+      "description": "Pin Dockerfile base images by digest; the tag stays as a readable label",
+      "matchManagers": ["dockerfile"],
+      "pinDigests": true
+    },
+    {
       "description": "Merge minor, patch and digest updates automatically once CI is green",
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "automerge": true
@@ -53,8 +61,9 @@
       "groupName": "OpenTelemetry Python"
     },
     {
-      "description": "Language runtimes must stay in sync with the versions set in .github/workflows, so a human merges them",
+      "description": "Language runtimes must stay in sync with the versions set in .github/workflows, so a human merges them (a digest refresh keeps the tag, so it merges automatically)",
       "matchDepNames": ["python", "golang", "node", "go"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
       "automerge": false
     }
   ]
