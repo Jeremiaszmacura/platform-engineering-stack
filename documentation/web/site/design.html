@@ -46,7 +46,7 @@
     <li><b>Least privilege.</b> Each workload has its own ServiceAccount, with no API token unless it needs one: Prometheus
       (service discovery, kubelet metrics), the documentation site (the live diagrams) and the OpenTelemetry Collector (pods in
       <code>apps</code>, to label spans) get read-only API access. Vault may check tokens (TokenReview) and keep its unseal key
-      in one Secret in its own namespace; no other workload can read Secrets.
+      in one Secret in its own namespace; no other workload of the project can read Secrets.
       <a href="security.html#api-access">Live view</a>.</li>
     <li><b>Metrics discovery.</b> A Service is scraped when annotated <code>prometheus.io/scrape: "true"</code> and
       <code>prometheus.io/job: &lt;name&gt;</code> (optionally <code>prometheus.io/port</code> and

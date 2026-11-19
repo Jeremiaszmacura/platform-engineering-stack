@@ -88,6 +88,18 @@ def restart_vault_container():
     wait_until(lambda: vault_restart_count() > restarts, VAULT_RESTART_TIMEOUT_SECONDS, "Vault's container to restart")
 
 
+def vault_pod_uid():
+    """Return the UID of pod vault-0, or "" while it doesn't exist."""
+    return kubectl("get", "pod", "vault-0", "-n", "vault", "--ignore-not-found", "-o", "jsonpath={.metadata.uid}")
+
+
+def replace_vault_pod():
+    """Delete pod vault-0 and wait for its replacement, which the StatefulSet starts on the same PVC."""
+    old_uid = vault_pod_uid()
+    kubectl("delete", "pod", "vault-0", "-n", "vault", "--wait=false")
+    wait_until(lambda: vault_pod_uid() not in ("", old_uid), VAULT_RESTART_TIMEOUT_SECONDS, "a new Vault pod")
+
+
 def test_vault_is_initialized_and_unsealed():
     """Vault's health endpoint reports an initialized, unsealed server."""
     response = requests.get(f"{VAULT_URL}/v1/sys/health", timeout=REQUEST_TIMEOUT_SECONDS)
@@ -168,10 +180,20 @@ def test_invalid_secret_payload_is_rejected(contract):
 
 
 def test_secrets_survive_a_vault_restart(contract):
-    """A secret written before Vault restarts is read back once its postStart hook has unsealed it."""
+    """A secret written before Vault's container restarts is read back once its postStart hook has unsealed it."""
     key = unique_key("e2e-before-restart")
     assert write_secret(contract, key).status_code == 201
 
     restart_vault_container()
+    wait_until(lambda: read_secret(contract, key).status_code == 200, VAULT_RESTART_TIMEOUT_SECONDS, "Vault to unseal")
+    assert read_secret(contract, key).json() == {"key": key, "value": SECRET_VALUE}
+
+
+def test_secrets_survive_a_new_vault_pod(contract):
+    """A secret written before pod vault-0 is replaced is read back from the PVC once the new pod has unsealed."""
+    key = unique_key("e2e-before-new-pod")
+    assert write_secret(contract, key).status_code == 201
+
+    replace_vault_pod()
     wait_until(lambda: read_secret(contract, key).status_code == 200, VAULT_RESTART_TIMEOUT_SECONDS, "Vault to unseal")
     assert read_secret(contract, key).json() == {"key": key, "value": SECRET_VALUE}

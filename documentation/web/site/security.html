@@ -52,7 +52,7 @@
       Without either, even a pod with no RBAC permissions carries a token an attacker could use to explore the API.</p></div>
     <div class="card"><h3>Least privilege, by design</h3><p>The OpenTelemetry Collector gets a <b>Role</b> in <code>apps</code>,
       not a ClusterRole: it can't see any other namespace. This site's two extra Roles use <code>resourceNames</code>, so
-      each allows reading exactly one ConfigMap. Of the workloads, only Vault may read a Secret: its own unseal key
+      each allows reading exactly one ConfigMap. Of the project's workloads, only Vault may read a Secret: its own unseal key
       (<a href="#vault">below</a>).</p></div>
   </div>
 </section>
@@ -140,8 +140,8 @@ policy  stock-app                        create, read, update on services/data/s
     and for Vault's start-up hook. A token stolen from stock-app is worth little: the ServiceAccount token works only with
     Vault, and the Vault token only on stock-app's path, for an hour at most.</p>
   <p class="callout warn"><b>The unseal key is a Kubernetes Secret.</b> Vault's start-up hook saves it as
-    <code>vault-unseal-key</code> in namespace <code>vault</code> (<a href="components.html#vault">how</a>). Of this
-    cluster's workloads only Vault's ServiceAccount may read it; RBAC can't limit <code>create</code> to one name, so Vault
+    <code>vault-unseal-key</code> in namespace <code>vault</code> (<a href="components.html#vault">how</a>). Of the
+    project's workloads only Vault's ServiceAccount may read it; RBAC can't limit <code>create</code> to one name, so Vault
     may also create other Secrets there. Cluster admins, Kubernetes' own controllers and Envoy Gateway's controller, which
     reads Secrets in every namespace for TLS certificates, can read it too, and etcd keeps it unencrypted
     (<a href="state.html#practice">the fix</a>).</p>

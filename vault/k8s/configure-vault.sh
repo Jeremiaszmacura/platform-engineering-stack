@@ -1,5 +1,6 @@
 #!/bin/sh
 # postStart hook (vault-statefulset.yaml): Vault starts sealed, so unseal it and apply its setup on every start.
+# Each step can run again, so the next start finishes what a failed one left undone.
 set -eu
 
 SERVICE_ACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount
@@ -28,39 +29,57 @@ vault_active() {
     wget -q -O /dev/null "$VAULT_ADDR/v1/sys/health"
 }
 
+# Print string field $1 of the pretty-printed JSON on stdin.
+json_field() {
+    sed -n "s/^ *\"$1\": \"\(.*\)\",*$/\1/p"
+}
+
 # Call the Kubernetes API as Vault's ServiceAccount, trusting only the cluster's CA; the URL comes last in "$@".
 kube_api() {
     SSL_CERT_FILE=$SERVICE_ACCOUNT/ca.crt wget -q -O - --header "Authorization: Bearer $(cat $SERVICE_ACCOUNT/token)" "$@"
 }
 
-# Store unseal key $1 in the Secret vault-unseal-key.
+# Create the Secret vault-unseal-key holding $unseal_key; with $1 = "?dryRun=All" only check that it can be created.
 save_unseal_key() {
     kube_api --header "Content-Type: application/json" \
-        --post-data "{\"metadata\":{\"name\":\"vault-unseal-key\",\"labels\":{\"app\":\"vault\"}},\"stringData\":{\"key\":\"$1\"}}" \
-        "$SECRETS_API" >/dev/null
+        --post-data "{\"metadata\":{\"name\":\"vault-unseal-key\",\"labels\":{\"app\":\"vault\"}},\"stringData\":{\"key\":\"$unseal_key\"}}" \
+        "$SECRETS_API${1:-}" >/dev/null
 }
 
 # Print the unseal key from the Secret vault-unseal-key.
 read_unseal_key() {
-    secret=$(kube_api "$SECRETS_API/vault-unseal-key") || return 1
-    echo "$secret" | sed -n 's/^ *"key": "\(.*\)".*/\1/p' | base64 -d
+    secret=$(kube_api "$SECRETS_API/vault-unseal-key?pretty=true") || return 1
+    echo "$secret" | json_field key | base64 -d
 }
 
-# Unseal with key $1, then wait until Vault serves requests.
+# Unseal with $unseal_key, then wait until Vault serves requests.
 unseal() {
-    vault operator unseal "$1" >/dev/null
+    vault operator unseal "$unseal_key" >/dev/null
     wait_for vault_active
 }
 
-# First start only: save the single unseal key and swap the random root token for $VAULT_ROOT_TOKEN.
+# First start only. The dry run fails before init if the Secret is left over from earlier data or RBAC is missing.
 initialize() {
+    unseal_key=""
+    save_unseal_key "?dryRun=All"
     init_output=$(vault operator init -key-shares=1 -key-threshold=1)
     unseal_key=$(echo "$init_output" | awk '/^Unseal Key 1:/ {print $NF}')
-    save_unseal_key "$unseal_key"
-    unseal "$unseal_key"
-    initial_root_token=$(echo "$init_output" | awk '/^Initial Root Token:/ {print $NF}')
-    VAULT_TOKEN=$initial_root_token vault token create -id="$VAULT_ROOT_TOKEN" -policy=root -orphan >/dev/null
-    VAULT_TOKEN=$initial_root_token vault token revoke -self
+    wait_for save_unseal_key
+    unseal
+    VAULT_TOKEN=$(echo "$init_output" | awk '/^Initial Root Token:/ {print $NF}') vault token revoke -self
+}
+
+# Unless $VAULT_ROOT_TOKEN is valid, create it with a one-off root token made from the unseal key, then revoke that.
+ensure_root_token() {
+    if vault token lookup >/dev/null 2>&1; then
+        return
+    fi
+    attempt=$(vault operator generate-root -init -format=json)
+    nonce=$(echo "$attempt" | json_field nonce)
+    encoded=$(vault operator generate-root -nonce="$nonce" -format=json "$unseal_key" | json_field encoded_token)
+    one_off=$(vault operator generate-root -decode="$encoded" -otp="$(echo "$attempt" | json_field otp)")
+    VAULT_TOKEN=$one_off vault token create -id="$VAULT_ROOT_TOKEN" -policy=root -orphan >/dev/null
+    VAULT_TOKEN=$one_off vault token revoke -self
 }
 
 # Enable a KV v2 secrets engine at path $1, unless one is mounted there already.
@@ -96,10 +115,11 @@ export VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN="$VAULT_ROOT_TOKEN"
 wait_for vault_answers
 if vault operator init -status >/dev/null; then
     unseal_key=$(read_unseal_key)
-    unseal "$unseal_key"
+    unseal
 else
     initialize
 fi
+ensure_root_token
 for mount in services infra; do
     enable_kv_mount "$mount"
 done
