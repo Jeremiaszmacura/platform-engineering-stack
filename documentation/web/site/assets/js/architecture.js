@@ -95,6 +95,16 @@ function node(map, id) {
   return { ...base, bus: id === "envoy", status: state.state, sub: SUBS[id] + count, tip: `${id}: ${state.ready} of ${state.total} pods ready${state.restarts ? `, ${state.restarts} restarts` : ""}` };
 }
 
+// Apps that store telemetry: whoever calls them, except the Collector writing spans, is reading.
+const STORES = new Set(["prometheus", "tempo"]);
+
+/** The ends of link l as the data moves, which is not always the way the connection opens. */
+export function dataEnds(l) {
+  // Prometheus opens the scrape but the metrics flow to it; a watcher opens the API connection but objects flow to it.
+  const pulled = l.kind === "scrape" || l.kind === "api" || (l.kind === "call" && STORES.has(l.to) && l.from !== "otel-collector");
+  return pulled ? { from: l.to, to: l.from } : { from: l.from, to: l.to };
+}
+
 const jobOf = (label) => (label.match(/\(job ([^)]+)\)/) || [])[1];
 
 function scrapeHealth(up, job) {
@@ -109,7 +119,7 @@ function liveEdges(map, m) {
   const rate = (name) => (m[name] && m[name].length ? Number(m[name][0].value[1]) : 0);
   const perSecond = (name, unit) => (m[name] ? ` · ${num(rate(name))} ${unit}` : "");
   return appLinks(map).map((l) => {
-    const e = { from: l.from, to: l.to, tip: l.labels.join("\n") };
+    const e = { ...dataEnds(l), tip: l.labels.join("\n") };
     if (l.kind === "gateway") {
       const host = l.labels[0];
       const busy = l.to === "stock-app";
@@ -167,25 +177,25 @@ const ROUTES = {
   "stock-app|vault": { sides: ["r", "l"], ta: 0.25 },
   "stock-app|timescaledb": { sides: ["r", "l"], ta: 0.7 },
   "stock-app|otel-collector": { sides: ["b", "t"], ta: 0.15, lt: 0.35 },
-  "prometheus|stock-app": { sides: ["t", "b"], ta: 0.08, tb: 0.75, via: [[818, 460], [476, 460]] },
-  "prometheus|timescaledb": { sides: ["t", "b"], ta: 0.25, tb: 0.8 },
-  "prometheus|vault": { sides: ["t", "r"], ta: 0.6, via: [[895, 222]] },
-  "prometheus|documentation": { sides: ["t", "b"], ta: 0.95, tb: 0.3 },
-  "documentation|prometheus": { sides: ["b", "t"], ta: 0.15, tb: 0.85 },
-  "prometheus|grafana": { sides: ["l", "r"], ta: 0.72, tb: 0.72 },
-  "grafana|prometheus": { sides: ["r", "l"], ta: 0.28, tb: 0.28 },
-  "prometheus|node-exporter": { sides: ["r", "l"] },
-  "prometheus|tempo": { sides: ["b", "b"], ta: 0.6, tb: 0.75, via: [[895, 596], [507, 596]] },
-  "prometheus|otel-collector": { sides: ["b", "b"], ta: 0.75, tb: 0.75, via: [[917, 602], [355, 602]] },
-  "grafana|tempo": { sides: ["t", "t"], ta: 0.3, tb: 0.5, via: [[610, 496], [474, 496]] },
+  "stock-app|prometheus": { sides: ["b", "t"], ta: 0.75, tb: 0.08, via: [[476, 460], [818, 460]] },
+  "timescaledb|prometheus": { sides: ["b", "t"], ta: 0.8, tb: 0.25 },
+  "vault|prometheus": { sides: ["r", "t"], tb: 0.6, via: [[895, 222]] },
+  "documentation|prometheus": { sides: ["b", "t"], ta: 0.3, tb: 0.95 },
+  "prometheus|documentation": { sides: ["t", "b"], ta: 0.85, tb: 0.15 },
+  "grafana|prometheus": { sides: ["r", "l"], ta: 0.72, tb: 0.72 },
+  "prometheus|grafana": { sides: ["l", "r"], ta: 0.28, tb: 0.28 },
+  "node-exporter|prometheus": { sides: ["l", "r"] },
+  "tempo|prometheus": { sides: ["b", "b"], ta: 0.75, tb: 0.6, via: [[507, 596], [895, 596]] },
+  "otel-collector|prometheus": { sides: ["b", "b"], ta: 0.75, tb: 0.75, via: [[355, 602], [917, 602]] },
+  "tempo|grafana": { sides: ["t", "t"], ta: 0.5, tb: 0.3, via: [[474, 496], [610, 496]] },
   "otel-collector|tempo": { sides: ["b", "b"], ta: 0.3, tb: 0.15, via: [[288.4, 588], [427.8, 588]] },
   "gateway-helm|envoy": { sides: ["l", "l"], ta: 0.5, tb: 0.69, via: [[224, 694], [224, 92]] },
-  "gateway-helm|kube-apiserver": { sides: ["r", "l"] },
-  "kube-dns|kube-apiserver": { sides: ["l", "r"] },
-  "documentation|kube-apiserver": { sides: ["b", "t"], ta: 0.375, tb: 0.84, via: [[979, 620], [720, 620]] },
-  "prometheus|kube-apiserver": { sides: ["b", "t"], ta: 0.3, tb: 0.64, via: [[850, 614], [680, 614]] },
-  "otel-collector|kube-apiserver": { sides: ["b", "t"], ta: 0.5, tb: 0.24, via: [[318, 626], [600, 626]] },
-  "vault|kube-apiserver": { sides: ["r", "t"], ta: 0.75, tb: 0.94, via: [[864, 235], [864, 490], [740, 490]] },
+  "kube-apiserver|gateway-helm": { sides: ["l", "r"] },
+  "kube-apiserver|kube-dns": { sides: ["r", "l"] },
+  "kube-apiserver|documentation": { sides: ["t", "b"], ta: 0.84, tb: 0.375, via: [[720, 620], [979, 620]] },
+  "kube-apiserver|prometheus": { sides: ["t", "b"], ta: 0.64, tb: 0.3, via: [[680, 614], [850, 614]] },
+  "kube-apiserver|otel-collector": { sides: ["t", "b"], ta: 0.24, tb: 0.5, via: [[600, 626], [318, 626]] },
+  "kube-apiserver|vault": { sides: ["t", "r"], ta: 0.94, tb: 0.75, via: [[740, 490], [864, 490], [864, 235]] },
 };
 
 /** The diagram spec for one layer, from the live map and the latest Prometheus results m. */

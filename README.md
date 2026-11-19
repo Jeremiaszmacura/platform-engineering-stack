@@ -1,8 +1,8 @@
 # Platform Engineering Stack
 
 A small Kubernetes cluster that runs on your laptop, for learning platform engineering: a real stock-data service
-(Python + TimescaleDB) with a chart UI, one Gateway for all traffic, Vault for secrets, and Prometheus, Grafana and
-tracing watching it all.
+(Python + TimescaleDB) with a chart UI, one Gateway (Envoy) for all incoming traffic, a secret store (Vault), and
+observability: metrics (Prometheus), traces (OpenTelemetry and Tempo) and dashboards (Grafana).
 
 ## Start
 

@@ -69,8 +69,9 @@ function scrapeFlow() {
       step("tsdb", 796, "TSDB", "in the pod", "monitoring"),
       step("grafana", 952, "Grafana", "PromQL", "monitoring"),
     ],
-    edges: [["ann", "api", "kubectl apply"], ["sd", "api", "watch"], ["sd", "relabel", ""], ["relabel", "scrape", ""], ["scrape", "tsdb", "every 5 s"], ["grafana", "tsdb", "query"]]
-      .map(([from, to, label]) => ({ from, to, label, color: nsColor("monitoring"), sides: from === "sd" && to === "api" ? ["l", "r"] : undefined, dashed: label === "watch", flow: label === "every 5 s" ? 0.2 : 0 })),
+    // Arrows follow the data: the API server streams endpoints to Prometheus, and query results go to Grafana.
+    edges: [["ann", "api", "kubectl apply"], ["api", "sd", "watch"], ["sd", "relabel", ""], ["relabel", "scrape", ""], ["scrape", "tsdb", "every 5 s"], ["tsdb", "grafana", "PromQL"]]
+      .map(([from, to, label]) => ({ from, to, label, color: nsColor("monitoring"), dashed: label === "watch", flow: label === "every 5 s" ? 0.2 : 0 })),
   });
 }
 
