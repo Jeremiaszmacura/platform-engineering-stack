@@ -1,8 +1,10 @@
 #!/bin/bash
-# Deletes and recreates the kind cluster with every component. Safe to re-run.
+# Deletes the kind cluster with all its data, then recreates it with every component. Safe to re-run.
 set -euo pipefail
 
 CLUSTER_NAME=sample-cluster
+# Each kind release creates nodes of one Kubernetes version; v0.33 creates 1.37, as in CI. Any patch release works.
+KIND_VERSION=v0.33.0
 
 # `yahoo` calls the live API; `synthetic` generates prices without a network (used by CI).
 STOCK_PROVIDER="${STOCK_PROVIDER:-yahoo}"
@@ -77,6 +79,30 @@ fail() {
     done
     exit 1
 }
+
+# Exit unless kind has the minor version of KIND_VERSION.
+check_kind_version() {
+    local found
+    found=$(kind version | awk '{ print $2 }')
+    if [ "${found%.*}" != "${KIND_VERSION%.*}" ]; then
+        echo "❌ kind ${KIND_VERSION%.*}.x is required, found ${found}: https://kind.sigs.k8s.io/docs/user/quick-start/#installation"
+        exit 1
+    fi
+}
+
+# Exit if something other than this cluster, which is about to be deleted, listens on host port 80.
+check_port_80_free() {
+    if docker ps --format '{{.Names}}' | grep -qx "${CLUSTER_NAME}-control-plane"; then
+        return 0
+    fi
+    if (exec 3<>/dev/tcp/127.0.0.1/80) 2>/dev/null; then
+        echo "❌ Host port 80 is in use; stop whatever listens on it (sudo lsof -iTCP:80 -sTCP:LISTEN) and re-run"
+        exit 1
+    fi
+}
+
+check_kind_version
+check_port_80_free
 
 echo "🔄 Recreating kind cluster..."
 # Deletion fails when no cluster exists yet, which is fine

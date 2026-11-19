@@ -38,7 +38,7 @@
       Every workload here has its own ServiceAccount with <code>automountServiceAccountToken: false</code>, so it gets no
       token at all. Only the identities on the left of this diagram mount one, each for a reason.</p>
   </div>
-  <figure class="figure">
+  <figure class="figure" data-source="live">
     <div class="scroll-x" id="rbac"></div>
     <figcaption>ServiceAccount → the Role or ClusterRole it is bound to → what that allows, from the live RBAC objects.
       Hover a grant for the full rules.</figcaption>
@@ -65,7 +65,7 @@
       the cluster within about a second. Controllers and operators use the same mechanism. Only two small ConfigMaps
       (<code>kube-proxy</code>, <code>prometheus-config</code>) are read with a GET on each map request.</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="informer-seq"></div>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="informer-seq"></div>
     <figcaption>Polling the API every 5 seconds would cost a dozen LIST calls per open tab. Watching costs one long-lived
       connection per kind of object, however many tabs are open, plus the two ConfigMap GETs per tab.</figcaption></figure>
   <pre><span class="c"># documentation/k8s/documentation-serviceaccount.yaml: token mounted on purpose</span>
@@ -124,7 +124,7 @@ Role            monitoring/documentation-prometheus    get configmaps "prometheu
     <li><div><span class="where">stock-app</span>Uses that token for every request, and signs in again when Vault rejects
       it (expired, or Vault restarted).</div></li>
   </ol>
-  <figure class="figure"><div class="scroll-x" id="vault-seq"></div>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="vault-seq"></div>
     <figcaption>The first secret request after start-up. Later requests go straight to the write, until Vault rejects the
       token.</figcaption></figure>
   <pre><span class="c"># stock-app/k8s/stock-app-deployment.yaml: the pod's token, for Vault only</span>

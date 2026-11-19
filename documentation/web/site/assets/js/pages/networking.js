@@ -197,7 +197,7 @@ sequence(document.getElementById("cors-seq"), {
   ],
   steps: [
     { from: "b", to: "e", label: "OPTIONS /api/v1/instruments", note: "only for non-simple requests: Origin + Access-Control-Request-Method", dashed: true },
-    { from: "e", to: "b", label: "204 Access-Control-Allow-Origin: http://stock-ui.localhost", note: "Envoy answers the preflight itself", dashed: true },
+    { from: "e", to: "b", label: "200 Access-Control-Allow-Origin: http://stock-ui.localhost", note: "Envoy answers the preflight itself", dashed: true },
     { from: "b", to: "e", label: "GET /api/v1/instruments", note: "Origin: http://stock-ui.localhost" },
     { from: "e", to: "s", label: "GET /api/v1/instruments", note: "to a ready pod IP" },
     { from: "s", to: "e", label: "200 JSON" },

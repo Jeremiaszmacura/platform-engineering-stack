@@ -67,8 +67,10 @@ spec:
         - name: postgres-exporter
           image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
           env:
+            # The postgres database, not stockdata: its own queries would count as stock-app's transactions in
+            # pg_stat_database{datname="stockdata"}. Server-wide stats are the same from any database.
             - name: DATA_SOURCE_URI
-              value: localhost:5432/stockdata?sslmode=disable
+              value: localhost:5432/postgres?sslmode=disable
             - name: DATA_SOURCE_USER
               value: postgres_exporter  # Created by create-exporter-role.sh, can only read statistics
             - name: DATA_SOURCE_PASS

@@ -33,7 +33,7 @@ export const APPS = {
   },
   tempo: {
     purpose: "Stores request traces",
-    note: "Single binary with local storage on an emptyDir: traces are gone when the pod restarts. Grafana is its UI.",
+    note: "Single binary with local storage on an emptyDir: traces survive a container restart, not a new pod. Grafana is its UI.",
   },
   "node-exporter": {
     purpose: "Node metrics, one pod per node",

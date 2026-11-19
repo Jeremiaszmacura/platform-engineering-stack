@@ -24,8 +24,9 @@
   <span class="eyebrow">Start here · a live field guide</span>
   <h1>Your cluster, explained while it runs</h1>
   <p class="lede">A three-node Kubernetes cluster on your laptop: a real stock-price service with its database and UI, one
-    Gateway for all traffic, secrets in Vault, and Prometheus, Grafana and tracing watching it all. Every diagram on this site
-    is drawn from the running cluster, so what you read is what is there right now.</p>
+    Gateway for all traffic, secrets in Vault, and Prometheus, Grafana and tracing watching it all. Diagrams marked
+    <b>Live</b> are drawn from the running cluster, so they show what is there right now; those marked <b>Example</b> are
+    drawn by hand to explain how something works.</p>
   <div class="facts" id="facts"></div>
   <nav class="toc" id="toc" aria-label="On this page"></nav>
 </header>
@@ -36,9 +37,11 @@
     <h2>How it all fits together</h2>
     <p>Boxes are workloads, grouped and coloured by namespace; the dot is their readiness. Lines are what the cluster itself
       says connects them: HTTPRoutes, Service addresses in environment variables, Prometheus annotations and RBAC bindings.
+      A few it can't show are added by hand: the browser, Yahoo, the xDS stream, and addresses kept in config files
+      (the site's <code>REFERENCES</code> setting).
       Moving dashes are real traffic, measured by Prometheus. Select a box to see its live details.</p>
   </div>
-  <figure class="figure">
+  <figure class="figure" data-source="live">
     <div class="bar">
       <div class="seg" id="layers" role="group" aria-label="Which connections to show"></div>
       <div class="legend">
@@ -77,11 +80,19 @@
   <div class="head">
     <span class="eyebrow">Get going</span>
     <h2>Run it</h2>
-    <p>You need Docker, kind v0.33 (it creates Kubernetes 1.37 nodes, as in CI) and kubectl. Go 1.26, Node.js 24 and
-      Python 3.14 are only needed to change the code.</p>
+    <p>You need:</p>
   </div>
+  <ul class="prose">
+    <li><b>Docker</b> with at least 6 GB of memory: the three nodes use about 3.3 GiB when idle.</li>
+    <li><b>kind v0.33.x</b>: each kind release creates nodes of one Kubernetes version, and v0.33 creates 1.37, as in CI.
+      The script stops if your kind has another version.</li>
+    <li><b>kubectl 1.36 to 1.38</b>: kubectl supports one minor version either side of the API server.</li>
+    <li><b>curl</b>, and <b>host port 80</b> free: the script stops if something else listens on it.</li>
+    <li>Go 1.26, Node.js 24 and Python 3.14 only to change the code.</li>
+  </ul>
   <div class="try">
-    <div><p>Delete and recreate the cluster with every component. Safe to re-run.</p>
+    <div><p>Start from scratch: delete any existing <code>sample-cluster</code> with all its data, then create it with every
+      component. Safe to re-run.</p>
       <div class="cmd"><pre>./recreate-cluster.sh</pre></div></div>
     <div><p>The same, but stock-app generates its prices instead of calling Yahoo Finance: works offline, and it is what CI runs.</p>
       <div class="cmd"><pre>STOCK_PROVIDER=synthetic ./recreate-cluster.sh</pre></div></div>
@@ -89,6 +100,56 @@
   <p class="prose">It builds the four local images, deploys everything and waits until every <code>*.localhost</code> URL
     answers; <a href="delivery.html#pipeline">Build &amp; ship</a> shows each step. <code>*.localhost</code> resolves to
     <code>127.0.0.1</code> on macOS and most Linux systems, so there is no DNS to set up.</p>
+  <p class="callout warn">kind binds port 80 on every network interface (<code>0.0.0.0</code>), so other devices on your
+    network can reach Vault (token <code>root</code>) and Grafana (<code>admin</code> / <code>admin</code>). On a shared
+    network, add <code>listenAddress: "127.0.0.1"</code> to the port mapping in <code>platform/kind-cluster.yaml</code>.</p>
+</section>
+
+<section class="chapter" id="troubleshooting">
+  <div class="head">
+    <span class="eyebrow">When it doesn't start</span>
+    <h2>Troubleshooting</h2>
+  </div>
+  <div class="qa-list">
+    <details class="qa"><summary>Host port 80 is in use</summary><div>
+      <p>Find what listens on it with <code>sudo lsof -iTCP:80 -sTCP:LISTEN</code>, stop it and re-run. kind can only map
+        a free port.</p></div></details>
+    <details class="qa"><summary>kind has the wrong version, or <code>unknown containerd config version: 4</code></summary><div>
+      <p>An older kind builds an older Kubernetes and can't load images into newer nodes. Check <code>kind version</code>
+        and install v0.33.x.</p></div></details>
+    <details class="qa"><summary>Pods stay <code>Pending</code> or get <code>OOMKilled</code></summary><div>
+      <p>Docker has too little memory. Give it at least 6 GB (Docker Desktop: Settings → Resources) and re-run.
+        <code>kubectl describe pod</code> shows <code>Insufficient memory</code> or the kill reason.</p></div></details>
+    <details class="qa"><summary>stock-app answers 502 for new symbols</summary><div>
+      <p>Yahoo Finance limits how often you may call it. Use generated prices instead:
+        <code>STOCK_PROVIDER=synthetic ./recreate-cluster.sh</code>.</p></div></details>
+    <details class="qa"><summary><code>*.localhost</code> does not resolve</summary><div>
+      <p>Some Linux setups don't send <code>*.localhost</code> to <code>127.0.0.1</code>. Browsers do it themselves; for
+        curl, give the name in the Host header: <code>curl -H 'Host: stock.localhost' http://127.0.0.1/health</code>.</p></div></details>
+  </div>
+</section>
+
+<section class="chapter" id="first-hour">
+  <div class="head">
+    <span class="eyebrow">Start here</span>
+    <h2>Your first hour</h2>
+    <p>Six steps, each with a checkpoint that tells you it worked.</p>
+  </div>
+  <ol class="steps">
+    <li><div><span class="where">run</span><a href="#run">Run it</a>. Checkpoint: the script ends with
+      <code>✅ Cluster ready</code> and this site opens at <a href="http://docs.localhost">docs.localhost</a>.</div></li>
+    <li><div><span class="where">look</span>Read the <a href="#architecture">overview diagram</a> and select a few boxes.
+      Checkpoint: every box has a green dot.</div></li>
+    <li><div><span class="where">traffic</span>Open <a href="http://traffic-generator.localhost">traffic-generator</a> and
+      send 50 requests to stock-app. Checkpoint: the dashes from Envoy to stock-app move, and the
+      <a href="observability.html#pulse">pulse tiles</a> rise.</div></li>
+    <li><div><span class="where">trace</span>Chart a new symbol at <a href="http://stock-ui.localhost">stock-ui</a> and
+      <a href="observability.html#try">find its trace</a>. Checkpoint: a waterfall where Yahoo takes most of the time.</div></li>
+    <li><div><span class="where">break</span><a href="workloads.html#try">Stop the database</a>. Checkpoint: stock-app's dot
+      turns red, and its EndpointSlice lists the pod with <code>ready=false</code>.</div></li>
+    <li><div><span class="where">fix</span>Scale the database back to 1. Checkpoint: stock-app turns green again without
+      restarting (<code>RESTARTS</code> stays 0).</div></li>
+  </ol>
 </section>
 
 <section class="chapter" id="path">
@@ -107,6 +168,28 @@
     <a href="state.html"><b>State &amp; storage</b><span>What survives a restart: PVCs, StatefulSets, emptyDirs and a cache-aside service.</span></a>
     <a href="workloads.html"><b>Workloads</b><span>Controllers, probes, init containers, limits and how a config change rolls out.</span></a>
   </div>
+</section>
+
+<section class="chapter" id="glossary">
+  <div class="head">
+    <span class="eyebrow">Words</span>
+    <h2>Glossary</h2>
+    <p>One line each; the link goes to where the site explains it.</p>
+  </div>
+  <dl class="spec">
+    <dt>cache-aside</dt><dd>Read the store first; on a miss, fetch from the source and store the result. <a href="state.html#cache-aside">State</a></dd>
+    <dt>CNI</dt><dd>Container Network Interface: the plugin that gives each pod an IP and routes between nodes; here kindnet. <a href="networking.html#addresses">Networking</a></dd>
+    <dt>DNAT</dt><dd>Destination NAT: kube-proxy's rules rewrite a Service or NodePort address to a pod IP. <a href="networking.html#east-west">Networking</a></dd>
+    <dt>EndpointSlice</dt><dd>The list of a Service's pod IPs, each marked ready or not, that kube-proxy and Envoy send traffic to. <a href="networking.html#east-west">Networking</a></dd>
+    <dt>exemplar</dt><dd>A metric sample that carries a trace ID, so a latency spike links to one request's trace. <a href="observability.html#correlate">Observability</a></dd>
+    <dt>informer</dt><dd>A client-go cache: list each kind of object once, then watch, so reads come from memory. <a href="security.html#this-site">Identity</a></dd>
+    <dt>ndots</dt><dd>A resolver option: names with fewer dots than this try every search domain first. <a href="networking.html#dns">Networking</a></dd>
+    <dt>NodePort</dt><dd>A Service port opened on every node; here 30080 carries host port 80 to the Gateway. <a href="networking.html#north-south">Networking</a></dd>
+    <dt>OTLP</dt><dd>OpenTelemetry Protocol: how spans travel from stock-app to the Collector and on to Tempo. <a href="observability.html#traces">Observability</a></dd>
+    <dt>PSS, PSA</dt><dd>Pod Security Standards (privileged, baseline, restricted), enforced per namespace by Pod Security Admission. <a href="security.html#hardening">Identity</a></dd>
+    <dt>QoS class</dt><dd>Guaranteed, Burstable or BestEffort, set by requests and limits; predicts eviction order. <a href="workloads.html#resources">Workloads</a></dd>
+    <dt>xDS</dt><dd>The gRPC APIs over which Envoy Gateway streams routes and endpoints to Envoy. <a href="networking.html#gateway">Networking</a></dd>
+  </dl>
 </section>
 
 </article>

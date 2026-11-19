@@ -8,11 +8,9 @@ from datetime import date, timedelta
 import pytest
 import requests
 import yaml
-from openapi_core import OpenAPI
-from openapi_core.contrib.requests import RequestsOpenAPIRequest, RequestsOpenAPIResponse
-from openapi_core.exceptions import OpenAPIError
 
 from cluster import REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL
+from contract import conforming
 
 SYMBOL = "AAPL"
 PROVIDER_TIMEOUT_SECONDS = 60
@@ -28,14 +26,6 @@ SUMMARY = f"/api/v1/instruments/{SYMBOL}/summary"
 
 
 @pytest.fixture(scope="module")
-def contract():
-    """Return the contract the running service publishes."""
-    response = requests.get(f"{STOCK_APP_URL}/openapi.yaml", timeout=REQUEST_TIMEOUT_SECONDS)
-    response.raise_for_status()
-    return OpenAPI.from_dict(yaml.safe_load(response.text))
-
-
-@pytest.fixture(scope="module")
 def synced_window(contract):
     """Sync WINDOW for SYMBOL once per module, so the tests read from the store."""
     call(contract, BARS, params=WINDOW, timeout=PROVIDER_TIMEOUT_SECONDS)
@@ -44,12 +34,7 @@ def synced_window(contract):
 
 def call(contract, path, params=None, timeout=REQUEST_TIMEOUT_SECONDS):
     """GET path and assert status, content type and body match the contract; return the response."""
-    response = requests.get(f"{STOCK_APP_URL}{path}", params=params, timeout=timeout)
-    try:
-        contract.validate_response(RequestsOpenAPIRequest(response.request), RequestsOpenAPIResponse(response))
-    except OpenAPIError as error:
-        pytest.fail(f"GET {path} answered {response.status_code} in a shape the contract forbids: {error}")
-    return response
+    return conforming(contract, requests.get(f"{STOCK_APP_URL}{path}", params=params, timeout=timeout))
 
 
 def test_service_identity(contract):

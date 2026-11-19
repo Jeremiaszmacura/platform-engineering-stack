@@ -1,5 +1,7 @@
 """Vault, its kubernetes auth, and stock-app's /secret endpoints (its keys live under services/stock-app/).
 
+Every /secret response is validated against the /openapi.yaml stock-app publishes.
+
 Keys are random because dev-mode Vault keeps data until its container restarts.
 """
 
@@ -9,6 +11,7 @@ import uuid
 import requests
 
 from cluster import KUBE_CONTEXT, REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL, VAULT_TOKEN, VAULT_URL, wait_until
+from contract import conforming
 
 SECRET_VALUE = "hunter2"  # nosec B105 - test value, not a credential
 # Generous: a rerun within ten minutes meets the kubelet's growing restart delay (10s, 20s, 40s...).
@@ -20,16 +23,19 @@ def unique_key(prefix):
     return f"{prefix}-{uuid.uuid4().hex}"
 
 
-def write_secret(key):
+def post_secret(contract, payload):
+    """POST payload to stock-app's /secret and return the response, which must match the contract."""
+    return conforming(contract, requests.post(f"{STOCK_APP_URL}/secret", json=payload, timeout=REQUEST_TIMEOUT_SECONDS))
+
+
+def write_secret(contract, key):
     """Store SECRET_VALUE under key through stock-app and return the response."""
-    return requests.post(
-        f"{STOCK_APP_URL}/secret", json={"key": key, "value": SECRET_VALUE}, timeout=REQUEST_TIMEOUT_SECONDS
-    )
+    return post_secret(contract, {"key": key, "value": SECRET_VALUE})
 
 
-def read_secret(key):
-    """Read key through stock-app and return the response."""
-    return requests.get(f"{STOCK_APP_URL}/secret/{key}", timeout=REQUEST_TIMEOUT_SECONDS)
+def read_secret(contract, key):
+    """Read key through stock-app and return the response, which must match the contract."""
+    return conforming(contract, requests.get(f"{STOCK_APP_URL}/secret/{key}", timeout=REQUEST_TIMEOUT_SECONDS))
 
 
 def service_account_token(name, audience=None):
@@ -107,37 +113,38 @@ def test_vault_rejects_tokens_not_issued_to_stock_app_for_vault():
         assert sign_in_as_stock_app(jwt).status_code == 403
 
 
-def test_secret_write_read_roundtrip():
+def test_secret_write_read_roundtrip(contract):
     """A secret stored via POST /secret comes back via GET /secret/{key}."""
     key = unique_key("e2e-stock-app")
-    assert write_secret(key).status_code == 201
+    assert write_secret(contract, key).status_code == 201
 
-    read = read_secret(key)
+    read = read_secret(contract, key)
     assert read.status_code == 200
     assert read.json() == {"key": key, "value": SECRET_VALUE}
 
 
-def test_reading_missing_secret_returns_not_found():
+def test_reading_missing_secret_returns_not_found(contract):
     """GET /secret/{key} answers 404 for a key that was never written."""
-    assert read_secret(unique_key("e2e-missing")).status_code == 404
+    assert read_secret(contract, unique_key("e2e-missing")).status_code == 404
 
 
-def test_invalid_secret_payload_is_rejected():
+def test_invalid_secret_payload_is_rejected(contract):
     """An empty value or a key with a slash is rejected with 422."""
     for payload in ({"key": unique_key("e2e-empty"), "value": ""}, {"key": "a/b", "value": "x"}):
-        response = requests.post(f"{STOCK_APP_URL}/secret", json=payload, timeout=REQUEST_TIMEOUT_SECONDS)
-        assert response.status_code == 422, payload
+        assert post_secret(contract, payload).status_code == 422, payload
 
 
-def test_secrets_work_again_after_vault_restarts():
+def test_secrets_work_again_after_vault_restarts(contract):
     """After a Vault restart, stock-app signs in again and secrets work."""
     old_key = unique_key("e2e-before-restart")
-    assert write_secret(old_key).status_code == 201
+    assert write_secret(contract, old_key).status_code == 201
 
     restart_vault_container()
     # 404 instead of 200 (the old Vault) or 502 (no Vault yet): the new Vault answers and has lost the old secret
-    wait_until(lambda: read_secret(old_key).status_code == 404, VAULT_RESTART_TIMEOUT_SECONDS, "Vault to restart")
+    wait_until(
+        lambda: read_secret(contract, old_key).status_code == 404, VAULT_RESTART_TIMEOUT_SECONDS, "Vault to restart"
+    )
 
     new_key = unique_key("e2e-after-restart")
-    assert write_secret(new_key).status_code == 201
-    assert read_secret(new_key).json() == {"key": new_key, "value": SECRET_VALUE}
+    assert write_secret(contract, new_key).status_code == 201
+    assert read_secret(contract, new_key).json() == {"key": new_key, "value": SECRET_VALUE}

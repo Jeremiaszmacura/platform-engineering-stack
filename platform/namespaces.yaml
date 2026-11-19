@@ -1,5 +1,5 @@
 # One namespace per concern; every component manifest declares its namespace
-# explicitly. See platform/README.md for the ownership rule.
+# explicitly. Ownership rule: docs.localhost/design.html#decisions.
 apiVersion: v1
 kind: Namespace
 metadata:

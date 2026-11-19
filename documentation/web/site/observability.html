@@ -56,7 +56,7 @@
       Service carries an annotation. Then it <b>pulls</b>: every 5 seconds it fetches <code>/metrics</code> from each pod
       directly.</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="scrape-flow"></div>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="scrape-flow"></div>
     <figcaption>One scrape job, <code>kubernetes-services</code>, covers every component; <code>kubelet</code> covers the
       nodes and <code>self</code> is the only static target.</figcaption></figure>
   <div class="table-wrap"><table>
@@ -122,7 +122,7 @@
     <p>Grafana's datasources and dashboards are files in Git, not clicks in a UI. Kustomize turns them into ConfigMaps,
       Grafana mounts them and loads them on every start, so a new pod gets them back and a review shows every change.</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="provisioning"></div></figure>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="provisioning"></div></figure>
   <div class="grid-3">
     <a class="comp" href="http://grafana.localhost/d/stock-app" style="--c:var(--ns-monitoring)"><b>Stock App Metrics</b>
       <p>Availability and latency SLIs, request rate, p95, 4XX and 5XX rates, health checks and the cache-aside pipeline.</p></a>
@@ -147,10 +147,10 @@
       propagation</b> carries the trace ID: inside a process automatically, between services in the W3C
       <code>traceparent</code> header.</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="waterfall"></div>
-    <figcaption>stock-ui asks for prices stock-app has never seen. Three quarters of the time is Yahoo; the database is not
+  <figure class="figure" data-source="example"><div class="scroll-x" id="waterfall"></div>
+    <figcaption>stock-ui asks for prices stock-app has never seen. Almost all of the time (96 %) is Yahoo; the database is not
       the problem. Ask again and the trace shrinks to a few fast SELECTs, because the prices are now cached.</figcaption></figure>
-  <figure class="figure"><div class="scroll-x" id="trace-flow"></div>
+  <figure class="figure" data-source="live"><div class="scroll-x" id="trace-flow"></div>
     <figcaption>The OpenTelemetry Collector's pipeline, with live span rates. The apps only know the Collector's address
       (<code>OTEL_EXPORTER_OTLP_ENDPOINT</code>), so swapping Tempo needs no app change.</figcaption></figure>
   <div class="table-wrap"><table>
@@ -195,7 +195,7 @@
       writes during a request carries <code>trace_id=&lt;id&gt;</code>. uvicorn's access lines and library warnings
       don't.</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="correlation"></div></figure>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="correlation"></div></figure>
   <ol class="steps">
     <li><div><span class="where">metrics</span>On the Stock App dashboard's <i>p95 Latency</i> panel, each dot is an exemplar. Click one.</div></li>
     <li><div><span class="where">traces</span>Grafana opens that request's trace in Tempo: the waterfall shows which span was slow.</div></li>

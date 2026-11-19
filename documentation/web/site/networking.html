@@ -45,7 +45,7 @@
     <h2>Your browser to a pod</h2>
     <p>You open <code>http://stock-ui.localhost</code>. Step through the hops: the packet moves, and every address is live.</p>
   </div>
-  <div class="figure"><div id="journey-north"></div></div>
+  <div class="figure" data-source="live"><div id="journey-north"></div></div>
   <div class="grid-2">
     <div class="card"><h3>Why a NodePort?</h3><p>On a cloud the Gateway's Service would be <code>type: LoadBalancer</code>
       with an external IP. kind has no load balancer, so <code>platform/gateway/envoyproxy.yaml</code> makes it a NodePort
@@ -65,7 +65,7 @@
       Gateway API describes it with three kinds of objects, each owned by a different role. This is the tree in your
       cluster right now; a rejected route turns red.</p>
   </div>
-  <figure class="figure">
+  <figure class="figure" data-source="live">
     <div class="scroll-x" id="gateway-tree"></div>
     <figcaption>GatewayClass → Gateway → HTTPRoutes → Services, as the Envoy Gateway controller reports them.</figcaption>
   </figure>
@@ -77,7 +77,7 @@
       <tr><td><b>EnvoyProxy</b> <code>shared-gateway</code></td><td>the platform team (<code>platform/gateway/</code>)</td><td>how the proxy runs: Deployment size, NodePort Service (an Envoy Gateway resource, not Gateway API)</td></tr>
       <tr><td><b>HTTPRoute</b> <code>&lt;component&gt;-route</code></td><td>each app team (<code>&lt;component&gt;/k8s/</code>)</td><td>hostnames, matches, filters (CORS, redirects, headers) and the backend Service</td></tr>
     </tbody></table></div>
-  <figure class="figure">
+  <figure class="figure" data-source="live">
     <div class="scroll-x" id="planes"></div>
     <figcaption>A route change never restarts anything: the controller watches the API and streams new config to the proxy.</figcaption>
   </figure>
@@ -101,7 +101,8 @@
   <p class="prose"><b>Why Gateway API and not Ingress?</b> The Ingress API is frozen: anything beyond host and path, such
     as CORS, needed controller-specific annotations like <code>nginx.ingress.kubernetes.io/enable-cors</code>. Gateway API
     makes those typed, validated fields, splits the platform's part (Gateway) from each app's part (HTTPRoute), and any
-    conformant implementation (Envoy Gateway, Istio, Cilium, NGINX Gateway Fabric) runs the same routes. This cluster used
+    conformant implementation (Envoy Gateway, Istio, Cilium, NGINX Gateway Fabric) runs the same core routes. CORS is an
+    Extended feature, so an implementation may leave it out. This cluster used
     ingress-nginx until it moved over.</p>
 </section>
 
@@ -113,7 +114,7 @@
       runs in your browser, and the browser calls <code>http://stock.localhost</code> from the origin
       <code>http://stock-ui.localhost</code>.</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="cors-seq"></div>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="cors-seq"></div>
     <figcaption>Envoy applies the CORS filter on <code>stock-app-route</code>; stock-app has no CORS code at all.</figcaption></figure>
   <ul class="prose">
     <li>The filter (a standard HTTPRoute field since Gateway API v1.5) allows exactly two origins, stock-ui and
@@ -132,7 +133,7 @@
     <p>stock-app runs a query against TimescaleDB. In-cluster traffic never touches the Gateway: DNS turns the name into a
       ClusterIP, and kube-proxy's NAT rules on the sending node turn that into a pod IP.</p>
   </div>
-  <div class="figure"><div id="journey-east"></div></div>
+  <div class="figure" data-source="live"><div id="journey-east"></div></div>
   <div class="prose">
     <p>The kube-proxy rules for <code>timescaledb-service</code> look like this (see the real ones under <i>Try it</i>):</p>
     <pre id="iptables"></pre>
@@ -146,8 +147,8 @@
   <div class="head">
     <span class="eyebrow">Discovery</span>
     <h2>Services and DNS names</h2>
-    <p>A <code>ClusterIP</code> Service is reachable only from inside the cluster; it is reachable from your machine only
-      if an accepted HTTPRoute sends traffic to it. The DNS name works from any pod. A headless Service (ClusterIP
+    <p>A <code>ClusterIP</code> Service is reachable only from inside the cluster; from your machine it is reachable
+      through an accepted HTTPRoute, or for debugging with <code>kubectl port-forward</code>. The DNS name works from any pod. A headless Service (ClusterIP
       <code>None</code>) has no virtual IP: its name resolves straight to the ready pods' IPs, and a StatefulSet's pods
       get a name each (<a href="state.html#statefulset">TimescaleDB's</a>).</p>
   </div>
@@ -247,7 +248,7 @@ kubectl delete httproute,service demo -n data</pre></div></div>
       NXDOMAIN answers before the real lookup. Use fully qualified names with a trailing dot, lower <code>ndots</code> in the
       pod's <code>dnsConfig</code>, or run NodeLocal DNSCache to make the misses cheap.</p></div></details>
     <details class="qa"><summary>Why put CORS on the route instead of in the app, and what is the trade-off?</summary><div>
-      <p>One typed, validated place that any conformant gateway implements; preflights never reach the app; the policy is
+      <p>One typed, validated place that a gateway supporting the Extended CORS feature implements; preflights never reach the app; the policy is
       visible in the manifest. The trade-off: changing allowed origins is a route change, and a request that bypasses the
       Gateway (pod to pod) gets no CORS, which is fine because only browsers enforce it.</p></div></details>
   </div>

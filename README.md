@@ -6,7 +6,7 @@ tracing watching it all.
 
 ## Start
 
-You need Docker, kind v0.33 and kubectl. Then:
+Check the [prerequisites](https://jeremiaszmacura.github.io/platform-engineering-stack/#run), then run:
 
 ```sh
 ./recreate-cluster.sh

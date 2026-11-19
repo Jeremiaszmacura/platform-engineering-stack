@@ -74,7 +74,7 @@ sequence(document.getElementById("startup-seq"), {
     { id: "kubelet", label: "kubelet", sub: "on the chosen node", color: nsColor("kube-system") },
     { id: "init", label: "migrate", sub: "init container", color: nsColor("apps") },
     { id: "app", label: "stock-app", sub: "app container", color: nsColor("apps") },
-    { id: "eps", label: "EndpointSlice", sub: "stock-app-service", color: nsColor("kube-system") },
+    { id: "eps", label: "EndpointSlice controller", sub: "kube-controller-manager", color: nsColor("kube-system") },
   ],
   steps: [
     { from: "sched", to: "kubelet", label: "bind the pod to a node", note: "after filtering and scoring every node" },
@@ -84,7 +84,8 @@ sequence(document.getElementById("startup-seq"), {
     { from: "kubelet", to: "app", label: "start stock-app", note: "readOnlyRootFilesystem, non-root, all capabilities dropped" },
     { from: "kubelet", to: "app", label: "GET /health every 5 s", note: "after initialDelaySeconds: 10" },
     { from: "app", to: "kubelet", label: "200: the database answers" },
-    { from: "kubelet", to: "eps", label: "pod Ready: its IP is added", note: "now kube-proxy and Envoy send traffic" },
+    { from: "kubelet", to: "eps", label: "pod status: Ready", note: "written to the API server, which the controller watches" },
+    { from: "eps", to: "eps", label: "marks the IP ready in stock-app-service's slice", note: "now kube-proxy and Envoy send traffic" },
   ],
 });
 

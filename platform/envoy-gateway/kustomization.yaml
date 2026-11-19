@@ -4,3 +4,18 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - https://github.com/envoyproxy/gateway/releases/download/v1.10.0/install.yaml
+patches:
+  # Upstream sets no CPU limit; every workload here has one (design.html#conventions).
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: envoy-gateway
+        namespace: envoy-gateway-system
+      spec:
+        template:
+          spec:
+            containers:
+              - name: envoy-gateway
+                resources:
+                  limits: {cpu: 500m}

@@ -124,6 +124,9 @@ function liveEdges(map, m) {
   });
 }
 
+// pg_stat_database counts commits per database, not per client, so the line includes TimescaleDB's own work.
+const DB_TIP = "Commits in database stockdata: stock-app's queries (its readiness probe checks the database every 5 s) and TimescaleDB's job scheduler";
+
 function callEdge(e, l, map, m, rate, perSecond) {
   const pods = podsOf(map, l.from);
   const fromNs = (pods[0] || {}).namespace;
@@ -138,7 +141,8 @@ function callEdge(e, l, map, m, rate, perSecond) {
     prometheus: [l.from === "documentation" ? "PromQL · this page" : "PromQL", 0],
   }[l.to] || [target, 0];
   const telemetry = TELEMETRY_APPS.has(l.to) || l.from === "otel-collector";
-  return { ...e, layer: telemetry ? "telemetry" : "requests", color: nsColor(fromNs), label: known[0], flow: known[1], hot: known[1] > 0.004 };
+  const tip = l.to === "timescaledb" ? DB_TIP : undefined;
+  return { ...e, layer: telemetry ? "telemetry" : "requests", color: nsColor(fromNs), label: known[0], flow: known[1], hot: known[1] > 0.004, tip };
 }
 
 // Connections the API objects can't show: the browser, the internet and the controller's xDS stream.

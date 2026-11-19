@@ -62,7 +62,7 @@
       satisfy it. kind's default class, <code>standard</code>, uses the local-path provisioner: the volume is a directory
       on one node. This is the chain in your cluster:</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="pvc-chain"></div>
+  <figure class="figure" data-source="live"><div class="scroll-x" id="pvc-chain"></div>
     <figcaption id="pvc-caption">PersistentVolumeClaims, live.</figcaption></figure>
   <div class="grid-2">
     <div class="card"><h3>WaitForFirstConsumer</h3><p>The class creates the volume only after the scheduler has picked a
@@ -100,9 +100,9 @@
       synced: one instrument lookup, then one call for the bars of a single date range. TimescaleDB is a cache that can be
       thrown away: an empty database after <code>./recreate-cluster.sh</code> just means the first requests are slower.</p>
   </div>
-  <figure class="figure"><div class="scroll-x" id="cache-seq"></div>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="cache-seq"></div>
     <figcaption>A cold request for MSFT. Ask again and steps 3 to 5 disappear.</figcaption></figure>
-  <figure class="figure"><div class="scroll-x" id="window"></div>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="window"></div>
     <figcaption>The <code>instruments</code> table records which dates were <i>requested</i>, not which bars came back.
       Weekends and holidays have no bars, so a ledger of bar dates would refetch them forever. The window is one contiguous
       range: a request beyond it also fetches the gap in between, and one that starts before it fetches from its start,
