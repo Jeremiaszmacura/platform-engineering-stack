@@ -127,6 +127,7 @@ main.content {
 }
 .page { max-width: 1180px; display: grid; gap: 22px; }
 .prose { max-width: 72ch; display: grid; gap: 12px; }
+p.prose { display: block; } /* a paragraph's inline elements must flow, not become grid rows */
 .page-head { display: grid; gap: 12px; padding-bottom: 6px; }
 .page-head .lede { font-size: 1.16rem; color: var(--muted); max-width: 66ch; }
 .toc { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -402,5 +403,20 @@ svg.dg { display: block; width: 100%; height: auto; font-family: var(--font-mono
 .path b { font-family: var(--font-display); font-stretch: 88%; font-size: 1.1rem; }
 .path span { font-size: 0.88rem; color: var(--muted); }
 
+/* ---------- Kubernetes terms: hover, focus or tap for a short explanation (terms.js) ---------- */
+.term { text-decoration: underline dotted var(--muted) 1px; text-underline-offset: 3px; cursor: help; }
+.term:hover, .term[aria-describedby] { text-decoration-color: var(--accent); }
+.term-tip {
+  position: fixed; inset: auto; margin: 0; width: max-content; max-width: min(340px, calc(100vw - 16px));
+  padding: 12px 14px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  /* The box sits inside the text it explains: undo whatever that text's style is. */
+  font: 400 0.92rem/1.45 var(--font-body); letter-spacing: normal; text-transform: none; text-align: left; white-space: normal;
+}
+.term-tip b { display: block; font-family: var(--font-display); font-weight: 700; font-size: 1rem; }
+.term-tip .full { display: block; color: var(--muted); }
+.term-tip p { margin: 4px 0 8px; }
+.term-tip a { font-size: 0.86rem; }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
-@media print { .topbar, .sidebar, .pager, .copy { display: none !important; } .frame { display: block; } }
+@media print { .topbar, .sidebar, .pager, .copy, .term-tip { display: none !important; } .frame { display: block; } }
