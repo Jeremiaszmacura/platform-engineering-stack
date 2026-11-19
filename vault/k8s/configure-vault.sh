@@ -1,18 +1,66 @@
 #!/bin/sh
-# postStart hook (vault-deployment.yaml): dev mode starts empty, so set up mounts and auth on every start.
+# postStart hook (vault-statefulset.yaml): Vault starts sealed, so unseal it and apply its setup on every start.
 set -eu
 
-# Wait up to 60s for the server, which starts alongside this hook; return 1 if it never answers.
-wait_for_vault() {
+SERVICE_ACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount
+SECRETS_API=https://kubernetes.default.svc/api/v1/namespaces/vault/secrets
+
+# Wait up to 60s for command "$@" to succeed; return 1 if it never does.
+wait_for() {
     waited=0
-    until vault status >/dev/null 2>&1; do
+    until "$@" >/dev/null 2>&1; do
         if [ "$waited" -ge 60 ]; then
-            echo "postStart: Vault did not answer within 60s"
+            echo "postStart: $* did not succeed within 60s"
             return 1
         fi
         sleep 2
         waited=$((waited + 2))
     done
+}
+
+# Succeed once the server answers, sealed (exit code 2) or not.
+vault_answers() {
+    vault status || [ $? -eq 2 ]
+}
+
+# Succeed once Vault is unsealed and active: only then does /v1/sys/health answer 200.
+vault_active() {
+    wget -q -O /dev/null "$VAULT_ADDR/v1/sys/health"
+}
+
+# Call the Kubernetes API as Vault's ServiceAccount, trusting only the cluster's CA; the URL comes last in "$@".
+kube_api() {
+    SSL_CERT_FILE=$SERVICE_ACCOUNT/ca.crt wget -q -O - --header "Authorization: Bearer $(cat $SERVICE_ACCOUNT/token)" "$@"
+}
+
+# Store unseal key $1 in the Secret vault-unseal-key.
+save_unseal_key() {
+    kube_api --header "Content-Type: application/json" \
+        --post-data "{\"metadata\":{\"name\":\"vault-unseal-key\",\"labels\":{\"app\":\"vault\"}},\"stringData\":{\"key\":\"$1\"}}" \
+        "$SECRETS_API" >/dev/null
+}
+
+# Print the unseal key from the Secret vault-unseal-key.
+read_unseal_key() {
+    secret=$(kube_api "$SECRETS_API/vault-unseal-key") || return 1
+    echo "$secret" | sed -n 's/^ *"key": "\(.*\)".*/\1/p' | base64 -d
+}
+
+# Unseal with key $1, then wait until Vault serves requests.
+unseal() {
+    vault operator unseal "$1" >/dev/null
+    wait_for vault_active
+}
+
+# First start only: save the single unseal key and swap the random root token for $VAULT_ROOT_TOKEN.
+initialize() {
+    init_output=$(vault operator init -key-shares=1 -key-threshold=1)
+    unseal_key=$(echo "$init_output" | awk '/^Unseal Key 1:/ {print $NF}')
+    save_unseal_key "$unseal_key"
+    unseal "$unseal_key"
+    initial_root_token=$(echo "$init_output" | awk '/^Initial Root Token:/ {print $NF}')
+    VAULT_TOKEN=$initial_root_token vault token create -id="$VAULT_ROOT_TOKEN" -policy=root -orphan >/dev/null
+    VAULT_TOKEN=$initial_root_token vault token revoke -self
 }
 
 # Enable a KV v2 secrets engine at path $1, unless one is mounted there already.
@@ -36,16 +84,22 @@ enable_kubernetes_auth() {
 
 # Let ServiceAccount $1 in apps sign in, with the policy in $1-policy.hcl.
 add_service_role() {
-    vault policy write "$1" "/vault/hooks/$1-policy.hcl"
+    vault policy write "$1" "/etc/vault/$1-policy.hcl"
     vault write "auth/kubernetes/role/$1" bound_service_account_names="$1" bound_service_account_namespaces=apps \
         audience=vault token_policies="$1" token_ttl=1h
 }
 
 # Kubernetes keeps no hook output: send it to the container's log.
 exec >/proc/1/fd/1 2>&1
-export VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN="$VAULT_DEV_ROOT_TOKEN_ID"
+export VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN="$VAULT_ROOT_TOKEN"
 
-wait_for_vault
+wait_for vault_answers
+if vault operator init -status >/dev/null; then
+    unseal_key=$(read_unseal_key)
+    unseal "$unseal_key"
+else
+    initialize
+fi
 for mount in services infra; do
     enable_kv_mount "$mount"
 done

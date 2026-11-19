@@ -16,8 +16,8 @@ export const APPS = {
     note: "A StatefulSet pinned to the node that holds its local-path volume. A postgres_exporter sidecar turns its statistics into metrics on port 9187.",
   },
   vault: {
-    purpose: "Secret store, in dev mode",
-    note: "In memory and auto-unsealed. Apps sign in with their ServiceAccount token (kubernetes auth method), and Vault checks it with the API's TokenReview. A restart loses every secret; a postStart hook sets up the KV mounts, the auth method and the policies again before the pod is ready.",
+    purpose: "Secret store, Raft storage on a PVC",
+    note: "Starts sealed. A postStart hook unseals it with the key it keeps in the Secret vault-unseal-key and applies the KV mounts, the auth method and the policies before the pod is ready. Apps sign in with their ServiceAccount token (kubernetes auth method), and Vault checks it with the API's TokenReview.",
   },
   prometheus: {
     purpose: "Finds and scrapes metrics",

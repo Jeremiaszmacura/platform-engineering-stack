@@ -1,8 +1,8 @@
-# Dev root token, for Vault's postStart hook and people at vault.localhost; apps never get it.
+# Root token for Vault's postStart hook and people at vault.localhost; apps never get it.
 apiVersion: v1
 kind: Secret
 metadata:
-  name: vault-dev-token
+  name: vault-root-token
   namespace: vault
   labels:
     app: vault

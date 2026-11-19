@@ -49,7 +49,7 @@ const SUBS = {
   "stock-ui": "React · nginx :8080",
   "traffic-generator": "React · nginx :8080",
   "stock-app": "FastAPI :8000",
-  vault: "dev mode :8200",
+  vault: "Raft :8200",
   timescaledb: "PostgreSQL :5432",
   documentation: "Go · this site :8080",
   "otel-collector": "OTLP :4318",

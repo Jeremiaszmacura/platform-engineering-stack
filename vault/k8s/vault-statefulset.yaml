@@ -1,11 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: vault
   namespace: vault
   labels:
     app: vault
 spec:
+  serviceName: vault-headless
   replicas: 1
   selector:
     matchLabels:
@@ -19,13 +20,12 @@ spec:
       containers:
         - name: vault
           image: hashicorp/vault:1.20.4
-          # Dev mode: in memory, auto-unsealed. No livenessProbe: a restart wipes all secrets.
-          args: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
+          args: ["vault", "server", "-config=/etc/vault/vault.hcl"]
           env:
-            - name: VAULT_DEV_ROOT_TOKEN_ID
+            - name: VAULT_ROOT_TOKEN
               valueFrom:
-                secretKeyRef: {name: vault-dev-token, key: token}
-            # Skip the entrypoint's setcap: it copies the ~475 MiB binary and OOMs the limit (dev mode doesn't mlock).
+                secretKeyRef: {name: vault-root-token, key: token}
+            # Skip the entrypoint's setcap: it copies the ~475 MiB binary and OOMs the limit (vault.hcl disables mlock).
             - name: SKIP_SETCAP
               value: "true"
           ports:
@@ -38,19 +38,29 @@ spec:
             initialDelaySeconds: 3
             periodSeconds: 5
           volumeMounts:
-            - name: hooks
-              mountPath: /vault/hooks
+            - name: config
+              mountPath: /etc/vault
+            - name: data
+              mountPath: /vault/data
           # Runs on every container start (new pod, crash, OOM kill). The container counts as running, and can become
           # ready, only after the hook exits; a failed hook restarts the container.
           lifecycle:
             postStart:
               exec:
-                command: ["/vault/hooks/configure-vault.sh"]
+                command: ["/etc/vault/configure-vault.sh"]
       volumes:
-        - name: hooks
+        - name: config
           configMap:
-            name: vault-hooks
+            name: vault-config
             defaultMode: 0555  # The hook runs the script directly
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
 ---
 apiVersion: v1
 kind: Service
@@ -62,10 +72,25 @@ metadata:
   annotations:
     prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
     prometheus.io/job: vault
-    # No token needed in dev mode; Vault answers in Prometheus format because Prometheus' Accept header asks for it.
+    # No token needed (vault.hcl); Vault answers in Prometheus format because Prometheus' Accept header asks for it.
     prometheus.io/path: /v1/sys/metrics
 spec:
   type: ClusterIP
+  selector:
+    app: vault
+  ports:
+    - port: 8200
+      targetPort: 8200
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-headless
+  namespace: vault
+  labels:
+    app: vault
+spec:
+  clusterIP: None
   selector:
     app: vault
   ports:

@@ -2,7 +2,7 @@
 
 Every /secret response is validated against the /openapi.yaml stock-app publishes.
 
-Keys are random because dev-mode Vault keeps data until its container restarts.
+Keys are random because Vault keeps every secret until the cluster is recreated.
 """
 
 import subprocess  # nosec B404 - runs kubectl with fixed arguments
@@ -16,6 +16,7 @@ from contract import conforming
 SECRET_VALUE = "hunter2"  # nosec B105 - test value, not a credential
 # Generous: a rerun within ten minutes meets the kubelet's growing restart delay (10s, 20s, 40s...).
 VAULT_RESTART_TIMEOUT_SECONDS = 120
+WORKLOAD_NAMESPACES = ("apps", "data", "docs", "monitoring", "vault")
 
 
 def unique_key(prefix):
@@ -38,15 +39,30 @@ def read_secret(contract, key):
     return conforming(contract, requests.get(f"{STOCK_APP_URL}/secret/{key}", timeout=REQUEST_TIMEOUT_SECONDS))
 
 
-def service_account_token(name, audience=None):
-    """Return a 10-minute token for ServiceAccount name in apps."""
-    command = ["kubectl", "--context", KUBE_CONTEXT, "create", "token", name, "-n", "apps", "--duration=10m"]
-    if audience:
-        command += ["--audience", audience]
+def kubectl(*args, check=True):
+    """Run kubectl with args against the test cluster and return its output; check=False allows a non-zero exit."""
     result = subprocess.run(  # nosec B603 B607 - fixed kubectl command, pinned to the test cluster
-        command, check=True, capture_output=True, text=True, timeout=REQUEST_TIMEOUT_SECONDS
+        ["kubectl", "--context", KUBE_CONTEXT, *args],
+        check=check,
+        capture_output=True,
+        text=True,
+        timeout=REQUEST_TIMEOUT_SECONDS,
     )
     return result.stdout.strip()
+
+
+def service_account_token(name, audience=None):
+    """Return a 10-minute token for ServiceAccount name in apps."""
+    audience_args = ["--audience", audience] if audience else []
+    return kubectl("create", "token", name, "-n", "apps", "--duration=10m", *audience_args)
+
+
+def may(account, verb, resource):
+    """Return whether ServiceAccount account ("namespace:name") may verb resource in namespace vault."""
+    answer = kubectl(
+        "auth", "can-i", verb, resource, "-n", "vault", f"--as=system:serviceaccount:{account}", check=False
+    )
+    return answer == "yes"
 
 
 def sign_in_as_stock_app(jwt):
@@ -58,22 +74,39 @@ def sign_in_as_stock_app(jwt):
     )
 
 
-def restart_vault_container():
-    """Stop Vault's main process; the kubelet starts a new container in the same pod, as after a crash or OOM kill."""
-    subprocess.run(  # nosec B603 B607 - fixed kubectl command, pinned to the test cluster
-        ["kubectl", "--context", KUBE_CONTEXT, "exec", "-n", "vault", "deploy/vault", "--", "kill", "1"],
-        check=True,
-        timeout=REQUEST_TIMEOUT_SECONDS,
+def vault_restart_count():
+    """Return how often the kubelet has restarted Vault's container."""
+    return int(
+        kubectl("get", "pod", "vault-0", "-n", "vault", "-o", "jsonpath={.status.containerStatuses[0].restartCount}")
     )
 
 
+def restart_vault_container():
+    """Stop Vault's main process and wait until the kubelet starts a new container, as after a crash or OOM kill."""
+    restarts = vault_restart_count()
+    kubectl("exec", "-n", "vault", "vault-0", "--", "kill", "1")
+    wait_until(lambda: vault_restart_count() > restarts, VAULT_RESTART_TIMEOUT_SECONDS, "Vault's container to restart")
+
+
 def test_vault_is_initialized_and_unsealed():
-    """Vault's health endpoint reports a ready dev-mode server."""
+    """Vault's health endpoint reports an initialized, unsealed server."""
     response = requests.get(f"{VAULT_URL}/v1/sys/health", timeout=REQUEST_TIMEOUT_SECONDS)
     assert response.status_code == 200
     health = response.json()
     assert health["initialized"] is True
     assert health["sealed"] is False
+
+
+def test_only_vault_may_read_its_unseal_key():
+    """The unseal key Secret exists, and of all workload ServiceAccounts only Vault's may read it, and nothing else."""
+    assert kubectl("get", "secret", "vault-unseal-key", "-n", "vault", "-o", "name") == "secret/vault-unseal-key"
+    accounts = kubectl(
+        "get", "serviceaccounts", "-A", "-o", "jsonpath={range .items[*]}{.metadata.namespace}:{.metadata.name} {end}"
+    )
+    workload_accounts = [a for a in accounts.split() if a.split(":")[0] in WORKLOAD_NAMESPACES]
+    assert [a for a in workload_accounts if may(a, "get", "secret/vault-unseal-key")] == ["vault:vault"]
+    assert not may("vault:vault", "get", "secret/vault-root-token")
+    assert not may("vault:vault", "list", "secrets")
 
 
 def test_kv_mounts_for_services_and_infra_exist():
@@ -134,17 +167,11 @@ def test_invalid_secret_payload_is_rejected(contract):
         assert post_secret(contract, payload).status_code == 422, payload
 
 
-def test_secrets_work_again_after_vault_restarts(contract):
-    """After a Vault restart, stock-app signs in again and secrets work."""
-    old_key = unique_key("e2e-before-restart")
-    assert write_secret(contract, old_key).status_code == 201
+def test_secrets_survive_a_vault_restart(contract):
+    """A secret written before Vault restarts is read back once its postStart hook has unsealed it."""
+    key = unique_key("e2e-before-restart")
+    assert write_secret(contract, key).status_code == 201
 
     restart_vault_container()
-    # 404 instead of 200 (the old Vault) or 502 (no Vault yet): the new Vault answers and has lost the old secret
-    wait_until(
-        lambda: read_secret(contract, old_key).status_code == 404, VAULT_RESTART_TIMEOUT_SECONDS, "Vault to restart"
-    )
-
-    new_key = unique_key("e2e-after-restart")
-    assert write_secret(contract, new_key).status_code == 201
-    assert read_secret(contract, new_key).json() == {"key": new_key, "value": SECRET_VALUE}
+    wait_until(lambda: read_secret(contract, key).status_code == 200, VAULT_RESTART_TIMEOUT_SECONDS, "Vault to unseal")
+    assert read_secret(contract, key).json() == {"key": key, "value": SECRET_VALUE}
