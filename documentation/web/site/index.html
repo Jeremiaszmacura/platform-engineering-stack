@@ -36,14 +36,11 @@
   <div class="head">
     <span class="eyebrow">Architecture</span>
     <h2>How it all fits together</h2>
-    <p>Boxes are workloads, grouped and coloured by namespace; the dot is their readiness. Lines are what the cluster itself
-      says connects them: HTTPRoutes, Service addresses in environment variables, Prometheus annotations and RBAC bindings.
-      A few it can't show are added by hand: the browser, Yahoo, the xDS stream, and addresses kept in config files
-      (the site's <code>REFERENCES</code> setting).
-      Arrows point the way the data moves: a request goes from the caller to the service it calls (the reply comes back
-      on the same line); metrics go from each pod to Prometheus, although Prometheus is the one that asks for them;
-      query results go to Grafana; and objects go from the API server to the controllers watching it. Moving dashes are
-      real traffic, measured by Prometheus. Select a box to see its live details.</p>
+    <p>Boxes are workloads, grouped and coloured by namespace; the dot is their readiness. Lines are mostly what the cluster
+      itself says connects them: HTTPRoutes, Service addresses in environment variables, Prometheus annotations and RBAC
+      bindings.
+      Arrows point the way the data moves; moving dashes are real traffic, measured by Prometheus. Select a box to see its
+      live details.</p>
   </div>
   <figure class="figure" data-source="live">
     <div class="bar">

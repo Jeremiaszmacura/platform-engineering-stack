@@ -61,6 +61,7 @@ test("a term is found as a whole word, with its plural and its usual spellings",
   assert.equal(firstTerm("it was OOM-killed"), "OOM");
   assert.equal(firstTerm("two IPs"), "IP");
   assert.equal(firstTerm("the API server"), "api-server");
+  assert.equal(firstTerm("Boxes are workloads"), "workload");
 });
 
 test("an abbreviation inside a longer name is not marked", () => {
