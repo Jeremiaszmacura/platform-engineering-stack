@@ -25,7 +25,7 @@ export const APPS = {
   },
   alertmanager: {
     purpose: "Groups, silences and shows the alerts Prometheus fires",
-    note: "Prometheus pushes firing alerts to it every minute. Its only receiver sends nothing, so alerts stay in its UI and in Grafana. Silences live on an emptyDir: a new pod forgets them.",
+    note: "Prometheus sends a new or resolved alert at the next rule evaluation, and re-sends a firing one every 2 minutes. Its only receiver sends nothing, so alerts stay in its UI and in Grafana. Silences live on an emptyDir: a new pod forgets them.",
   },
   grafana: {
     purpose: "Dashboards for metrics and traces",

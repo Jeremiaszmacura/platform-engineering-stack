@@ -85,8 +85,18 @@ def test_silence_suppresses_matching_alert():
     )
 
 
-def test_grafana_has_alertmanager_datasource():
-    """Grafana is provisioned with an Alertmanager datasource."""
-    response = requests.get(f"{GRAFANA_URL}/api/datasources", auth=GRAFANA_CREDENTIALS, timeout=REQUEST_TIMEOUT_SECONDS)
-    assert response.status_code == 200
-    assert "alertmanager" in {datasource["type"] for datasource in response.json()}
+def watchdog_in_grafana():
+    """Return True if Grafana's Alert groups, read through the Alertmanager datasource, list the Watchdog."""
+    response = requests.get(
+        f"{GRAFANA_URL}/api/alertmanager/alertmanager/api/v2/alerts/groups",
+        auth=GRAFANA_CREDENTIALS,
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    alerts = [alert for group in response.json() for alert in group["alerts"]]
+    return any(alert["labels"]["alertname"] == "Watchdog" for alert in alerts)
+
+
+def test_grafana_shows_alertmanager_alerts():
+    """Grafana reaches Alertmanager through its datasource and shows the Watchdog."""
+    wait_until(watchdog_in_grafana, ALERT_DELIVERY_TIMEOUT_SECONDS, description="the Watchdog alert in Grafana")

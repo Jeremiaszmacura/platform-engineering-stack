@@ -26,6 +26,7 @@ spec:
           args:
             - "--config.file=/etc/alertmanager/alertmanager.yml"
             - "--storage.path=/alertmanager"
+            - "--data.maintenance-interval=1m"  # save silences every minute, not 15: a crash loses at most one
             - "--cluster.listen-address="  # one replica: no peers to gossip with
           ports:
             - containerPort: 9093

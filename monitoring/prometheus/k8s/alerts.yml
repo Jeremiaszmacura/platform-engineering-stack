@@ -27,11 +27,15 @@ groups:
         annotations:
           summary: "The Collector can't send spans to {{ $labels.exporter }}; they wait in its queue."
       # Retries gave up: these spans are lost. The counter only appears with the first drop, which increase() can't
-      # see, so a counter that didn't exist 5 minutes ago fires too.
+      # see, so a counter that didn't exist 5 minutes ago fires too, but only if Prometheus scraped that pod then:
+      # a restarted Prometheus has no history, and every counter would look new.
       - alert: SpansDropped
         expr: >-
           sum by (exporter) (increase(otelcol_exporter_send_failed_spans[5m])) > 0
-          or sum by (exporter) (otelcol_exporter_send_failed_spans unless otelcol_exporter_send_failed_spans offset 5m)
+          or sum by (exporter) (
+            (otelcol_exporter_send_failed_spans unless on(pod, exporter) otelcol_exporter_send_failed_spans offset 5m)
+            and on(pod) (up{job="otel-collector"} offset 5m == 1)
+          )
         labels:
           severity: critical
         annotations:

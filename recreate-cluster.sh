@@ -17,10 +17,10 @@ IMAGES=(
     "documentation:dev documentation"
 )
 
-# Applied in order, after platform/ (Vault and TimescaleDB before their clients).
+# Applied in order, after platform/ (Alertmanager, Vault and TimescaleDB before their clients).
 COMPONENTS=(
-    monitoring/prometheus/k8s
     monitoring/alertmanager/k8s
+    monitoring/prometheus/k8s
     monitoring/tempo/k8s
     monitoring/otel-collector/k8s
     monitoring/grafana/k8s
