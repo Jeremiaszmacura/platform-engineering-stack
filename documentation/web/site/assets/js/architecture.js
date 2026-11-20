@@ -43,9 +43,9 @@ const PLACES = {
 
 /** Subtitles for the boxes; the live map adds the ready count when there is more than one pod. */
 const SUBS = {
-  browser: "*.localhost → 127.0.0.1:80",
+  browser: "127.0.0.1:80, :443",
   yahoo: "internet · HTTPS",
-  envoy: "Envoy proxy · NodePort 30080 → :10080 · picks the HTTPRoute by Host header",
+  envoy: "Envoy proxy · NodePorts 30080, 30443 → :10080, :10443 · picks the HTTPRoute by Host header",
   "gateway-helm": "controller · xDS :18000",
   "stock-ui": "React · nginx :8080",
   "traffic-generator": "React · nginx :8080",
@@ -164,7 +164,7 @@ function staticEdges(map, m) {
   const rps = m.stockRps && m.stockRps.length ? Number(m.stockRps[0].value[1]) : 0;
   const calls = m.providerRps && m.providerRps.length ? Number(m.providerRps[0].value[1]) * 60 : null;
   const edges = [
-    { from: "browser", to: "envoy", layer: "requests", color: nsColor("outside"), label: ":80", flow: rps, sides: ["r", "l"], ta: 0.5, tb: 0.35 },
+    { from: "browser", to: "envoy", layer: "requests", color: nsColor("outside"), label: ":80, :443", flow: rps, sides: ["r", "l"], ta: 0.5, tb: 0.35 },
     { from: "gateway-helm", to: "envoy", layer: "control", dashed: true, color: nsColor("envoy-gateway-system"), label: "xDS", tip: "routes and endpoints, streamed over gRPC" },
   ];
   if (podsOf(map, "stock-app").length) {

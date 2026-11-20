@@ -47,7 +47,9 @@
   <div class="head">
     <span class="eyebrow">Incoming traffic</span>
     <h2>Your browser to a pod</h2>
-    <p>You open <code>http://stock-ui.localhost</code>. Step through the hops: the packet moves, and every address is live.</p>
+    <p>You open <code>http://stock-ui.localhost</code>. Step through the hops: the packet moves, and every address is live.
+      <code>https://</code> takes the same path through port 443, and Envoy decrypts it first
+      (<a href="security.html#certificates">certificates</a>).</p>
   </div>
   <div class="figure" data-source="live"><div id="journey-incoming"></div></div>
   <div class="table-wrap"><table>
@@ -156,8 +158,9 @@
   <figure class="figure" data-source="example"><div class="scroll-x" id="cors-seq"></div>
     <figcaption>Envoy applies the CORS filter on <code>stock-app-route</code>; stock-app has no CORS code at all.</figcaption></figure>
   <ul class="prose">
-    <li>The filter (a standard HTTPRoute field since Gateway API v1.5) allows exactly two origins, stock-ui and
-      traffic-generator, and only <code>GET</code>.</li>
+    <li>The filter (a standard HTTPRoute field since Gateway API v1.5) allows stock-ui and traffic-generator, and only
+      <code>GET</code>. An origin includes its scheme, so that is four origins: each on <code>http://</code> and
+      <code>https://</code>. The page calls stock-app with its own scheme.</li>
     <li>A plain <code>GET</code> is a "simple" request: no preflight. A custom header or a <code>PUT</code> makes the browser
       ask first with <code>OPTIONS</code>, and Envoy answers that itself.</li>
     <li>For any other origin Envoy adds no <code>Access-Control-Allow-Origin</code>, so the browser hides the response from

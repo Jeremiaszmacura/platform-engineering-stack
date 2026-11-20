@@ -180,9 +180,10 @@ curl http://stock.localhost/secret/demo</pre></div></div>
       <code>kube-root-ca.crt</code> in every namespace, and the kubelet mounts it as <code>ca.crt</code> with the token.
       This site, Prometheus and Vault's hook check the API server with it.</p></div>
     <div class="card"><h3>A token is not a certificate</h3><p>The certificate proves the server to the pod; the
-      ServiceAccount token proves the pod to the server. The token is a JWT the API server signs with its own key
-      (<code>sa.key</code>), so only the API server can check it, for itself or through a TokenReview, as Vault does
-      (<a href="#vault">above</a>).</p></div>
+      ServiceAccount token proves the pod to the server. The token is a JWT the API server signs with its private key
+      (<code>sa.key</code>). Anyone can check the signature with the public key (published at
+      <code>/openid/v1/jwks</code>), but only the API server knows if the token is still valid, for example that its pod
+      still exists. A TokenReview asks it, as Vault does (<a href="#vault">above</a>).</p></div>
     <div class="card"><h3>How a node gets its certificate</h3><p>A joining node's kubelet sends a
       CertificateSigningRequest (CSR) with a bootstrap token; the controller manager approves and signs it, and the
       kubelet renews it the same way before it expires. <code>kubectl get csr</code> lists these requests.</p></div>
@@ -225,7 +226,7 @@ curl -sS https://docs.localhost        # fails: unable to get local issuer certi
 curl --cacert sample-cluster-ca.crt -sI https://docs.localhost   # HTTP/2 200: over TLS, Envoy speaks HTTP/2</pre></div></div>
     <div><p>Read the certificate Envoy sends: hostnames, issuer and expiry.</p>
       <div class="cmd"><pre>openssl s_client -connect 127.0.0.1:443 -servername grafana.localhost &lt;/dev/null 2&gt;/dev/null \
-  | openssl x509 -noout -subject -issuer -dates -ext subjectAltName</pre></div></div>
+  | openssl x509 -noout -text | grep -E 'Issuer:|Not (Before|After)|DNS:'</pre></div></div>
     <div><p>Delete the Secret: cert-manager signs a new certificate within seconds, and HTTPS fails until it does. A
       real renewal updates the Secret in place, with no gap.</p>
       <div class="cmd"><pre>kubectl delete secret shared-gateway-tls -n envoy-gateway-system

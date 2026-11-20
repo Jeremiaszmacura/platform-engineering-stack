@@ -25,6 +25,6 @@ def test_service_answers_https(service_name, cluster_ca):
 
 
 def test_certificate_is_untrusted_without_the_cluster_ca():
-    """A client that trusts only public CAs rejects the certificate."""
-    with pytest.raises(requests.exceptions.SSLError):
+    """A client that trusts only public CAs rejects the certificate, not the handshake."""
+    with pytest.raises(requests.exceptions.SSLError, match="CERTIFICATE_VERIFY_FAILED"):
         requests.get(https(SERVICE_URLS["documentation"]), timeout=REQUEST_TIMEOUT_SECONDS)
