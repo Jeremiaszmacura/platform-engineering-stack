@@ -120,6 +120,7 @@
     <div class="card"><h3>What each change costs</h3><ul>
       <li>Grafana: a new pod, so you log in again.</li>
       <li>Tempo: a new pod, so its traces are gone.</li>
+      <li>Alertmanager: a new pod, so its silences are gone.</li>
       <li>OpenTelemetry Collector: a new pod; spans buffered in the app's SDK are retried.</li>
       <li>Prometheus: nothing, if the file is valid.</li></ul></div>
   </div>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Observability · Platform Engineering Stack</title>
-<meta name="description" content="Metrics, traces and logs in the running cluster: how Prometheus discovers targets, how a request becomes a trace, and how the three signals link up.">
+<meta name="description" content="Metrics, alerts, traces and logs in the running cluster: how Prometheus discovers targets, how a rule becomes an alert, how a request becomes a trace, and how the signals link up.">
 <link rel="icon" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,8 +24,8 @@
   <span class="eyebrow">Learn · observability</span>
   <h1>What the cluster says about itself</h1>
   <p class="lede">A metric tells you <i>that</i> something is wrong, a trace tells you <i>where</i> in the request, and a log
-    tells you <i>what exactly</i> happened. Here the three are wired together: Prometheus scrapes metrics, the OpenTelemetry
-    Collector carries traces to Tempo, and Grafana shows both.</p>
+    tells you <i>what exactly</i> happened. Here the three are wired together: Prometheus scrapes metrics and sends alerts to
+    Alertmanager, the OpenTelemetry Collector carries traces to Tempo, and Grafana shows both.</p>
   <nav class="toc" id="toc" aria-label="On this page"></nav>
 </header>
 
@@ -81,19 +81,6 @@
   <div class="table-wrap"><table>
     <thead><tr><th>Job</th><th>Namespace</th><th>Pod</th><th>Node</th><th>Target</th><th>Up</th></tr></thead>
     <tbody id="target-rows"></tbody></table></div>
-  <p class="prose" id="alerts">Prometheus also evaluates the alert rules in <code>monitoring/prometheus/k8s/alerts.yml</code>
-    and lists them at <a href="http://prometheus.localhost/alerts">prometheus.localhost/alerts</a>. No Alertmanager runs, so
-    a firing alert notifies no one.</p>
-  <div class="table-wrap"><table>
-    <thead><tr><th>Alert</th><th>Fires when</th></tr></thead>
-    <tbody>
-      <tr><td><code>TargetDown</code></td><td>a target's scrape has failed for 1 minute (<code>up == 0</code>). A Service
-        scaled to zero has no target, so this alert can't see it</td></tr>
-      <tr><td><code>SpansQueued</code></td><td>the Collector's queue for Tempo hasn't emptied for a whole minute: Tempo is
-        unreachable and the exporter is retrying</td></tr>
-      <tr><td><code>SpansDropped</code></td><td>the Collector gave up retrying (after about 5 minutes) and dropped spans;
-        those traces are lost</td></tr>
-    </tbody></table></div>
 </section>
 
 <section class="chapter" id="app-metrics">
@@ -136,6 +123,52 @@
   <p class="prose">Provisioned dashboards are read-only in the UI: change one there, <i>Export → Export as JSON</i>, save it
     over the file and apply it. Logins and preferences live in Grafana's SQLite database on an <code>emptyDir</code>, so a
     new pod logs you out but loses nothing else.</p>
+</section>
+
+<section class="chapter" id="alerts">
+  <div class="head">
+    <span class="eyebrow">Alerting</span>
+    <h2>From a rule to an alert you can act on</h2>
+    <p>Prometheus evaluates the rules in <code>monitoring/prometheus/k8s/alerts.yml</code> every minute. A rule whose
+      query returns series is <b>pending</b>, and <b>firing</b> once that has lasted its <code>for:</code> time. Prometheus
+      sends firing alerts to <b>Alertmanager</b>, which decides what reaches people. Ours has a single receiver that sends
+      nothing, so alerts stay in its UI at <a href="http://alertmanager.localhost">alertmanager.localhost</a> and in
+      Grafana under <i>Alerting → Alert groups</i> and <i>Silences</i>.</p>
+  </div>
+  <figure class="figure" data-source="example"><div class="scroll-x" id="alert-flow"></div>
+    <figcaption>Prometheus decides <i>whether</i> something is wrong; Alertmanager decides <i>who hears about it</i>. Real
+      receivers (Slack, email, PagerDuty) plug in at the dashed box.</figcaption></figure>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr><td><code>Watchdog</code></td><td>none</td><td>always: if it is missing from Alertmanager, the alerting pipeline
+        itself is broken</td></tr>
+      <tr><td><code>TargetDown</code></td><td>warning</td><td>a target's scrape has failed for 1 minute (<code>up == 0</code>).
+        A Service scaled to zero has no target, so this alert can't see it</td></tr>
+      <tr><td><code>SpansQueued</code></td><td>warning</td><td>the Collector's queue for Tempo hasn't emptied for a whole
+        minute: Tempo is unreachable and the exporter is retrying</td></tr>
+      <tr><td><code>SpansDropped</code></td><td>critical</td><td>the Collector gave up retrying (after about 5 minutes) and
+        dropped spans; those traces are lost</td></tr>
+    </tbody></table></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Firing now</th><th>Severity</th><th>Labels</th></tr></thead>
+    <tbody id="alert-rows"></tbody></table></div>
+  <div class="grid-2">
+    <div class="card"><h3>What Alertmanager adds</h3><ul>
+      <li><b>Grouping</b>: alerts with the same <code>group_by</code> labels arrive as one notification; ours groups by
+        <code>alertname</code>.</li>
+      <li><b>Inhibition</b>: a worse alert hides its symptoms. <code>SpansDropped</code> hides <code>SpansQueued</code> for
+        the same exporter.</li>
+      <li><b>Silences</b>: mute matching alerts until a set time, with a comment, e.g. while you break something on purpose.
+        They live on an <code>emptyDir</code>, so a new pod forgets them.</li>
+      <li><b>Routing</b>: labels pick the receiver, e.g. <code>critical</code> to a pager, <code>warning</code> to a chat.</li></ul></div>
+    <div class="card"><h3>Good alerts</h3><ul>
+      <li>Page on <b>symptoms</b> users feel (errors, latency); open a ticket for <b>causes</b> (CPU, memory, disk).</li>
+      <li>Use ratios and <code>for:</code>, not a single bad sample: a busy CPU isn't a problem, a slow service is.</li>
+      <li>Give every alert a <code>severity</code> label and a <code>summary</code>; real setups add a
+        <code>runbook_url</code> that says what to do.</li>
+      <li>Alert on your own alerting: that is what <code>Watchdog</code> is for.</li></ul></div>
+  </div>
 </section>
 
 <section class="chapter" id="traces">
@@ -215,17 +248,24 @@
     <div><p>The raw metrics of one pod, exactly what Prometheus scrapes.</p>
       <div class="cmd"><pre>kubectl port-forward -n apps deploy/stock-app 8000:8000 &amp;
 curl -s localhost:8000/metrics | grep -E '^(http_requests_total|stock_cache_lookups_total)'</pre></div></div>
+    <div><p>Break the trace pipeline and watch <a href="#alerts">alerts</a> fire: send traffic from
+      <a href="http://traffic-generator.localhost">traffic-generator</a> while Tempo is gone. <code>SpansQueued</code> fires
+      after a minute; about 5 minutes later <code>SpansDropped</code> fires and inhibits it. Silence one at
+      <a href="http://alertmanager.localhost">alertmanager.localhost</a> (<i>New Silence</i>), then bring Tempo back.</p>
+      <div class="cmd"><pre>kubectl scale deploy/tempo -n monitoring --replicas=0
+kubectl exec -n monitoring deploy/alertmanager -- amtool alert query --alertmanager.url=http://localhost:9093
+kubectl scale deploy/tempo -n monitoring --replicas=1</pre></div></div>
   </div>
 </section>
 
 <section class="chapter" id="practice">
   <div class="head"><span class="eyebrow">Weak spots</span><h2>What to fix next</h2></div>
   <div class="findings">
-    <div class="finding"><span class="sev">Silent · alerts</span><h3>Nothing pages anyone</h3>
-      <p><a href="#alerts">Alerts</a> fire only on Prometheus' own page, and none watches the SLIs: availability can drop
-        without a single alert.</p>
-      <p class="fix">Exercise: run Alertmanager and point <code>alerting</code> in <code>prometheus.yml</code> at it, then add
-        an alert on the availability SLI burning its error budget too fast.</p></div>
+    <div class="finding"><span class="sev">Silent · alerts</span><h3>Alerts reach no one</h3>
+      <p><a href="#alerts">Alertmanager</a> only shows alerts, and none watches the SLIs: availability can drop without a
+        single alert.</p>
+      <p class="fix">Exercise: add a receiver to <code>alertmanager.yml</code> (email or a chat webhook, its URL in a
+        Secret) and an alert on the availability SLI burning its error budget too fast.</p></div>
     <div class="finding"><span class="sev">Ephemeral · history</span><h3>Metrics and traces die with their pods</h3>
       <p>Prometheus keeps its database in the container's filesystem and Tempo on an <code>emptyDir</code>.</p>
       <p class="fix">Exercise: give Prometheus a PVC and a retention size, and think about what it costs.</p></div>
@@ -254,6 +294,13 @@ curl -s localhost:8000/metrics | grep -E '^(http_requests_total|stock_cache_look
       <p>Availability: share of non-5XX responses; latency: share of requests under 1 s. Both are on the Stock App
       dashboard. An SLO like 99.5% over 30 days gives an error budget; alert on its burn rate (fast and slow windows),
       not on single errors.</p></div></details>
+    <details class="qa"><summary>Why is Alertmanager a separate service from Prometheus?</summary><div>
+      <p>Prometheus only decides that a condition holds. Grouping, inhibition, silences and routing need one shared place:
+      teams run several Prometheus servers, often two identical ones for availability, and all send to the same
+      Alertmanagers, which de-duplicate their alerts so a person is told once.</p></div></details>
+    <details class="qa"><summary>A silence or an inhibition: which one when?</summary><div>
+      <p>A silence is a person muting known alerts for a while, such as during maintenance; it expires by itself. An
+      inhibition is a standing rule in the config: while one alert fires, the alerts it causes stay hidden.</p></div></details>
     <details class="qa"><summary>Why not let every app send traces straight to Tempo?</summary><div>
       <p>Then every app owns retries, batching, metadata and backend choice. A Collector centralizes that: tail sampling,
       attribute scrubbing, k8s metadata, fan-out to two backends, and a backend change without redeploying apps.</p></div></details>

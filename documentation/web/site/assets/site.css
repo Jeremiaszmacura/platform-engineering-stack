@@ -191,8 +191,8 @@ pre .c { color: var(--muted); }
   background: var(--surface); color: var(--fg); padding: 5px 9px; border-radius: 6px; cursor: pointer;
 }
 .copy:hover { border-color: var(--accent); color: var(--accent); }
-.try { display: grid; gap: 12px; }
-.try > div { display: grid; gap: 6px; }
+.try { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.try > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .try p { font-size: 0.93rem; color: var(--muted); }
 
 /* tables */

@@ -8,11 +8,13 @@ REQUEST_TIMEOUT_SECONDS = 10
 CLUSTER_READY_TIMEOUT_SECONDS = 60
 TARGETS_UP_TIMEOUT_SECONDS = 90
 METRICS_PIPELINE_TIMEOUT_SECONDS = 60
+ALERT_DELIVERY_TIMEOUT_SECONDS = 180  # Prometheus retries a failed send 2 minutes later
 POLL_INTERVAL_SECONDS = 2
 
 TRAFFIC_GENERATOR_URL = "http://traffic-generator.localhost"
 STOCK_UI_URL = "http://stock-ui.localhost"
 PROMETHEUS_URL = "http://prometheus.localhost"
+ALERTMANAGER_URL = "http://alertmanager.localhost"
 GRAFANA_URL = "http://grafana.localhost"
 VAULT_URL = "http://vault.localhost"
 
@@ -31,6 +33,7 @@ SERVICE_URLS = {
     "traffic-generator": TRAFFIC_GENERATOR_URL,
     "stock-ui": STOCK_UI_URL,
     "prometheus": PROMETHEUS_URL,
+    "alertmanager": ALERTMANAGER_URL,
     "grafana": GRAFANA_URL,
     "documentation": DOCS_URL,
     "vault": VAULT_URL,

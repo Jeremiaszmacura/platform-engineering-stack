@@ -21,3 +21,11 @@ datasources:
     type: tempo
     url: http://tempo-service:3200
     access: proxy
+  # Alerting → Alert groups and Silences show Alertmanager's alerts and silences next to the dashboards.
+  - name: Alertmanager
+    uid: alertmanager
+    type: alertmanager
+    url: http://alertmanager-service:9093
+    access: proxy
+    jsonData:
+      implementation: prometheus

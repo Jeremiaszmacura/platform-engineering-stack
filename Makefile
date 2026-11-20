@@ -10,14 +10,17 @@ E2E_PYTEST_ARGS ?=
 # Frontends built with Vite (npm ci + npm run build)
 FRONTENDS := traffic-generator stock-ui
 DOCS_JS_TESTS := documentation/web/test
+# promtool from the image the Prometheus Deployment runs, so both stay on one version.
+PROMETHEUS_IMAGE := $(shell awk '/image: prom\/prometheus:/ {print $$2}' monitoring/prometheus/k8s/prometheus-deployment.yaml)
 
-.PHONY: help all build build-go build-frontend test test-unit test-unit-go test-unit-python test-unit-frontend test-e2e tidy tidy-go lint lint-go lint-python
+.PHONY: help all build build-go build-frontend test test-unit test-unit-go test-unit-python test-unit-frontend test-rules test-e2e tidy tidy-go lint lint-go lint-python
 
 help:
 	@echo "Targets:"
 	@echo "  build           Build all Go services and the frontends"
 	@echo "  test-unit       Run Go and Python unit tests"
 	@echo "  test-unit-frontend  Run the frontends' and the docs site's JavaScript unit tests"
+	@echo "  test-rules      Unit-test the Prometheus alert rules with promtool (needs Docker)"
 	@echo "  test-e2e        Run end-to-end tests (needs a running cluster: ./recreate-cluster.sh)"
 	@echo "  tidy            Run go mod tidy in every Go service"
 	@echo "  lint            Run Go linters and pre-commit hooks"
@@ -66,6 +69,10 @@ test-unit-frontend:
 	done
 	@echo "==> node --test: $(DOCS_JS_TESTS)"
 	@node --test '$(DOCS_JS_TESTS)/*.test.js'
+
+test-rules:
+	docker run --rm -v "$(CURDIR)/monitoring/prometheus:/rules:ro" -w /rules --entrypoint promtool \
+		$(PROMETHEUS_IMAGE) test rules alerts.test.yml
 
 test-e2e:
 	python3 -m venv $(E2E_VENV)

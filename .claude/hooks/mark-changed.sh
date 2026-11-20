@@ -11,6 +11,9 @@ mark() {
 
 case "$file" in
     */.git/*|*/node_modules/*|*/.venv/*|*/vendor/*|*/dist/*) ;;
+    # case stops at the first match: alert rules need their unit tests and, as cluster files, the e2e tests too.
+    */monitoring/prometheus/k8s/alerts.yml) mark rules; mark cluster ;;
+    */monitoring/prometheus/alerts.test.yml) mark rules ;;
     */e2e/*|*/k8s/*|*/platform/*|*/Dockerfile|*/recreate-cluster.sh) mark cluster ;;
     */documentation/web/site/*) mark go; mark frontend ;;
     *.go|*/go.mod|*/go.sum) mark go ;;

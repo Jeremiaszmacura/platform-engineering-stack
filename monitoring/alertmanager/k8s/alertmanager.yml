@@ -1,0 +1,10 @@
+# Alerts stay in the UI: the only receiver sends nothing.
+route:
+  receiver: "null"
+  group_by: [alertname]
+receivers:
+  - name: "null"
+inhibit_rules:
+  - source_matchers: [alertname="SpansDropped"]
+    target_matchers: [alertname="SpansQueued"]
+    equal: [exporter]

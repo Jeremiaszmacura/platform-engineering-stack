@@ -75,6 +75,34 @@ function scrapeFlow() {
   });
 }
 
+// Labels every firing alert carries; the table shows the rest.
+const ALERT_KEYS = new Set(["__name__", "alertname", "alertstate", "severity"]);
+
+function alertTable(alerts) {
+  const series = (alerts || []).slice().sort((a, b) => a.metric.alertname.localeCompare(b.metric.alertname));
+  const labels = (m) => Object.entries(m).filter(([k]) => !ALERT_KEYS.has(k)).map(([k, v]) => `${k}=${v}`).join(", ");
+  rows("#alert-rows", series, (s) => `<tr><td>${code(s.metric.alertname)}</td><td>${esc(s.metric.severity || "-")}</td>
+    <td>${esc(labels(s.metric) || "-")}</td></tr>`, 3, alerts ? "Nothing firing." : "Live alerts need the running cluster.");
+}
+
+function alertFlow() {
+  const box = (id, x, y, w, title, sub, extra = {}) => ({ id, x, y, w, h: 52, title, sub, color: nsColor("monitoring"), ...extra });
+  graph(document.getElementById("alert-flow")).render({
+    w: 1100, h: 208, label: "How an alert travels from a rule to the screen",
+    nodes: [
+      box("rules", 16, 76, 200, "alerts.yml", "rules with severity labels"),
+      box("prometheus", 300, 76, 184, "Prometheus", "evaluates every minute"),
+      box("alertmanager", 588, 76, 196, "Alertmanager", "group · inhibit · silence"),
+      box("receiver", 860, 12, 224, "receiver \"null\"", "sends nothing", { dashed: true }),
+      box("ui", 860, 76, 224, "alertmanager.localhost", "alerts and silences"),
+      box("grafana", 860, 140, 224, "Grafana", "Alerting → Alert groups"),
+    ],
+    edges: [["rules", "prometheus", "loaded"], ["prometheus", "alertmanager", "firing alerts"], ["alertmanager", "receiver", "route"],
+      ["alertmanager", "ui", ""], ["alertmanager", "grafana", "API"]]
+      .map(([from, to, label]) => ({ from, to, label, color: nsColor("monitoring"), dashed: to === "receiver", flow: to === "alertmanager" ? 0.2 : 0 })),
+  });
+}
+
 function provisioning() {
   const box = (id, x, title, sub) => ({ id, x, y: 28, w: 200, h: 52, title, sub, color: nsColor("monitoring") });
   graph(document.getElementById("provisioning")).render({
@@ -158,12 +186,14 @@ function correlation() {
 }
 
 scrapeFlow();
+alertFlow();
 provisioning();
 waterfall();
 correlation();
 traceFlow({});
-watchQueries({ up: "up", spansIn: "sum(rate(otelcol_receiver_accepted_spans[1m]))", spansOut: "sum(rate(otelcol_exporter_sent_spans[1m]))" }, (m, error) => {
+watchQueries({ up: "up", alerts: 'ALERTS{alertstate="firing"}', spansIn: "sum(rate(otelcol_receiver_accepted_spans[1m]))", spansOut: "sum(rate(otelcol_exporter_sent_spans[1m]))" }, (m, error) => {
   targetTable(m.up);
+  alertTable(m.alerts);
   traceFlow(m);
   if (error) fill("#pulse-status", esc(error));
 });

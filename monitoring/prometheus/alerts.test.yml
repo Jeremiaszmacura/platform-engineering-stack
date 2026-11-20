@@ -1,0 +1,35 @@
+# Unit tests for k8s/alerts.yml: make test-rules. Series start at 0m, as if Prometheus had just started.
+rule_files:
+  - k8s/alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: a restarted Prometheus doesn't take an old counter for a new drop
+    interval: 1m
+    input_series:
+      - series: 'up{job="otel-collector", pod="otel-collector-a"}'
+        values: '1x10'
+      - series: 'otelcol_exporter_send_failed_spans{exporter="otlp_http", pod="otel-collector-a"}'
+        values: '44x10'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: SpansDropped
+        exp_alerts: []
+
+  - name: the first drop fires before increase() can see the counter grow
+    interval: 1m
+    input_series:
+      - series: 'up{job="otel-collector", pod="otel-collector-a"}'
+        values: '1x20'
+      - series: 'otelcol_exporter_send_failed_spans{exporter="otlp_http", pod="otel-collector-a"}'
+        values: '_x9 33x10'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: SpansDropped
+        exp_alerts:
+          - exp_labels:
+              exporter: otlp_http
+              severity: critical
+            exp_annotations:
+              summary: "The Collector dropped spans it couldn't send to otlp_http."
