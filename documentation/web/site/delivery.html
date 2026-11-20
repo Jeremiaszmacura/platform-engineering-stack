@@ -54,10 +54,12 @@
       <tr><td><code>make lint</code></td><td>golangci-lint, then pre-commit (black, bandit, YAML and JSON checks), stock-app's import rules and API-model drift check</td></tr>
       <tr><td><code>make build-frontend test-unit-frontend</code></td><td>both Vite frontends, stock-ui's Vitest tests (traffic-generator has none), and this site's JavaScript tests (<code>node --test</code>)</td></tr>
       <tr><td><code>make test-e2e</code></td><td>pytest in <code>e2e/</code> against the running cluster, over HTTP; <code>kubectl</code>,
-        pinned to the <code>kind-sample-cluster</code> context, only restarts Vault and issues ServiceAccount tokens</td></tr>
+        pinned to the <code>kind-sample-cluster</code> context, only restarts Vault, issues ServiceAccount tokens and checks
+        who may read Vault's unseal key</td></tr>
     </tbody></table></div>
   <p class="prose">The end-to-end tests cover every <code>*.localhost</code> URL, this site's map, RBAC and Prometheus proxy,
-    Vault secrets (also after Vault restarts) and that each service's Vault token opens only its own path, CORS for both frontends, every stock-app endpoint validated against its
+    Vault secrets (kept across a Vault restart and a new pod), that only Vault may read its unseal key and that each
+    service's Vault token opens only its own path, CORS for both frontends, every stock-app endpoint validated against its
     published <code>/openapi.yaml</code>, the cache-aside flow, the Prometheus and Grafana pipeline, and request traces in
     Tempo.
     The suite passes with either stock-app provider: Yahoo Finance by default, generated prices in CI

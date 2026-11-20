@@ -57,7 +57,7 @@ class VaultSecretStore:
         try:
             return request()
         except Forbidden:
-            # Expired, or Vault restarted.
+            # Expired or revoked.
             self._sign_in()
             return request()
 

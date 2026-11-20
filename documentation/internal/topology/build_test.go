@@ -212,6 +212,16 @@ func TestBuildServiceAccounts(t *testing.T) {
 	}
 }
 
+func TestDescribeRulesNamesTheResources(t *testing.T) {
+	rules := []rbacv1.PolicyRule{
+		{Verbs: []string{"create"}, Resources: []string{"secrets"}},
+		{Verbs: []string{"get"}, Resources: []string{"secrets"}, ResourceNames: []string{"vault-unseal-key"}},
+	}
+	if got, want := describeRules(rules), `create secrets; get secrets "vault-unseal-key"`; got != want {
+		t.Errorf("describeRules = %q, want %q", got, want)
+	}
+}
+
 func TestBuildConfigAndVolumes(t *testing.T) {
 	m := Build(testSnapshot())
 	wantConfig := ConfigUse{Kind: "Secret", Name: "db-secret", Namespace: "apps", Keys: []string{"password"}, UsedBy: []string{"api"}}

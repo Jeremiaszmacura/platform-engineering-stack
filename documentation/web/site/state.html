@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>State &amp; storage · Platform Engineering Stack</title>
-<meta name="description" content="Where the cluster keeps state and what survives a restart: PVCs, StatefulSets, emptyDirs, in-memory stores and stock-app's cache-aside.">
+<meta name="description" content="Where the cluster keeps state and what survives a restart: PVCs, StatefulSets, emptyDirs and stock-app's cache-aside.">
 <link rel="icon" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,8 +24,8 @@
   <span class="eyebrow">Learn · state and storage</span>
   <h1>What survives a restart</h1>
   <p class="lede">Pods are ephemeral; data is not. Every component here keeps its state somewhere different, from a
-    persistent volume to plain memory, and each choice decides what is lost when a container restarts, a pod is replaced
-    or the cluster is rebuilt.</p>
+    persistent volume to a directory that dies with its container, and each choice decides what is lost when a
+    container restarts, a pod is replaced or the cluster is rebuilt.</p>
   <nav class="toc" id="toc" aria-label="On this page"></nav>
 </header>
 
@@ -45,13 +45,13 @@
       <tr><td>Grafana logins, preferences</td><td>SQLite on an <code>emptyDir</code></td><td><span class="mark y">✓ kept</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
       <tr><td>Traces (Tempo)</td><td><code>emptyDir</code></td><td><span class="mark y">✓ kept</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
       <tr><td>Metrics (Prometheus)</td><td>the image's <code>/prometheus</code> volume, which containerd creates per container</td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
-      <tr><td>Vault secrets</td><td>memory (dev mode)</td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td><td><span class="mark n">✗ lost</span></td></tr>
-      <tr><td>Vault KV mounts, auth method, policies</td><td>memory, set up by a <code>postStart</code> hook on every start</td><td><span class="mark y">✓ set up again</span></td><td><span class="mark y">✓ set up again</span></td><td><span class="mark y">✓ set up again</span></td></tr>
+      <tr><td>Vault secrets</td><td>PVC <code>data-vault-0</code> (Raft)</td><td><span class="mark y">✓ kept</span></td><td><span class="mark y">✓ kept</span></td><td><span class="mark n">✗ lost</span></td></tr>
+      <tr><td>Vault unseal key</td><td>Secret <code>vault-unseal-key</code>, in etcd</td><td><span class="mark y">✓ kept</span></td><td><span class="mark y">✓ kept</span></td><td><span class="mark n">✗ lost, a new one on first start</span></td></tr>
+      <tr><td>Vault KV mounts, auth method, policies</td><td>PVC <code>data-vault-0</code>, applied again by a <code>postStart</code> hook on every start</td><td><span class="mark y">✓ kept</span></td><td><span class="mark y">✓ kept</span></td><td><span class="mark y">✓ set up again</span></td></tr>
       <tr><td>Manifests, dashboards, code</td><td>this Git repository</td><td><span class="mark y">✓</span></td><td><span class="mark y">✓</span></td><td><span class="mark y">✓ the source of truth</span></td></tr>
     </tbody></table></div>
-  <p class="callout warn">Vault is the sharp edge: an OOM kill or a node restart quietly empties it. Its mounts,
-    auth method and policies are back before the pod turns ready (<a href="components.html#vault">how</a>) and stock-app
-    signs in again by itself, so its secret API keeps working, but every secret written before is gone.</p>
+  <p class="callout">Vault comes back <b>sealed</b> after every restart and serves nothing until its <code>postStart</code>
+    hook has unsealed it, a few seconds later (<a href="components.html#vault">how</a>).</p>
 </section>
 
 <section class="chapter" id="volumes">
@@ -69,7 +69,7 @@
       node for the pod, so the directory lands where the pod runs. From then on the PV's node affinity pins the pod to that
       node. If the node goes away, the data can't follow. Network storage (EBS, Ceph, NFS) doesn't have that limit.</p></div>
     <div class="card"><h3>Reclaim policy and retention</h3><p>The class's reclaim policy is <code>Delete</code>: deleting the
-      PVC deletes the directory. The StatefulSet's PVC retention policy is <code>Retain</code>: deleting or scaling down the
+      PVC deletes the directory. A StatefulSet's PVC retention policy is <code>Retain</code>: deleting or scaling down the
       StatefulSet keeps the claim, so recreating it finds the same data.</p></div>
   </div>
 </section>
@@ -143,11 +143,11 @@ kubectl get pod timescaledb-0 -n data -o wide --watch</pre></div></div>
 <section class="chapter" id="practice">
   <div class="head"><span class="eyebrow">Weak spots</span><h2>What to fix next</h2></div>
   <div class="findings">
-    <div class="finding"><span class="sev">Ephemeral · secrets</span><h3>Vault keeps everything in memory</h3>
-      <p>Dev mode has no storage, so a restart loses every secret; only the setup in its <code>postStart</code>
-        hook comes back.</p>
-      <p class="fix">Exercise: run Vault with Raft storage on a PVC and initialise it once. A restart then seals Vault
-        instead of emptying it; the hook skips mounts that exist but waits only 60 seconds, so add auto-unseal.</p></div>
+    <div class="finding"><span class="sev">Exposed · secrets</span><h3>Vault's unseal key is a Kubernetes Secret</h3>
+      <p>Whoever can read that Secret (<a href="security.html#vault">who can</a>) and Vault's volume can decrypt every
+        secret, and etcd keeps the key unencrypted.</p>
+      <p class="fix">Exercise: auto-unseal Vault with a cloud KMS or with a second Vault's Transit engine, so no unseal
+        key is stored in the cluster at all.</p></div>
     <div class="finding"><span class="sev">No backups · data</span><h3>Nothing backs up TimescaleDB</h3>
       <p>The data can be refetched, but a real database would need backups and a tested restore.</p>
       <p class="fix">Exercise: a CronJob that runs <code>pg_dump</code> to a second PVC every night, then restore it into a

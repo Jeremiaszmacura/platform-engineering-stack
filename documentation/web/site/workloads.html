@@ -56,7 +56,6 @@
   <ul class="prose">
     <li><b>stock-app</b> has only a readiness probe on purpose: <code>/health</code> checks the database, and a database
       outage must not restart the app, which couldn't fix it anyway.</li>
-    <li><b>Vault</b> has no liveness probe: in dev mode a restart wipes every secret.</li>
     <li><b>documentation</b> reports ready only after its informers finished their first list, so it never serves an empty map.</li>
     <li>The <b>postgres-exporter</b> sidecar has no readiness probe: an unready sidecar would take the database out of its Service.</li>
   </ul>
@@ -75,8 +74,8 @@
   <p class="prose">Vault's container has a <b><code>postStart</code> hook</b> instead: the kubelet runs it inside the
     container as soon as the container starts, and treats the container as running, so probes it and can mark it ready,
     only once the hook exits. A failed hook restarts the container. Unlike an init container, the hook runs again when
-    only the container restarts (a crash, an OOM kill), and that is what Vault needs: dev mode loses its KV mounts and
-    auth setup on every restart (<a href="components.html#vault">Vault</a>).</p>
+    only the container restarts (a crash, an OOM kill), and that is what Vault needs: every restart seals it, and an
+    init container can't unseal a server that isn't running yet (<a href="components.html#vault">Vault</a>).</p>
 </section>
 
 <section class="chapter" id="resources">

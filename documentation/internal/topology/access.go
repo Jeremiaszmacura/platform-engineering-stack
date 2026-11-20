@@ -9,10 +9,15 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
+// describeRules turns RBAC rules into text like `list,watch pods; get configmaps "kube-proxy"`.
 func describeRules(rules []rbacv1.PolicyRule) string {
 	parts := make([]string, 0, len(rules))
 	for _, r := range rules {
-		parts = append(parts, strings.Join(r.Verbs, ",")+" "+strings.Join(slices.Concat(r.Resources, r.NonResourceURLs), ","))
+		part := strings.Join(r.Verbs, ",") + " " + strings.Join(slices.Concat(r.Resources, r.NonResourceURLs), ",")
+		if len(r.ResourceNames) > 0 {
+			part += ` "` + strings.Join(r.ResourceNames, `","`) + `"`
+		}
+		parts = append(parts, part)
 	}
 	return strings.Join(parts, "; ")
 }

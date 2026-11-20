@@ -52,7 +52,8 @@
       Without either, even a pod with no RBAC permissions carries a token an attacker could use to explore the API.</p></div>
     <div class="card"><h3>Least privilege, by design</h3><p>The OpenTelemetry Collector gets a <b>Role</b> in <code>apps</code>,
       not a ClusterRole: it can't see any other namespace. This site's two extra Roles use <code>resourceNames</code>, so
-      each allows reading exactly one ConfigMap. And nobody here may read Secrets.</p></div>
+      each allows reading exactly one ConfigMap. Of the project's workloads, only Vault may read a Secret: its own unseal key
+      (<a href="#vault">below</a>).</p></div>
   </div>
 </section>
 
@@ -107,7 +108,7 @@ Role            monitoring/documentation-prometheus    get configmaps "prometheu
   <div class="head">
     <span class="eyebrow">Vault</span>
     <h2>How a service signs in to Vault</h2>
-    <p>HashiCorp Vault in dev mode holds the apps' own secrets in two KV v2 mounts (<a href="components.html#vault">how it
+    <p>HashiCorp Vault holds the apps' own secrets in two KV v2 mounts (<a href="components.html#vault">how it
       starts</a>): <code>services/</code>, one path per service, and <code>infra/</code>, reserved. No app holds a Vault
       password. Each signs in with its <b>ServiceAccount</b> through Vault's built-in <b>kubernetes auth method</b> and gets
       a short-lived Vault token that opens only its own path.</p>
@@ -122,21 +123,28 @@ Role            monitoring/documentation-prometheus    get configmaps "prometheu
     <li><div><span class="where">vault</span>Returns a Vault token valid for one hour, with the policy <code>stock-app</code>:
       read and write <code>services/stock-app/*</code>, a 403 anywhere else.</div></li>
     <li><div><span class="where">stock-app</span>Uses that token for every request, and signs in again when Vault rejects
-      it (expired, or Vault restarted).</div></li>
+      it (expired). Vault stores its tokens, so a restart doesn't invalidate them.</div></li>
   </ol>
   <figure class="figure" data-source="example"><div class="scroll-x" id="vault-seq"></div>
     <figcaption>The first secret request after start-up. Later requests go straight to the write, until Vault rejects the
       token.</figcaption></figure>
   <pre><span class="c"># stock-app/k8s/stock-app-deployment.yaml: the pod's token, for Vault only</span>
 projected serviceAccountToken   audience: vault   expirationSeconds: 3600   → /var/run/secrets/vault/token
-<span class="c"># platform/rbac/vault.yaml: Vault may check tokens and nothing else</span>
+<span class="c"># platform/rbac/vault.yaml: Vault may check tokens and keep its unseal key, nothing else</span>
 ClusterRoleBinding vault-tokenreview   ServiceAccount vault/vault → ClusterRole system:auth-delegator
+RoleBinding vault/vault-unseal-key     ServiceAccount vault/vault → create secrets, get secret "vault-unseal-key"
 <span class="c"># vault/k8s/configure-vault.sh and stock-app-policy.hcl: set up again on every Vault start</span>
 role    auth/kubernetes/role/stock-app   ServiceAccount apps/stock-app   audience vault   TTL 1h   policy stock-app
 policy  stock-app                        create, read, update on services/data/stock-app/*</pre>
   <p class="callout">The root token, <code>root</code>, is only for people at <a href="http://vault.localhost">vault.localhost</a>
     and for Vault's start-up hook. A token stolen from stock-app is worth little: the ServiceAccount token works only with
     Vault, and the Vault token only on stock-app's path, for an hour at most.</p>
+  <p class="callout warn"><b>The unseal key is a Kubernetes Secret.</b> Vault's start-up hook saves it as
+    <code>vault-unseal-key</code> in namespace <code>vault</code> (<a href="components.html#vault">how</a>). Of the
+    project's workloads only Vault's ServiceAccount may read it; RBAC can't limit <code>create</code> to one name, so Vault
+    may also create other Secrets there. Cluster admins, Kubernetes' own controllers and Envoy Gateway's controller, which
+    reads Secrets in every namespace for TLS certificates, can read it too, and etcd keeps it unencrypted
+    (<a href="state.html#practice">the fix</a>).</p>
   <div class="try">
     <div><p>Sign in as stock-app yourself and see which policies the Vault token carries.</p>
       <div class="cmd"><pre>JWT=$(kubectl create token stock-app -n apps --audience vault)

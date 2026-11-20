@@ -88,7 +88,8 @@ function checks(map, pods) {
   token.className = "finding live-ok";
   token.innerHTML = `<span class="sev">Live · API tokens</span><h3>${holders.length} workload identities hold an API token</h3>
     <p>${holders.map((a) => code(`${a.namespace}/${a.name}`)).join(" ")}: each calls the API for a reason (service discovery,
-      span metadata, this site, Vault's token checks). None may read Secrets or change anything.</p>
+      span metadata, this site, Vault's token checks and unseal key). Apart from Vault, which keeps its unseal key in a
+      Secret, none may read Secrets or change anything.</p>
     <p class="fix">Exercise: list what each may do with <code>kubectl auth can-i --list --as=system:serviceaccount:&lt;ns&gt;:&lt;name&gt;</code>
       and remove a verb; see what breaks.</p>`;
   const netpol = document.getElementById("netpol-check");

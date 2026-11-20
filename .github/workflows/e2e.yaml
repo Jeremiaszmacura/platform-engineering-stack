@@ -49,12 +49,12 @@ jobs:
         run: |
           kubectl get pods -A -o wide || true
           kubectl get events -A --sort-by=.lastTimestamp | tail -n 50 || true
-          kubectl get statefulsets,pvc -n data -o wide || true
+          kubectl get statefulsets,pvc -A -o wide || true
           kubectl get gateways,httproutes -A -o wide || true
           kubectl describe gateway shared-gateway -n envoy-gateway-system || true
           for ns in envoy-gateway-system apps monitoring vault docs data; do
-            for deployment in $(kubectl get deployments -n "$ns" -o name); do
-              echo "--- logs: $ns/$deployment ---"
-              kubectl logs "$deployment" -n "$ns" --tail=50 || true
+            for workload in $(kubectl get deployments,statefulsets -n "$ns" -o name); do
+              echo "--- logs: $ns/$workload ---"
+              kubectl logs "$workload" -n "$ns" --tail=50 || true
             done
           done

@@ -17,7 +17,7 @@ GRAFANA_URL = "http://grafana.localhost"
 VAULT_URL = "http://vault.localhost"
 
 GRAFANA_CREDENTIALS = ("admin", "admin")
-VAULT_TOKEN = "root"  # nosec B105 - dev-mode root token
+VAULT_TOKEN = "root"  # nosec B105 - root token of this local cluster
 
 # The cluster ./recreate-cluster.sh creates; tests that restart pods never use the current context.
 KUBE_CONTEXT = "kind-sample-cluster"

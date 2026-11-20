@@ -104,6 +104,12 @@ def test_documentation_identity_is_read_only_without_secrets():
     assert "create" not in permissions and "delete" not in permissions
 
 
+def test_documentation_shows_that_vault_reads_only_its_unseal_key():
+    """The map names the one Secret Vault may read, so the site never shows it reading every Secret."""
+    account = next(a for a in fetch_map()["service_accounts"] if a["name"] == "vault")
+    assert 'Role vault-unseal-key (in vault): create secrets; get secrets "vault-unseal-key"' in account["permissions"]
+
+
 def test_documentation_pod_passes_the_restricted_profile():
     """The site's own pod is the hardening example: non-root, no escalation, no capabilities, seccomp, limits."""
     pod = next(p for p in fetch_map()["pods"] if p["app"] == "documentation" and p["phase"] == "Running")
