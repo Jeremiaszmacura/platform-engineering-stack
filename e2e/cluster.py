@@ -1,5 +1,6 @@
 """Service catalog and helpers for the e2e suite (services are reached through the Gateway on *.localhost)."""
 
+import subprocess  # nosec B404 - runs kubectl with fixed arguments
 import time
 
 import requests
@@ -38,6 +39,23 @@ SERVICE_URLS = {
     "documentation": DOCS_URL,
     "vault": VAULT_URL,
 }
+
+
+def https(url):
+    """Return url with https:// instead of http://: the Gateway serves every hostname on both."""
+    return url.replace("http://", "https://", 1)
+
+
+def kubectl(*args, check=True):
+    """Run kubectl with args against the test cluster and return its output; check=False allows a non-zero exit."""
+    result = subprocess.run(  # nosec B603 B607 - fixed kubectl command, pinned to the test cluster
+        ["kubectl", "--context", KUBE_CONTEXT, *args],
+        check=check,
+        capture_output=True,
+        text=True,
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    return result.stdout.strip()
 
 
 def wait_until(check, timeout_seconds, description):

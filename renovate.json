@@ -13,11 +13,10 @@
   },
   "customManagers": [
     {
-      "description": "Envoy Gateway release manifest URL in its kustomization",
+      "description": "GitHub release manifest URLs in platform kustomizations (Envoy Gateway, cert-manager)",
       "customType": "regex",
-      "managerFilePatterns": ["/^platform/envoy-gateway/kustomization\\.yaml$/"],
-      "matchStrings": ["envoyproxy/gateway/releases/download/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/"],
-      "depNameTemplate": "envoyproxy/gateway",
+      "managerFilePatterns": ["/^platform/[^/]+/kustomization\\.yaml$/"],
+      "matchStrings": ["github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/"],
       "datasourceTemplate": "github-releases",
       "extractVersionTemplate": "^v(?<version>.+)$"
     },

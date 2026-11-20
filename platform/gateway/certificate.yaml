@@ -1,0 +1,23 @@
+# The certificate of the Gateway's HTTPS listener: cert-manager writes it and its key into Secret shared-gateway-tls.
+# curl, OpenSSL and browsers refuse a wildcard right under a top-level name (*.localhost), so every hostname is listed.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: shared-gateway-tls
+  namespace: envoy-gateway-system
+spec:
+  secretName: shared-gateway-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: sample-cluster-ca  # platform/cert-manager/cluster-ca.yaml
+  # Short on purpose: cert-manager renews it after two thirds (16h), and Envoy loads the new Secret without a restart.
+  duration: 24h
+  dnsNames:
+    - alertmanager.localhost
+    - docs.localhost
+    - grafana.localhost
+    - prometheus.localhost
+    - stock.localhost
+    - stock-ui.localhost
+    - traffic-generator.localhost
+    - vault.localhost

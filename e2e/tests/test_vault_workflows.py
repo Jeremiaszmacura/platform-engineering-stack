@@ -5,12 +5,11 @@ Every /secret response is validated against the /openapi.yaml stock-app publishe
 Keys are random because Vault keeps every secret until the cluster is recreated.
 """
 
-import subprocess  # nosec B404 - runs kubectl with fixed arguments
 import uuid
 
 import requests
 
-from cluster import KUBE_CONTEXT, REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL, VAULT_TOKEN, VAULT_URL, wait_until
+from cluster import REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL, VAULT_TOKEN, VAULT_URL, kubectl, wait_until
 from contract import conforming
 
 SECRET_VALUE = "hunter2"  # nosec B105 - test value, not a credential
@@ -37,18 +36,6 @@ def write_secret(contract, key):
 def read_secret(contract, key):
     """Read key through stock-app and return the response, which must match the contract."""
     return conforming(contract, requests.get(f"{STOCK_APP_URL}/secret/{key}", timeout=REQUEST_TIMEOUT_SECONDS))
-
-
-def kubectl(*args, check=True):
-    """Run kubectl with args against the test cluster and return its output; check=False allows a non-zero exit."""
-    result = subprocess.run(  # nosec B603 B607 - fixed kubectl command, pinned to the test cluster
-        ["kubectl", "--context", KUBE_CONTEXT, *args],
-        check=check,
-        capture_output=True,
-        text=True,
-        timeout=REQUEST_TIMEOUT_SECONDS,
-    )
-    return result.stdout.strip()
 
 
 def service_account_token(name, audience=None):

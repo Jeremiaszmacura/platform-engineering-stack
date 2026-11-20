@@ -110,8 +110,10 @@ function gatewayTree(map) {
   const ltr = { sides: ["r", "l"] };
   if (g) {
     const listener = g.listeners[0];
+    const protocols = g.listeners.map((l) => l.protocol).join(", ");
+    const ports = g.listeners.map((l) => `${l.protocol} :${l.port}`).join(", ");
     nodes.push({ id: "class", x: 32, y: mid, w: 168, h: 52, title: g.class, sub: "GatewayClass", color: nsColor("envoy-gateway-system") });
-    nodes.push({ id: "gw", x: 240, y: mid, w: 200, h: 52, title: g.name, sub: listener ? `Gateway · ${listener.protocol} :${listener.port} ${listener.hostname}` : "Gateway, no listener", color: nsColor("envoy-gateway-system"), status: g.programmed ? "ok" : "bad", tip: `${g.programmed ? "Programmed" : "NOT Programmed"}; routes from ${listener ? listener.allowed_routes : "?"}` });
+    nodes.push({ id: "gw", x: 240, y: mid, w: 200, h: 52, title: g.name, sub: listener ? `Gateway · ${protocols}` : "Gateway, no listener", color: nsColor("envoy-gateway-system"), status: g.programmed ? "ok" : "bad", tip: `${g.programmed ? "Programmed" : "NOT Programmed"}; ${listener ? `${ports} on ${listener.hostname}, routes from ${listener.allowed_routes}` : "no listener"}` });
     edges.push({ from: "class", to: "gw", color: nsColor("envoy-gateway-system"), ...ltr });
   }
   routes.forEach((r, i) => {

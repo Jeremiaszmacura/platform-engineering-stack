@@ -222,12 +222,14 @@ curl -s http://docs.localhost/api/map | jq . &gt; web/site/assets/snapshot.json 
   <div class="head"><span class="eyebrow">cluster-wide · applied first</span><h2>platform</h2>
     <p>Everything that isn't one component's: the kind cluster config (<code>kind-cluster.yaml</code>), the Gateway API
       controller (<code>envoy-gateway/</code>, the upstream release manifest with its CRDs), the shared Gateway, its
-      GatewayClass and EnvoyProxy (<code>gateway/</code>), the namespaces and the RBAC that pods' ServiceAccounts are bound
+      GatewayClass, EnvoyProxy and TLS certificate (<code>gateway/</code>), cert-manager with the cluster's own CA
+      (<code>cert-manager/</code>, <a href="security.html#certificates">how</a>), the namespaces and the RBAC that pods' ServiceAccounts are bound
       to. If deleting a component should delete a resource, it belongs in that component's <code>k8s/</code> instead.
       The EnvoyProxy annotates the proxy's Service, so Prometheus scrapes Envoy's <code>/stats/prometheus</code> on 19001
       (job <code>shared-gateway</code>), e.g. <code>envoy_cluster_upstream_rq_xx</code> per route and status class.</p></div>
   <dl class="spec" data-app="envoy"></dl>
   <dl class="spec" data-app="gateway-helm"></dl>
+  <dl class="spec" data-app="cert-manager"></dl>
 </section>
 
 </article>

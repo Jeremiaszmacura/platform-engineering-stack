@@ -11,7 +11,7 @@ import (
 
 // SystemNamespaces hold cluster infrastructure; the page's tables cover every other namespace.
 var SystemNamespaces = []string{
-	"default", "envoy-gateway-system", "kube-node-lease", "kube-public", "kube-system", "local-path-storage",
+	"cert-manager", "default", "envoy-gateway-system", "kube-node-lease", "kube-public", "kube-system", "local-path-storage",
 }
 
 var clusterCIDRPattern = regexp.MustCompile(`clusterCIDR:\s*"?([^"\s]+)`)

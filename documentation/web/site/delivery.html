@@ -39,7 +39,7 @@
   <figure class="figure" data-source="example"><div class="scroll-x" id="pipeline-flow"></div></figure>
   <ol class="steps" id="pipeline-steps"></ol>
   <p class="callout">Before deleting anything, the script stops if <code>kind</code> is not v0.33.x (it decides the Kubernetes
-    version) or if something else holds host port 80 (<a href="index.html#run">Run it</a>).</p>
+    version) or if something else holds host port 80 or 443 (<a href="index.html#run">Run it</a>).</p>
 </section>
 
 <section class="chapter" id="tests">
@@ -54,13 +54,14 @@
       <tr><td><code>make lint</code></td><td>golangci-lint, then pre-commit (black, bandit, YAML and JSON checks), stock-app's import rules and API-model drift check</td></tr>
       <tr><td><code>make build-frontend test-unit-frontend</code></td><td>both Vite frontends, stock-ui's Vitest tests (traffic-generator has none), and this site's JavaScript tests (<code>node --test</code>)</td></tr>
       <tr><td><code>make test-rules</code></td><td>unit tests of the alert rules (<code>monitoring/prometheus/alerts.test.yml</code>) with <code>promtool</code>, from the image Prometheus runs; needs Docker</td></tr>
-      <tr><td><code>make test-e2e</code></td><td>pytest in <code>e2e/</code> against the running cluster, over HTTP; <code>kubectl</code>,
-        pinned to the <code>kind-sample-cluster</code> context, only restarts Vault, issues ServiceAccount tokens and checks
-        who may read Vault's unseal key</td></tr>
+      <tr><td><code>make test-e2e</code></td><td>pytest in <code>e2e/</code> against the running cluster, over HTTP and HTTPS; <code>kubectl</code>,
+        pinned to the <code>kind-sample-cluster</code> context, only restarts Vault, issues ServiceAccount tokens, checks
+        who may read Vault's unseal key and reads the cluster CA's certificate</td></tr>
     </tbody></table></div>
-  <p class="prose">The end-to-end tests cover every <code>*.localhost</code> URL, this site's map, RBAC and Prometheus proxy,
+  <p class="prose">The end-to-end tests cover every <code>*.localhost</code> URL over HTTP and HTTPS (checked against the
+    cluster's CA), this site's map, RBAC and Prometheus proxy,
     Vault secrets (kept across a Vault restart and a new pod), that only Vault may read its unseal key and that each
-    service's Vault token opens only its own path, CORS for both frontends, every stock-app endpoint validated against its
+    service's Vault token opens only its own path, CORS for both frontends on both schemes, every stock-app endpoint validated against its
     published <code>/openapi.yaml</code>, the cache-aside flow, the Prometheus and Grafana pipeline, alerts reaching
     Alertmanager and silences, and request traces in
     Tempo.
@@ -99,7 +100,7 @@ make test-e2e E2E_PYTEST_ARGS='-k stock'   # scope with -k</pre></div>
   <div class="head">
     <span class="eyebrow">Dependencies</span>
     <h2>Every version pinned, every pin updated</h2>
-    <p>Images, Go modules, Python and npm packages, pre-commit hooks, GitHub Actions, the Envoy Gateway release, kind in CI
+    <p>Images, Go modules, Python and npm packages, pre-commit hooks, GitHub Actions, the Envoy Gateway and cert-manager releases, kind in CI
       and golangci-lint are all pinned. Tags can be moved, so <code>Dockerfile</code> base images and GitHub Actions are
       pinned by digest, with the tag kept as a label (<code>python:3.14-slim@sha256:…</code>, <code>actions/checkout@… # v6.1.0</code>);
       the cluster's images use exact release tags. Renovate (<code>renovate.json</code>) opens update pull requests every day.</p>
@@ -127,7 +128,8 @@ make test-e2e E2E_PYTEST_ARGS='-k stock'   # scope with -k</pre></div>
       <code>FRONTENDS</code> in the Makefile.</div></li>
     <li><div><span class="where">kubernetes</span>In <code>my-service/k8s/</code> (namespace <code>apps</code>): Deployment
       <code>my-service</code>, Service <code>my-service-service</code>, HTTPRoute <code>my-service-route</code> for
-      <code>my-service.localhost</code>, and ServiceAccount <code>my-service</code> with
+      <code>my-service.localhost</code> (add that hostname to <code>platform/gateway/certificate.yaml</code> too, or HTTPS
+      fails for it), and ServiceAccount <code>my-service</code> with
       <code>automountServiceAccountToken: false</code>; requests and limits, a readiness probe and a non-root
       <code>securityContext</code> (<a href="design.html#conventions">conventions</a>).</div></li>
     <li><div><span class="where">cluster script</span>Add it to <code>IMAGES</code>, <code>COMPONENTS</code> and

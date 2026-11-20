@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Identity &amp; secrets · Platform Engineering Stack</title>
-<meta name="description" content="ServiceAccounts, RBAC, Secrets, ConfigMaps, Vault, Pod Security Standards and NetworkPolicy in the running cluster.">
+<meta name="description" content="ServiceAccounts, RBAC, Secrets, ConfigMaps, Vault, TLS certificates, Pod Security Standards and NetworkPolicy in the running cluster.">
 <link rel="icon" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -142,8 +142,8 @@ policy  stock-app                        create, read, update on services/data/s
   <p class="callout warn"><b>The unseal key is a Kubernetes Secret.</b> Vault's start-up hook saves it as
     <code>vault-unseal-key</code> in namespace <code>vault</code> (<a href="components.html#vault">how</a>). Of the
     project's workloads only Vault's ServiceAccount may read it; RBAC can't limit <code>create</code> to one name, so Vault
-    may also create other Secrets there. Cluster admins, Kubernetes' own controllers and Envoy Gateway's controller, which
-    reads Secrets in every namespace for TLS certificates, can read it too, and etcd keeps it unencrypted
+    may also create other Secrets there. Cluster admins, Kubernetes' own controllers, Envoy Gateway's controller, which
+    reads Secrets in every namespace for TLS certificates, and cert-manager, which writes them, can read it too, and etcd keeps it unencrypted
     (<a href="state.html#practice">the fix</a>).</p>
   <div class="try">
     <div><p>Sign in as stock-app yourself and see which policies the Vault token carries.</p>
@@ -152,6 +152,90 @@ curl -s http://vault.localhost/v1/auth/kubernetes/login -d "{\"role\":\"stock-ap
     <div><p>Write a secret through stock-app, then read it back.</p>
       <div class="cmd"><pre>curl -X POST http://stock.localhost/secret -H 'Content-Type: application/json' -d '{"key":"demo","value":"x"}'
 curl http://stock.localhost/secret/demo</pre></div></div>
+  </div>
+</section>
+
+<section class="chapter" id="certificates">
+  <div class="head">
+    <span class="eyebrow">TLS and certificates</span>
+    <h2>How a server proves who it is</h2>
+    <p>TLS encrypts a connection and lets the client check who answered. The server sends its <b>certificate</b>: the
+      hostnames it may serve, its public key and the signature of a <b>certificate authority</b> (CA). The client accepts
+      it only if a CA it already trusts signed it and the hostname it asked for is listed, and the server proves in the
+      handshake that it holds the matching private key. In <b>mutual TLS</b> (mTLS) the client sends a certificate too.
+      These are the certificates in your cluster; kind and Envoy Gateway made all but the last on their own.</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Connection</th><th>Certificate signed by</th><th>Checked by</th></tr></thead>
+    <tbody>
+      <tr><td>Pods → API server (<code>kubernetes.default.svc</code>)</td><td>the Kubernetes CA</td><td>each pod, with the <code>ca.crt</code> mounted next to its token</td></tr>
+      <tr><td>API server ↔ etcd and kubelets</td><td>the Kubernetes and etcd CAs</td><td>both sides: mTLS inside the control plane</td></tr>
+      <tr><td>Prometheus → kubelet :10250</td><td>the node itself (self-signed)</td><td>nobody: Prometheus skips the check (<a href="#practice">fix</a>)</td></tr>
+      <tr><td>Envoy Gateway ↔ Envoy proxy (xDS)</td><td>Envoy Gateway's own CA, made by its <code>certgen</code> Job</td><td>both sides: mTLS</td></tr>
+      <tr><td>Your browser → <code>https://*.localhost</code></td><td>the cluster's own CA, <code>sample-cluster CA</code>, through cert-manager</td><td>your browser or curl, once you trust that CA (below)</td></tr>
+    </tbody></table></div>
+  <div class="grid-3">
+    <div class="card"><h3>ca.crt: trusting the API server</h3><p>kubeadm created the Kubernetes CA with the cluster
+      (valid 10 years; the certificates it signed, 1 year). Kubernetes copies it into the ConfigMap
+      <code>kube-root-ca.crt</code> in every namespace, and the kubelet mounts it as <code>ca.crt</code> with the token.
+      This site, Prometheus and Vault's hook check the API server with it.</p></div>
+    <div class="card"><h3>A token is not a certificate</h3><p>The certificate proves the server to the pod; the
+      ServiceAccount token proves the pod to the server. The token is a JWT the API server signs with its own key
+      (<code>sa.key</code>), so only the API server can check it, for itself or through a TokenReview, as Vault does
+      (<a href="#vault">above</a>).</p></div>
+    <div class="card"><h3>How a node gets its certificate</h3><p>A joining node's kubelet sends a
+      CertificateSigningRequest (CSR) with a bootstrap token; the controller manager approves and signs it, and the
+      kubelet renews it the same way before it expires. <code>kubectl get csr</code> lists these requests.</p></div>
+  </div>
+  <h3>How the Gateway gets its HTTPS certificate</h3>
+  <ol class="steps">
+    <li><div><span class="where">cert-manager</span>The ClusterIssuer <code>selfsigned</code> signs the CA certificate
+      <code>sample-cluster CA</code> with its own key, into the Secret <code>sample-cluster-ca</code>. Nobody trusts a
+      self-signed CA until they choose to.</div></li>
+    <li><div><span class="where">cert-manager</span>The ClusterIssuer <code>sample-cluster-ca</code> signs certificates
+      with that CA's key.</div></li>
+    <li><div><span class="where">cert-manager</span>The Certificate <code>shared-gateway-tls</code> lists every
+      <code>*.localhost</code> hostname. cert-manager creates a private key, has the certificate signed and writes both
+      into the Secret <code>shared-gateway-tls</code>.</div></li>
+    <li><div><span class="where">envoy</span>The Gateway's <code>https</code> listener on 443 names that Secret. Envoy
+      decrypts each request (TLS termination) and forwards it as plain HTTP to the pod, so apps need no certificate.</div></li>
+    <li><div><span class="where">cert-manager</span>The certificate lasts 24 hours. After 16, cert-manager writes a new one
+      into the same Secret, and Envoy switches to it without a restart.</div></li>
+  </ol>
+  <pre><span class="c"># platform/cert-manager/cluster-ca.yaml: the cluster's own CA</span>
+ClusterIssuer selfsigned           selfSigned
+Certificate   sample-cluster-ca    isCA: true, issuer selfsigned → Secret sample-cluster-ca
+ClusterIssuer sample-cluster-ca    ca: Secret sample-cluster-ca
+<span class="c"># platform/gateway/: the Gateway's certificate and listener</span>
+Certificate   shared-gateway-tls   issuer sample-cluster-ca, 24h, docs.localhost, grafana.localhost, …
+Gateway       shared-gateway       listener https :443, tls: Terminate, Secret shared-gateway-tls</pre>
+  <div class="grid-2">
+    <p class="callout warn"><b>Your machine doesn't trust this CA</b>, so browsers warn and curl refuses until you pass
+      or trust it, and every <code>./recreate-cluster.sh</code> makes a new one. A CA you trust can sign a certificate for
+      any name, your bank's too, and its key is a Secret any cluster admin can read: remove it from your keychain when you
+      are done. Plain <code>http://</code> keeps working.</p>
+    <p class="callout"><b>Why cert-manager?</b> It is how most clusters get certificates. The same Certificate with an
+      ACME issuer such as Let's Encrypt gets a publicly trusted certificate for a real domain, renewed the same way.</p>
+  </div>
+  <div class="try">
+    <div><p>Save the CA, then call a service over HTTPS without it and with it.</p>
+      <div class="cmd"><pre>kubectl get secret sample-cluster-ca -n cert-manager \
+  -o jsonpath='{.data.ca\.crt}' | base64 -d &gt; sample-cluster-ca.crt
+curl -sS https://docs.localhost        # fails: unable to get local issuer certificate
+curl --cacert sample-cluster-ca.crt -sI https://docs.localhost   # HTTP/2 200: over TLS, Envoy speaks HTTP/2</pre></div></div>
+    <div><p>Read the certificate Envoy sends: hostnames, issuer and expiry.</p>
+      <div class="cmd"><pre>openssl s_client -connect 127.0.0.1:443 -servername grafana.localhost &lt;/dev/null 2&gt;/dev/null \
+  | openssl x509 -noout -subject -issuer -dates -ext subjectAltName</pre></div></div>
+    <div><p>Delete the Secret: cert-manager signs a new certificate within seconds, and HTTPS fails until it does. A
+      real renewal updates the Secret in place, with no gap.</p>
+      <div class="cmd"><pre>kubectl delete secret shared-gateway-tls -n envoy-gateway-system
+kubectl get certificate -A    # READY is True again; openssl above shows new dates</pre></div></div>
+    <div><p>The certificates kubeadm made, and the nodes' certificate requests.</p>
+      <div class="cmd"><pre>docker exec sample-cluster-control-plane kubeadm certs check-expiration
+kubectl get csr</pre></div></div>
+    <div><p>Trust the CA on macOS (Chrome and Safari), and remove it again.</p>
+      <div class="cmd"><pre>sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain sample-cluster-ca.crt
+sudo security delete-certificate -c "sample-cluster CA" /Library/Keychains/System.keychain</pre></div></div>
   </div>
 </section>
 
@@ -231,6 +315,17 @@ kubectl get pod -n apps -l app=stock-app -o jsonpath='{.items[0].spec.volumes[*]
     <div class="finding"><span class="sev">Broad · RBAC</span><h3>Prometheus can read more than it uses</h3>
       <p>Discovery looks at six namespaces, but the ClusterRole allows reading pods, Services and Endpoints everywhere. <code>v1 Endpoints</code> is also deprecated in favour of EndpointSlices.</p>
       <p class="fix">Exercise: one Role and RoleBinding per scraped namespace, and <code>role: endpointslice</code>.</p></div>
+    <div class="finding"><span class="sev">Plain · TLS</span><h3>Inside the cluster, traffic is unencrypted</h3>
+      <p>Envoy decrypts at the edge. stock-app talks to Vault (<code>tls_disable = true</code>) and to TimescaleDB
+        (<code>ssl</code> is off) in plain text, so anyone who can capture a node's traffic reads the secrets and the
+        database password.</p>
+      <p class="fix">Exercise: issue a certificate for <code>vault-service.vault.svc</code> from
+        <code>sample-cluster-ca</code>, enable TLS in <code>vault.hcl</code>, and have stock-app check it with the CA.</p></div>
+    <div class="finding"><span class="sev">Skipped · TLS</span><h3>Prometheus doesn't check the kubelets' certificates</h3>
+      <p>Each kubelet signs its own serving certificate, so no CA can vouch for it and the <code>kubelet</code> job sets
+        <code>insecure_skip_verify</code>.</p>
+      <p class="fix">Exercise: set <code>serverTLSBootstrap: true</code> in kind's kubeadm config, approve the
+        <code>kubernetes.io/kubelet-serving</code> CSRs, and give Prometheus the cluster CA as <code>ca_file</code>.</p></div>
   </div>
 </section>
 
@@ -265,6 +360,26 @@ kubectl get pod -n apps -l app=stock-app -o jsonpath='{.items[0].spec.volumes[*]
       <p>Selectors in the <i>same</i> list item (a namespaceSelector and a podSelector together) must both match: AND.
       Separate list items are alternatives: OR. Policies are additive allow-lists; once any policy selects a pod for
       ingress, everything not allowed is denied.</p></div></details>
+    <details class="qa"><summary>What does a client check before it trusts a server's certificate?</summary><div>
+      <p>That a CA in its trust store signed it, directly or through intermediates; that the hostname it connected to is
+      in the certificate's names; and that today is between its <code>notBefore</code> and <code>notAfter</code>. In the
+      handshake the server then proves it holds the private key. A self-signed certificate passes only if the client
+      trusts that exact certificate.</p></div></details>
+    <details class="qa"><summary>A certificate expired and the cluster stopped working. Where do you look?</summary><div>
+      <p>On kubeadm clusters the control plane's certificates last one year: <code>kubeadm certs check-expiration</code>
+      shows them, <code>kubeadm certs renew all</code> and a restart of the control-plane pods fixes them, and every
+      <code>kubeadm upgrade</code> renews them. Kubelets renew their client certificates themselves through CSRs.
+      cert-manager renews at two thirds of a certificate's life; alert on
+      <code>certmanager_certificate_expiration_timestamp_seconds</code> in case it can't.</p></div></details>
+    <details class="qa"><summary>TLS at a gateway: terminate or pass through?</summary><div>
+      <p>Terminate (this cluster): the gateway holds the certificate, decrypts, routes by HTTP host and path, applies
+      filters such as CORS, and forwards plain HTTP or encrypts again to the backend. Passthrough (a TLSRoute): the
+      gateway routes encrypted bytes by the hostname in the handshake (SNI), and only the backend holds the certificate
+      and sees HTTP.</p></div></details>
+    <details class="qa"><summary>How do pods get mTLS with each other, tied to their ServiceAccounts?</summary><div>
+      <p>With a service mesh such as Istio or Linkerd. It gives each pod a short-lived certificate whose identity is its
+      ServiceAccount (<code>spiffe://cluster.local/ns/apps/sa/stock-app</code>), and its proxy does mTLS for the app, so
+      the code doesn't change. Policies can then allow callers by ServiceAccount instead of by IP.</p></div></details>
   </div>
 </section>
 

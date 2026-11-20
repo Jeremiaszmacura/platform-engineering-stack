@@ -1,8 +1,9 @@
 {
-  "generated_at": "2026-11-20T09:13:10.904868717Z",
+  "generated_at": "2026-11-20T16:58:20.861248421Z",
   "context": "sample-cluster",
   "version": "v1.37.0",
   "system_namespaces": [
+    "cert-manager",
     "default",
     "envoy-gateway-system",
     "kube-node-lease",
@@ -18,7 +19,7 @@
   "nodes": [
     {
       "name": "sample-cluster-control-plane",
-      "ip": "172.18.0.4",
+      "ip": "172.18.0.2",
       "pod_cidr": "10.244.0.0/24",
       "roles": [
         "control-plane"
@@ -37,7 +38,7 @@
     {
       "name": "sample-cluster-worker",
       "ip": "172.18.0.3",
-      "pod_cidr": "10.244.1.0/24",
+      "pod_cidr": "10.244.3.0/24",
       "roles": [],
       "taints": [],
       "agents": [
@@ -47,8 +48,8 @@
     },
     {
       "name": "sample-cluster-worker2",
-      "ip": "172.18.0.2",
-      "pod_cidr": "10.244.3.0/24",
+      "ip": "172.18.0.4",
+      "pod_cidr": "10.244.1.0/24",
       "roles": [],
       "taints": [],
       "agents": [
@@ -59,11 +60,11 @@
   ],
   "pods": [
     {
-      "id": "apps/stock-app-65c9f7bc85-pxc42",
-      "name": "stock-app-65c9f7bc85-pxc42",
+      "id": "apps/stock-app-796c958797-m4hx2",
+      "name": "stock-app-796c958797-m4hx2",
       "namespace": "apps",
       "app": "stock-app",
-      "ip": "10.244.3.8",
+      "ip": "10.244.1.9",
       "node": "sample-cluster-worker2",
       "host_network": false,
       "phase": "Running",
@@ -98,11 +99,11 @@
       }
     },
     {
-      "id": "apps/stock-ui-75bd6896c9-jkrq7",
-      "name": "stock-ui-75bd6896c9-jkrq7",
+      "id": "apps/stock-ui-75bd6896c9-g7tjc",
+      "name": "stock-ui-75bd6896c9-g7tjc",
       "namespace": "apps",
       "app": "stock-ui",
-      "ip": "10.244.3.9",
+      "ip": "10.244.1.7",
       "node": "sample-cluster-worker2",
       "host_network": false,
       "phase": "Running",
@@ -133,11 +134,11 @@
       }
     },
     {
-      "id": "apps/traffic-generator-77c89bcdb9-rck2q",
-      "name": "traffic-generator-77c89bcdb9-rck2q",
+      "id": "apps/traffic-generator-77c89bcdb9-7k57l",
+      "name": "traffic-generator-77c89bcdb9-7k57l",
       "namespace": "apps",
       "app": "traffic-generator",
-      "ip": "10.244.3.7",
+      "ip": "10.244.1.6",
       "node": "sample-cluster-worker2",
       "host_network": false,
       "phase": "Running",
@@ -168,11 +169,112 @@
       }
     },
     {
+      "id": "cert-manager/cert-manager-75c7bb8dcf-chqsq",
+      "name": "cert-manager-75c7bb8dcf-chqsq",
+      "namespace": "cert-manager",
+      "app": "cert-manager",
+      "ip": "10.244.3.2",
+      "node": "sample-cluster-worker",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "quay.io/jetstack/cert-manager-controller:v1.21.3"
+      ],
+      "service_account": "cert-manager",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [],
+      "probes": [
+        "liveness: GET /livez :http-healthz"
+      ],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": true,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": true,
+        "added_capabilities": [],
+        "seccomp": true,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
+      "id": "cert-manager/cert-manager-cainjector-696bcd58f7-rgggd",
+      "name": "cert-manager-cainjector-696bcd58f7-rgggd",
+      "namespace": "cert-manager",
+      "app": "cainjector",
+      "ip": "10.244.3.3",
+      "node": "sample-cluster-worker",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "quay.io/jetstack/cert-manager-cainjector:v1.21.3"
+      ],
+      "service_account": "cert-manager-cainjector",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [],
+      "probes": [],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": true,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": true,
+        "added_capabilities": [],
+        "seccomp": true,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
+      "id": "cert-manager/cert-manager-webhook-7d787c6866-8sj5t",
+      "name": "cert-manager-webhook-7d787c6866-8sj5t",
+      "namespace": "cert-manager",
+      "app": "webhook",
+      "ip": "10.244.3.4",
+      "node": "sample-cluster-worker",
+      "host_network": false,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "Deployment",
+      "images": [
+        "quay.io/jetstack/cert-manager-webhook:v1.21.3"
+      ],
+      "service_account": "cert-manager-webhook",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [],
+      "probes": [
+        "readiness: GET /healthz :healthcheck",
+        "liveness: GET /livez :healthcheck"
+      ],
+      "hardening": {
+        "non_root": true,
+        "read_only_root": true,
+        "no_privilege_escalation": true,
+        "drops_all_capabilities": true,
+        "added_capabilities": [],
+        "seccomp": true,
+        "host_access": [],
+        "limits": true
+      }
+    },
+    {
       "id": "data/timescaledb-0",
       "name": "timescaledb-0",
       "namespace": "data",
       "app": "timescaledb",
-      "ip": "10.244.1.8",
+      "ip": "10.244.3.11",
       "node": "sample-cluster-worker",
       "host_network": false,
       "phase": "Running",
@@ -212,11 +314,11 @@
       }
     },
     {
-      "id": "docs/documentation-c55fd68db-2mt5m",
-      "name": "documentation-c55fd68db-2mt5m",
+      "id": "docs/documentation-5c9cbc8d44-trxg7",
+      "name": "documentation-5c9cbc8d44-trxg7",
       "namespace": "docs",
       "app": "documentation",
-      "ip": "10.244.3.13",
+      "ip": "10.244.1.8",
       "node": "sample-cluster-worker2",
       "host_network": false,
       "phase": "Running",
@@ -247,11 +349,11 @@
       }
     },
     {
-      "id": "envoy-gateway-system/envoy-gateway-7d79cf87b6-vhfs9",
-      "name": "envoy-gateway-7d79cf87b6-vhfs9",
+      "id": "envoy-gateway-system/envoy-gateway-7d79cf87b6-nxhgw",
+      "name": "envoy-gateway-7d79cf87b6-nxhgw",
       "namespace": "envoy-gateway-system",
       "app": "gateway-helm",
-      "ip": "10.244.1.3",
+      "ip": "10.244.3.6",
       "node": "sample-cluster-worker",
       "host_network": false,
       "phase": "Running",
@@ -288,11 +390,11 @@
       }
     },
     {
-      "id": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r8bpk",
-      "name": "shared-gateway-proxy-94bbdd44d-r8bpk",
+      "id": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r64ks",
+      "name": "shared-gateway-proxy-94bbdd44d-r64ks",
       "namespace": "envoy-gateway-system",
       "app": "envoy",
-      "ip": "10.244.3.2",
+      "ip": "10.244.1.2",
       "node": "sample-cluster-worker2",
       "host_network": false,
       "phase": "Running",
@@ -332,11 +434,11 @@
       }
     },
     {
-      "id": "kube-system/coredns-559f6c778d-4b8fb",
-      "name": "coredns-559f6c778d-4b8fb",
+      "id": "kube-system/coredns-559f6c778d-m4fh4",
+      "name": "coredns-559f6c778d-m4fh4",
       "namespace": "kube-system",
       "app": "kube-dns",
-      "ip": "10.244.0.2",
+      "ip": "10.244.0.4",
       "node": "sample-cluster-control-plane",
       "host_network": false,
       "phase": "Running",
@@ -371,11 +473,11 @@
       }
     },
     {
-      "id": "kube-system/coredns-559f6c778d-8tqck",
-      "name": "coredns-559f6c778d-8tqck",
+      "id": "kube-system/coredns-559f6c778d-z9kx9",
+      "name": "coredns-559f6c778d-z9kx9",
       "namespace": "kube-system",
       "app": "kube-dns",
-      "ip": "10.244.0.3",
+      "ip": "10.244.0.2",
       "node": "sample-cluster-control-plane",
       "host_network": false,
       "phase": "Running",
@@ -414,7 +516,7 @@
       "name": "etcd-sample-cluster-control-plane",
       "namespace": "kube-system",
       "app": "etcd",
-      "ip": "172.18.0.4",
+      "ip": "172.18.0.2",
       "node": "sample-cluster-control-plane",
       "host_network": true,
       "phase": "Running",
@@ -451,51 +553,8 @@
       }
     },
     {
-      "id": "kube-system/kindnet-64j6m",
-      "name": "kindnet-64j6m",
-      "namespace": "kube-system",
-      "app": "kindnet",
-      "ip": "172.18.0.4",
-      "node": "sample-cluster-control-plane",
-      "host_network": true,
-      "phase": "Running",
-      "ready": true,
-      "restarts": 0,
-      "owner": "DaemonSet",
-      "images": [
-        "docker.io/kindest/kindnetd:v20260820-69b56db7"
-      ],
-      "service_account": "kindnet",
-      "token_mounted": true,
-      "secrets": [],
-      "config_maps": [],
-      "volumes": [
-        "hostPath /etc/cni/net.d at /etc/cni/net.d",
-        "hostPath /run/xtables.lock at /run/xtables.lock",
-        "hostPath /lib/modules at /lib/modules",
-        "hostPath /var/run/nri at /var/run/nri"
-      ],
-      "probes": [],
-      "hardening": {
-        "non_root": false,
-        "read_only_root": false,
-        "no_privilege_escalation": false,
-        "drops_all_capabilities": false,
-        "added_capabilities": [
-          "NET_ADMIN",
-          "NET_RAW"
-        ],
-        "seccomp": false,
-        "host_access": [
-          "hostNetwork",
-          "hostPath"
-        ],
-        "limits": false
-      }
-    },
-    {
-      "id": "kube-system/kindnet-bq6qp",
-      "name": "kindnet-bq6qp",
+      "id": "kube-system/kindnet-frmq2",
+      "name": "kindnet-frmq2",
       "namespace": "kube-system",
       "app": "kindnet",
       "ip": "172.18.0.3",
@@ -537,12 +596,55 @@
       }
     },
     {
-      "id": "kube-system/kindnet-c2tmk",
-      "name": "kindnet-c2tmk",
+      "id": "kube-system/kindnet-j2kpr",
+      "name": "kindnet-j2kpr",
+      "namespace": "kube-system",
+      "app": "kindnet",
+      "ip": "172.18.0.4",
+      "node": "sample-cluster-worker2",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "docker.io/kindest/kindnetd:v20260820-69b56db7"
+      ],
+      "service_account": "kindnet",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /etc/cni/net.d at /etc/cni/net.d",
+        "hostPath /run/xtables.lock at /run/xtables.lock",
+        "hostPath /lib/modules at /lib/modules",
+        "hostPath /var/run/nri at /var/run/nri"
+      ],
+      "probes": [],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPath"
+        ],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/kindnet-vjsgn",
+      "name": "kindnet-vjsgn",
       "namespace": "kube-system",
       "app": "kindnet",
       "ip": "172.18.0.2",
-      "node": "sample-cluster-worker2",
+      "node": "sample-cluster-control-plane",
       "host_network": true,
       "phase": "Running",
       "ready": true,
@@ -584,7 +686,7 @@
       "name": "kube-apiserver-sample-cluster-control-plane",
       "namespace": "kube-system",
       "app": "kube-apiserver",
-      "ip": "172.18.0.4",
+      "ip": "172.18.0.2",
       "node": "sample-cluster-control-plane",
       "host_network": true,
       "phase": "Running",
@@ -628,7 +730,7 @@
       "name": "kube-controller-manager-sample-cluster-control-plane",
       "namespace": "kube-system",
       "app": "kube-controller-manager",
-      "ip": "172.18.0.4",
+      "ip": "172.18.0.2",
       "node": "sample-cluster-control-plane",
       "host_network": true,
       "phase": "Running",
@@ -668,51 +770,11 @@
       }
     },
     {
-      "id": "kube-system/kube-proxy-86jds",
-      "name": "kube-proxy-86jds",
+      "id": "kube-system/kube-proxy-2tmbq",
+      "name": "kube-proxy-2tmbq",
       "namespace": "kube-system",
       "app": "kube-proxy",
-      "ip": "172.18.0.3",
-      "node": "sample-cluster-worker",
-      "host_network": true,
-      "phase": "Running",
-      "ready": true,
-      "restarts": 0,
-      "owner": "DaemonSet",
-      "images": [
-        "registry.k8s.io/kube-proxy:v1.37.0"
-      ],
-      "service_account": "kube-proxy",
-      "token_mounted": true,
-      "secrets": [],
-      "config_maps": [
-        "kube-proxy → volume at /var/lib/kube-proxy"
-      ],
-      "volumes": [
-        "hostPath /run/xtables.lock at /run/xtables.lock",
-        "hostPath /lib/modules at /lib/modules"
-      ],
-      "probes": [],
-      "hardening": {
-        "non_root": false,
-        "read_only_root": false,
-        "no_privilege_escalation": false,
-        "drops_all_capabilities": false,
-        "added_capabilities": [],
-        "seccomp": false,
-        "host_access": [
-          "hostNetwork",
-          "hostPath"
-        ],
-        "limits": false
-      }
-    },
-    {
-      "id": "kube-system/kube-proxy-9sqjr",
-      "name": "kube-proxy-9sqjr",
-      "namespace": "kube-system",
-      "app": "kube-proxy",
-      "ip": "172.18.0.4",
+      "ip": "172.18.0.2",
       "node": "sample-cluster-control-plane",
       "host_network": true,
       "phase": "Running",
@@ -748,12 +810,52 @@
       }
     },
     {
-      "id": "kube-system/kube-proxy-c6skk",
-      "name": "kube-proxy-c6skk",
+      "id": "kube-system/kube-proxy-5smxj",
+      "name": "kube-proxy-5smxj",
       "namespace": "kube-system",
       "app": "kube-proxy",
-      "ip": "172.18.0.2",
+      "ip": "172.18.0.4",
       "node": "sample-cluster-worker2",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "registry.k8s.io/kube-proxy:v1.37.0"
+      ],
+      "service_account": "kube-proxy",
+      "token_mounted": true,
+      "secrets": [],
+      "config_maps": [
+        "kube-proxy → volume at /var/lib/kube-proxy"
+      ],
+      "volumes": [
+        "hostPath /run/xtables.lock at /run/xtables.lock",
+        "hostPath /lib/modules at /lib/modules"
+      ],
+      "probes": [],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPath"
+        ],
+        "limits": false
+      }
+    },
+    {
+      "id": "kube-system/kube-proxy-h7bbv",
+      "name": "kube-proxy-h7bbv",
+      "namespace": "kube-system",
+      "app": "kube-proxy",
+      "ip": "172.18.0.3",
+      "node": "sample-cluster-worker",
       "host_network": true,
       "phase": "Running",
       "ready": true,
@@ -792,7 +894,7 @@
       "name": "kube-scheduler-sample-cluster-control-plane",
       "namespace": "kube-system",
       "app": "kube-scheduler",
-      "ip": "172.18.0.4",
+      "ip": "172.18.0.2",
       "node": "sample-cluster-control-plane",
       "host_network": true,
       "phase": "Running",
@@ -828,11 +930,11 @@
       }
     },
     {
-      "id": "local-path-storage/local-path-provisioner-75f7fc7dc5-pqsl7",
-      "name": "local-path-provisioner-75f7fc7dc5-pqsl7",
+      "id": "local-path-storage/local-path-provisioner-75f7fc7dc5-7wbbs",
+      "name": "local-path-provisioner-75f7fc7dc5-7wbbs",
       "namespace": "local-path-storage",
       "app": "local-path-provisioner",
-      "ip": "10.244.0.4",
+      "ip": "10.244.0.3",
       "node": "sample-cluster-control-plane",
       "host_network": false,
       "phase": "Running",
@@ -862,12 +964,12 @@
       }
     },
     {
-      "id": "monitoring/alertmanager-5f79859785-qkpwj",
-      "name": "alertmanager-5f79859785-qkpwj",
+      "id": "monitoring/alertmanager-7b69f8b6f7-z9cs5",
+      "name": "alertmanager-7b69f8b6f7-z9cs5",
       "namespace": "monitoring",
       "app": "alertmanager",
-      "ip": "10.244.1.4",
-      "node": "sample-cluster-worker",
+      "ip": "10.244.1.3",
+      "node": "sample-cluster-worker2",
       "host_network": false,
       "phase": "Running",
       "ready": true,
@@ -900,12 +1002,12 @@
       }
     },
     {
-      "id": "monitoring/grafana-5676f598c8-r2pcf",
-      "name": "grafana-5676f598c8-r2pcf",
+      "id": "monitoring/grafana-696458656b-24w94",
+      "name": "grafana-696458656b-24w94",
       "namespace": "monitoring",
       "app": "grafana",
-      "ip": "10.244.1.6",
-      "node": "sample-cluster-worker",
+      "ip": "10.244.1.5",
+      "node": "sample-cluster-worker2",
       "host_network": false,
       "phase": "Running",
       "ready": true,
@@ -923,7 +1025,7 @@
       "config_maps": [
         "grafana-dashboard-provider-h557gdcg2b → volume at /etc/grafana/provisioning/dashboards",
         "grafana-dashboards-f7mckb8gk4 → volume at /etc/grafana/dashboards",
-        "grafana-datasources-hc724dkk5c → volume at /etc/grafana/provisioning/datasources"
+        "grafana-datasources-654h94m9td → volume at /etc/grafana/provisioning/datasources"
       ],
       "volumes": [
         "emptyDir at /var/lib/grafana"
@@ -944,92 +1046,8 @@
       }
     },
     {
-      "id": "monitoring/node-exporter-4wgp6",
-      "name": "node-exporter-4wgp6",
-      "namespace": "monitoring",
-      "app": "node-exporter",
-      "ip": "172.18.0.4",
-      "node": "sample-cluster-control-plane",
-      "host_network": true,
-      "phase": "Running",
-      "ready": true,
-      "restarts": 0,
-      "owner": "DaemonSet",
-      "images": [
-        "prom/node-exporter:v1.12.1"
-      ],
-      "service_account": "node-exporter",
-      "token_mounted": false,
-      "secrets": [],
-      "config_maps": [],
-      "volumes": [
-        "hostPath /proc at /host/proc",
-        "hostPath /sys at /host/sys",
-        "hostPath / at /rootfs"
-      ],
-      "probes": [
-        "readiness: GET / :9100"
-      ],
-      "hardening": {
-        "non_root": false,
-        "read_only_root": false,
-        "no_privilege_escalation": false,
-        "drops_all_capabilities": false,
-        "added_capabilities": [],
-        "seccomp": false,
-        "host_access": [
-          "hostNetwork",
-          "hostPID",
-          "hostPath"
-        ],
-        "limits": true
-      }
-    },
-    {
-      "id": "monitoring/node-exporter-5w7mc",
-      "name": "node-exporter-5w7mc",
-      "namespace": "monitoring",
-      "app": "node-exporter",
-      "ip": "172.18.0.2",
-      "node": "sample-cluster-worker2",
-      "host_network": true,
-      "phase": "Running",
-      "ready": true,
-      "restarts": 0,
-      "owner": "DaemonSet",
-      "images": [
-        "prom/node-exporter:v1.12.1"
-      ],
-      "service_account": "node-exporter",
-      "token_mounted": false,
-      "secrets": [],
-      "config_maps": [],
-      "volumes": [
-        "hostPath /proc at /host/proc",
-        "hostPath /sys at /host/sys",
-        "hostPath / at /rootfs"
-      ],
-      "probes": [
-        "readiness: GET / :9100"
-      ],
-      "hardening": {
-        "non_root": false,
-        "read_only_root": false,
-        "no_privilege_escalation": false,
-        "drops_all_capabilities": false,
-        "added_capabilities": [],
-        "seccomp": false,
-        "host_access": [
-          "hostNetwork",
-          "hostPID",
-          "hostPath"
-        ],
-        "limits": true
-      }
-    },
-    {
-      "id": "monitoring/node-exporter-jvx99",
-      "name": "node-exporter-jvx99",
+      "id": "monitoring/node-exporter-9dt68",
+      "name": "node-exporter-9dt68",
       "namespace": "monitoring",
       "app": "node-exporter",
       "ip": "172.18.0.3",
@@ -1070,12 +1088,96 @@
       }
     },
     {
-      "id": "monitoring/otel-collector-ff684b5d9-47bv4",
-      "name": "otel-collector-ff684b5d9-47bv4",
+      "id": "monitoring/node-exporter-f4vtq",
+      "name": "node-exporter-f4vtq",
+      "namespace": "monitoring",
+      "app": "node-exporter",
+      "ip": "172.18.0.4",
+      "node": "sample-cluster-worker2",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "prom/node-exporter:v1.12.1"
+      ],
+      "service_account": "node-exporter",
+      "token_mounted": false,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /proc at /host/proc",
+        "hostPath /sys at /host/sys",
+        "hostPath / at /rootfs"
+      ],
+      "probes": [
+        "readiness: GET / :9100"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPID",
+          "hostPath"
+        ],
+        "limits": true
+      }
+    },
+    {
+      "id": "monitoring/node-exporter-kgjmf",
+      "name": "node-exporter-kgjmf",
+      "namespace": "monitoring",
+      "app": "node-exporter",
+      "ip": "172.18.0.2",
+      "node": "sample-cluster-control-plane",
+      "host_network": true,
+      "phase": "Running",
+      "ready": true,
+      "restarts": 0,
+      "owner": "DaemonSet",
+      "images": [
+        "prom/node-exporter:v1.12.1"
+      ],
+      "service_account": "node-exporter",
+      "token_mounted": false,
+      "secrets": [],
+      "config_maps": [],
+      "volumes": [
+        "hostPath /proc at /host/proc",
+        "hostPath /sys at /host/sys",
+        "hostPath / at /rootfs"
+      ],
+      "probes": [
+        "readiness: GET / :9100"
+      ],
+      "hardening": {
+        "non_root": false,
+        "read_only_root": false,
+        "no_privilege_escalation": false,
+        "drops_all_capabilities": false,
+        "added_capabilities": [],
+        "seccomp": false,
+        "host_access": [
+          "hostNetwork",
+          "hostPID",
+          "hostPath"
+        ],
+        "limits": true
+      }
+    },
+    {
+      "id": "monitoring/otel-collector-ff684b5d9-nrq55",
+      "name": "otel-collector-ff684b5d9-nrq55",
       "namespace": "monitoring",
       "app": "otel-collector",
-      "ip": "10.244.3.4",
-      "node": "sample-cluster-worker2",
+      "ip": "10.244.3.8",
+      "node": "sample-cluster-worker",
       "host_network": false,
       "phase": "Running",
       "ready": true,
@@ -1106,11 +1208,11 @@
       }
     },
     {
-      "id": "monitoring/prometheus-67d657dbb-ppftc",
-      "name": "prometheus-67d657dbb-ppftc",
+      "id": "monitoring/prometheus-7565548855-68d8z",
+      "name": "prometheus-7565548855-68d8z",
       "namespace": "monitoring",
       "app": "prometheus",
-      "ip": "10.244.3.3",
+      "ip": "10.244.1.4",
       "node": "sample-cluster-worker2",
       "host_network": false,
       "phase": "Running",
@@ -1143,11 +1245,11 @@
       }
     },
     {
-      "id": "monitoring/tempo-7f6f89b49b-sh5l6",
-      "name": "tempo-7f6f89b49b-sh5l6",
+      "id": "monitoring/tempo-7f6f89b49b-fhjch",
+      "name": "tempo-7f6f89b49b-fhjch",
       "namespace": "monitoring",
       "app": "tempo",
-      "ip": "10.244.1.5",
+      "ip": "10.244.3.7",
       "node": "sample-cluster-worker",
       "host_network": false,
       "phase": "Running",
@@ -1185,8 +1287,8 @@
       "name": "vault-0",
       "namespace": "vault",
       "app": "vault",
-      "ip": "10.244.3.6",
-      "node": "sample-cluster-worker2",
+      "ip": "10.244.3.15",
+      "node": "sample-cluster-worker",
       "host_network": false,
       "phase": "Running",
       "ready": true,
@@ -1227,7 +1329,7 @@
       "name": "stock-app-service",
       "namespace": "apps",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.46.59",
+      "cluster_ip": "10.96.236.81",
       "ports": [
         "8000 → 8000/TCP"
       ],
@@ -1245,7 +1347,7 @@
       ],
       "cors": true,
       "pods": [
-        "apps/stock-app-65c9f7bc85-pxc42"
+        "apps/stock-app-796c958797-m4hx2"
       ]
     },
     {
@@ -1253,7 +1355,7 @@
       "name": "stock-ui-service",
       "namespace": "apps",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.57.109",
+      "cluster_ip": "10.96.190.252",
       "ports": [
         "80 → 8080/TCP"
       ],
@@ -1271,7 +1373,7 @@
       ],
       "cors": false,
       "pods": [
-        "apps/stock-ui-75bd6896c9-jkrq7"
+        "apps/stock-ui-75bd6896c9-g7tjc"
       ]
     },
     {
@@ -1279,7 +1381,7 @@
       "name": "traffic-generator-service",
       "namespace": "apps",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.157.193",
+      "cluster_ip": "10.96.141.10",
       "ports": [
         "80 → 8080/TCP"
       ],
@@ -1297,7 +1399,81 @@
       ],
       "cors": false,
       "pods": [
-        "apps/traffic-generator-77c89bcdb9-rck2q"
+        "apps/traffic-generator-77c89bcdb9-7k57l"
+      ]
+    },
+    {
+      "id": "cert-manager/cert-manager",
+      "name": "cert-manager",
+      "namespace": "cert-manager",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.169.85",
+      "ports": [
+        "9402 → 9402/TCP"
+      ],
+      "target_ports": [
+        "9402"
+      ],
+      "node_ports": [],
+      "dns": "cert-manager.cert-manager.svc.cluster.local",
+      "scraped": false,
+      "job": "",
+      "metrics_port": "9402",
+      "metrics_path": "/metrics",
+      "hostnames": [],
+      "cors": false,
+      "pods": [
+        "cert-manager/cert-manager-75c7bb8dcf-chqsq"
+      ]
+    },
+    {
+      "id": "cert-manager/cert-manager-cainjector",
+      "name": "cert-manager-cainjector",
+      "namespace": "cert-manager",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.176.157",
+      "ports": [
+        "9402 → 9402/TCP"
+      ],
+      "target_ports": [
+        "9402"
+      ],
+      "node_ports": [],
+      "dns": "cert-manager-cainjector.cert-manager.svc.cluster.local",
+      "scraped": false,
+      "job": "",
+      "metrics_port": "9402",
+      "metrics_path": "/metrics",
+      "hostnames": [],
+      "cors": false,
+      "pods": [
+        "cert-manager/cert-manager-cainjector-696bcd58f7-rgggd"
+      ]
+    },
+    {
+      "id": "cert-manager/cert-manager-webhook",
+      "name": "cert-manager-webhook",
+      "namespace": "cert-manager",
+      "type": "ClusterIP",
+      "cluster_ip": "10.96.211.78",
+      "ports": [
+        "443 → https/TCP",
+        "9402 → http-metrics/TCP"
+      ],
+      "target_ports": [
+        "https",
+        "http-metrics"
+      ],
+      "node_ports": [],
+      "dns": "cert-manager-webhook.cert-manager.svc.cluster.local",
+      "scraped": false,
+      "job": "",
+      "metrics_port": "https",
+      "metrics_path": "/metrics",
+      "hostnames": [],
+      "cors": false,
+      "pods": [
+        "cert-manager/cert-manager-webhook-7d787c6866-8sj5t"
       ]
     },
     {
@@ -1329,7 +1505,7 @@
       "name": "timescaledb-service",
       "namespace": "data",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.49.155",
+      "cluster_ip": "10.96.161.154",
       "ports": [
         "5432 → 5432/TCP",
         "9187 → 9187/TCP"
@@ -1377,7 +1553,7 @@
       "name": "documentation-service",
       "namespace": "docs",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.38.206",
+      "cluster_ip": "10.96.96.254",
       "ports": [
         "80 → 8080/TCP"
       ],
@@ -1395,7 +1571,7 @@
       ],
       "cors": false,
       "pods": [
-        "docs/documentation-c55fd68db-2mt5m"
+        "docs/documentation-5c9cbc8d44-trxg7"
       ]
     },
     {
@@ -1403,7 +1579,7 @@
       "name": "envoy-gateway",
       "namespace": "envoy-gateway-system",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.56.121",
+      "cluster_ip": "10.96.164.241",
       "ports": [
         "18000 → 18000/TCP",
         "18001 → 18001/TCP",
@@ -1427,7 +1603,7 @@
       "hostnames": [],
       "cors": false,
       "pods": [
-        "envoy-gateway-system/envoy-gateway-7d79cf87b6-vhfs9"
+        "envoy-gateway-system/envoy-gateway-7d79cf87b6-nxhgw"
       ]
     },
     {
@@ -1435,15 +1611,18 @@
       "name": "shared-gateway-proxy",
       "namespace": "envoy-gateway-system",
       "type": "NodePort",
-      "cluster_ip": "10.96.181.78",
+      "cluster_ip": "10.96.174.27",
       "ports": [
-        "80 → 10080/TCP (nodePort 30080)"
+        "80 → 10080/TCP (nodePort 30080)",
+        "443 → 10443/TCP (nodePort 30443)"
       ],
       "target_ports": [
-        "10080"
+        "10080",
+        "10443"
       ],
       "node_ports": [
-        "30080"
+        "30080",
+        "30443"
       ],
       "dns": "shared-gateway-proxy.envoy-gateway-system.svc.cluster.local",
       "scraped": true,
@@ -1453,7 +1632,7 @@
       "hostnames": [],
       "cors": false,
       "pods": [
-        "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r8bpk"
+        "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r64ks"
       ]
     },
     {
@@ -1481,8 +1660,8 @@
       "hostnames": [],
       "cors": false,
       "pods": [
-        "kube-system/coredns-559f6c778d-4b8fb",
-        "kube-system/coredns-559f6c778d-8tqck"
+        "kube-system/coredns-559f6c778d-m4fh4",
+        "kube-system/coredns-559f6c778d-z9kx9"
       ]
     },
     {
@@ -1490,7 +1669,7 @@
       "name": "alertmanager-service",
       "namespace": "monitoring",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.155.8",
+      "cluster_ip": "10.96.76.250",
       "ports": [
         "9093 → 9093/TCP"
       ],
@@ -1508,7 +1687,7 @@
       ],
       "cors": false,
       "pods": [
-        "monitoring/alertmanager-5f79859785-qkpwj"
+        "monitoring/alertmanager-7b69f8b6f7-z9cs5"
       ]
     },
     {
@@ -1516,7 +1695,7 @@
       "name": "grafana-service",
       "namespace": "monitoring",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.18.1",
+      "cluster_ip": "10.96.201.233",
       "ports": [
         "3000 → 3000/TCP"
       ],
@@ -1534,7 +1713,7 @@
       ],
       "cors": false,
       "pods": [
-        "monitoring/grafana-5676f598c8-r2pcf"
+        "monitoring/grafana-696458656b-24w94"
       ]
     },
     {
@@ -1542,7 +1721,7 @@
       "name": "node-exporter-service",
       "namespace": "monitoring",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.246.30",
+      "cluster_ip": "10.96.92.240",
       "ports": [
         "9100 → 9100/TCP"
       ],
@@ -1558,9 +1737,9 @@
       "hostnames": [],
       "cors": false,
       "pods": [
-        "monitoring/node-exporter-4wgp6",
-        "monitoring/node-exporter-5w7mc",
-        "monitoring/node-exporter-jvx99"
+        "monitoring/node-exporter-9dt68",
+        "monitoring/node-exporter-f4vtq",
+        "monitoring/node-exporter-kgjmf"
       ]
     },
     {
@@ -1568,7 +1747,7 @@
       "name": "otel-collector-service",
       "namespace": "monitoring",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.149.36",
+      "cluster_ip": "10.96.62.94",
       "ports": [
         "4318 → 4318/TCP",
         "8888 → 8888/TCP"
@@ -1586,7 +1765,7 @@
       "hostnames": [],
       "cors": false,
       "pods": [
-        "monitoring/otel-collector-ff684b5d9-47bv4"
+        "monitoring/otel-collector-ff684b5d9-nrq55"
       ]
     },
     {
@@ -1594,7 +1773,7 @@
       "name": "prometheus-service",
       "namespace": "monitoring",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.201.2",
+      "cluster_ip": "10.96.12.214",
       "ports": [
         "9090 → 9090/TCP"
       ],
@@ -1612,7 +1791,7 @@
       ],
       "cors": false,
       "pods": [
-        "monitoring/prometheus-67d657dbb-ppftc"
+        "monitoring/prometheus-7565548855-68d8z"
       ]
     },
     {
@@ -1620,7 +1799,7 @@
       "name": "tempo-service",
       "namespace": "monitoring",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.141.213",
+      "cluster_ip": "10.96.60.61",
       "ports": [
         "3200 → 3200/TCP",
         "4318 → 4318/TCP"
@@ -1638,7 +1817,7 @@
       "hostnames": [],
       "cors": false,
       "pods": [
-        "monitoring/tempo-7f6f89b49b-sh5l6"
+        "monitoring/tempo-7f6f89b49b-fhjch"
       ]
     },
     {
@@ -1670,7 +1849,7 @@
       "name": "vault-service",
       "namespace": "vault",
       "type": "ClusterIP",
-      "cluster_ip": "10.96.8.55",
+      "cluster_ip": "10.96.76.111",
       "ports": [
         "8200 → 8200/TCP"
       ],
@@ -1701,8 +1880,8 @@
       "programmed": true,
       "addresses": [
         "172.18.0.2",
-        "172.18.0.4",
-        "172.18.0.3"
+        "172.18.0.3",
+        "172.18.0.4"
       ],
       "listeners": [
         {
@@ -1712,10 +1891,18 @@
           "hostname": "*.localhost",
           "allowed_routes": "namespaces labelled shared-gateway-access=true",
           "attached_routes": 8
+        },
+        {
+          "name": "https",
+          "protocol": "HTTPS",
+          "port": 443,
+          "hostname": "*.localhost",
+          "allowed_routes": "namespaces labelled shared-gateway-access=true",
+          "attached_routes": 8
         }
       ],
       "proxy_pods": [
-        "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r8bpk"
+        "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r64ks"
       ],
       "proxy_service": "envoy-gateway-system/shared-gateway-proxy"
     }
@@ -1890,7 +2077,7 @@
       "namespace": "apps",
       "automount": "false",
       "used_by": [
-        "stock-app-65c9f7bc85-pxc42"
+        "stock-app-796c958797-m4hx2"
       ],
       "token_mounted": false,
       "permissions": []
@@ -1900,7 +2087,7 @@
       "namespace": "apps",
       "automount": "false",
       "used_by": [
-        "stock-ui-75bd6896c9-jkrq7"
+        "stock-ui-75bd6896c9-g7tjc"
       ],
       "token_mounted": false,
       "permissions": []
@@ -1910,7 +2097,7 @@
       "namespace": "apps",
       "automount": "false",
       "used_by": [
-        "traffic-generator-77c89bcdb9-rck2q"
+        "traffic-generator-77c89bcdb9-7k57l"
       ],
       "token_mounted": false,
       "permissions": []
@@ -1930,13 +2117,13 @@
       "namespace": "docs",
       "automount": "not set (true)",
       "used_by": [
-        "documentation-c55fd68db-2mt5m"
+        "documentation-5c9cbc8d44-trxg7"
       ],
       "token_mounted": true,
       "permissions": [
         "ClusterRole documentation (cluster-wide): get,list,watch nodes,pods,services,serviceaccounts,persistentvolumeclaims,persistentvolumes; get,list,watch networkpolicies; get,list,watch gateways,httproutes; get,list,watch roles,rolebindings,clusterroles,clusterrolebindings",
-        "Role documentation-kube-proxy (in kube-system): get configmaps \"kube-proxy\"",
-        "Role documentation-prometheus (in monitoring): get configmaps \"prometheus-config\""
+        "Role documentation-prometheus (in monitoring): get configmaps \"prometheus-config\"",
+        "Role documentation-kube-proxy (in kube-system): get configmaps \"kube-proxy\""
       ]
     },
     {
@@ -1944,7 +2131,7 @@
       "namespace": "monitoring",
       "automount": "false",
       "used_by": [
-        "alertmanager-5f79859785-qkpwj"
+        "alertmanager-7b69f8b6f7-z9cs5"
       ],
       "token_mounted": false,
       "permissions": []
@@ -1954,7 +2141,7 @@
       "namespace": "monitoring",
       "automount": "false",
       "used_by": [
-        "grafana-5676f598c8-r2pcf"
+        "grafana-696458656b-24w94"
       ],
       "token_mounted": false,
       "permissions": []
@@ -1964,9 +2151,9 @@
       "namespace": "monitoring",
       "automount": "false",
       "used_by": [
-        "node-exporter-4wgp6",
-        "node-exporter-5w7mc",
-        "node-exporter-jvx99"
+        "node-exporter-9dt68",
+        "node-exporter-f4vtq",
+        "node-exporter-kgjmf"
       ],
       "token_mounted": false,
       "permissions": []
@@ -1976,7 +2163,7 @@
       "namespace": "monitoring",
       "automount": "not set (true)",
       "used_by": [
-        "otel-collector-ff684b5d9-47bv4"
+        "otel-collector-ff684b5d9-nrq55"
       ],
       "token_mounted": true,
       "permissions": [
@@ -1988,7 +2175,7 @@
       "namespace": "monitoring",
       "automount": "not set (true)",
       "used_by": [
-        "prometheus-67d657dbb-ppftc"
+        "prometheus-7565548855-68d8z"
       ],
       "token_mounted": true,
       "permissions": [
@@ -2000,7 +2187,7 @@
       "namespace": "monitoring",
       "automount": "false",
       "used_by": [
-        "tempo-7f6f89b49b-sh5l6"
+        "tempo-7f6f89b49b-fhjch"
       ],
       "token_mounted": false,
       "permissions": []
@@ -2039,7 +2226,7 @@
         "(all keys)"
       ],
       "used_by": [
-        "alertmanager-5f79859785-qkpwj"
+        "alertmanager-7b69f8b6f7-z9cs5"
       ]
     },
     {
@@ -2050,7 +2237,7 @@
         "(all keys)"
       ],
       "used_by": [
-        "grafana-5676f598c8-r2pcf"
+        "grafana-696458656b-24w94"
       ]
     },
     {
@@ -2061,18 +2248,18 @@
         "(all keys)"
       ],
       "used_by": [
-        "grafana-5676f598c8-r2pcf"
+        "grafana-696458656b-24w94"
       ]
     },
     {
       "kind": "ConfigMap",
-      "name": "grafana-datasources-hc724dkk5c",
+      "name": "grafana-datasources-654h94m9td",
       "namespace": "monitoring",
       "keys": [
         "(all keys)"
       ],
       "used_by": [
-        "grafana-5676f598c8-r2pcf"
+        "grafana-696458656b-24w94"
       ]
     },
     {
@@ -2083,7 +2270,7 @@
         "(all keys)"
       ],
       "used_by": [
-        "otel-collector-ff684b5d9-47bv4"
+        "otel-collector-ff684b5d9-nrq55"
       ]
     },
     {
@@ -2094,7 +2281,7 @@
         "(all keys)"
       ],
       "used_by": [
-        "prometheus-67d657dbb-ppftc"
+        "prometheus-7565548855-68d8z"
       ]
     },
     {
@@ -2105,7 +2292,7 @@
         "(all keys)"
       ],
       "used_by": [
-        "tempo-7f6f89b49b-sh5l6"
+        "tempo-7f6f89b49b-fhjch"
       ]
     },
     {
@@ -2127,7 +2314,7 @@
         "db-password"
       ],
       "used_by": [
-        "stock-app-65c9f7bc85-pxc42"
+        "stock-app-796c958797-m4hx2"
       ]
     },
     {
@@ -2151,7 +2338,7 @@
         "admin-user"
       ],
       "used_by": [
-        "grafana-5676f598c8-r2pcf"
+        "grafana-696458656b-24w94"
       ]
     },
     {
@@ -2175,9 +2362,9 @@
       "access_modes": [
         "ReadWriteOnce"
       ],
-      "volume": "pvc-74b588de-4897-42fd-8bbc-3b277b95601c",
+      "volume": "pvc-95bf0194-3fa4-43fe-9907-ae003184b414",
       "node": "sample-cluster-worker",
-      "path": "/var/local-path-provisioner/pvc-74b588de-4897-42fd-8bbc-3b277b95601c_data_data-timescaledb-0",
+      "path": "/var/local-path-provisioner/pvc-95bf0194-3fa4-43fe-9907-ae003184b414_data_data-timescaledb-0",
       "pods": [
         "timescaledb-0"
       ]
@@ -2190,9 +2377,9 @@
       "access_modes": [
         "ReadWriteOnce"
       ],
-      "volume": "pvc-8c34c850-65a2-42d1-89ef-bf5db2c1cf44",
-      "node": "sample-cluster-worker2",
-      "path": "/var/local-path-provisioner/pvc-8c34c850-65a2-42d1-89ef-bf5db2c1cf44_vault_data-vault-0",
+      "volume": "pvc-27d1c62b-7d03-466f-a6b8-0c48c72e54ed",
+      "node": "sample-cluster-worker",
+      "path": "/var/local-path-provisioner/pvc-27d1c62b-7d03-466f-a6b8-0c48c72e54ed_vault_data-vault-0",
       "pods": [
         "vault-0"
       ]
@@ -2200,217 +2387,235 @@
   ],
   "links": [
     {
-      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r8bpk",
-      "target": "apps/stock-app-65c9f7bc85-pxc42",
+      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r64ks",
+      "target": "apps/stock-app-796c958797-m4hx2",
       "label": "stock.localhost",
       "kind": "gateway"
     },
     {
-      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r8bpk",
-      "target": "apps/stock-ui-75bd6896c9-jkrq7",
+      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r64ks",
+      "target": "apps/stock-ui-75bd6896c9-g7tjc",
       "label": "stock-ui.localhost",
       "kind": "gateway"
     },
     {
-      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r8bpk",
-      "target": "apps/traffic-generator-77c89bcdb9-rck2q",
+      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r64ks",
+      "target": "apps/traffic-generator-77c89bcdb9-7k57l",
       "label": "traffic-generator.localhost",
       "kind": "gateway"
     },
     {
-      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r8bpk",
-      "target": "docs/documentation-c55fd68db-2mt5m",
+      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r64ks",
+      "target": "docs/documentation-5c9cbc8d44-trxg7",
       "label": "docs.localhost",
       "kind": "gateway"
     },
     {
-      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r8bpk",
-      "target": "monitoring/alertmanager-5f79859785-qkpwj",
+      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r64ks",
+      "target": "monitoring/alertmanager-7b69f8b6f7-z9cs5",
       "label": "alertmanager.localhost",
       "kind": "gateway"
     },
     {
-      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r8bpk",
-      "target": "monitoring/grafana-5676f598c8-r2pcf",
+      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r64ks",
+      "target": "monitoring/grafana-696458656b-24w94",
       "label": "grafana.localhost",
       "kind": "gateway"
     },
     {
-      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r8bpk",
-      "target": "monitoring/prometheus-67d657dbb-ppftc",
+      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r64ks",
+      "target": "monitoring/prometheus-7565548855-68d8z",
       "label": "prometheus.localhost",
       "kind": "gateway"
     },
     {
-      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r8bpk",
+      "source": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r64ks",
       "target": "vault/vault-0",
       "label": "vault.localhost",
       "kind": "gateway"
     },
     {
-      "source": "apps/stock-app-65c9f7bc85-pxc42",
+      "source": "apps/stock-app-796c958797-m4hx2",
       "target": "data/timescaledb-0",
       "label": "timescaledb-service.data:5432",
       "kind": "call"
     },
     {
-      "source": "apps/stock-app-65c9f7bc85-pxc42",
+      "source": "apps/stock-app-796c958797-m4hx2",
       "target": "vault/vault-0",
       "label": "vault-service.vault:8200",
       "kind": "call"
     },
     {
-      "source": "apps/stock-app-65c9f7bc85-pxc42",
-      "target": "monitoring/otel-collector-ff684b5d9-47bv4",
+      "source": "apps/stock-app-796c958797-m4hx2",
+      "target": "monitoring/otel-collector-ff684b5d9-nrq55",
       "label": "otel-collector-service.monitoring:4318",
       "kind": "call"
     },
     {
-      "source": "docs/documentation-c55fd68db-2mt5m",
-      "target": "monitoring/prometheus-67d657dbb-ppftc",
+      "source": "docs/documentation-5c9cbc8d44-trxg7",
+      "target": "monitoring/prometheus-7565548855-68d8z",
       "label": "prometheus-service.monitoring:9090",
       "kind": "call"
     },
     {
-      "source": "monitoring/grafana-5676f598c8-r2pcf",
-      "target": "monitoring/prometheus-67d657dbb-ppftc",
+      "source": "monitoring/grafana-696458656b-24w94",
+      "target": "monitoring/prometheus-7565548855-68d8z",
       "label": "prometheus-service:9090",
       "kind": "call"
     },
     {
-      "source": "monitoring/grafana-5676f598c8-r2pcf",
-      "target": "monitoring/tempo-7f6f89b49b-sh5l6",
+      "source": "monitoring/grafana-696458656b-24w94",
+      "target": "monitoring/tempo-7f6f89b49b-fhjch",
       "label": "tempo-service:3200",
       "kind": "call"
     },
     {
-      "source": "monitoring/grafana-5676f598c8-r2pcf",
-      "target": "monitoring/alertmanager-5f79859785-qkpwj",
+      "source": "monitoring/grafana-696458656b-24w94",
+      "target": "monitoring/alertmanager-7b69f8b6f7-z9cs5",
       "label": "alertmanager-service:9093",
       "kind": "call"
     },
     {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
-      "target": "monitoring/alertmanager-5f79859785-qkpwj",
+      "source": "monitoring/prometheus-7565548855-68d8z",
+      "target": "monitoring/alertmanager-7b69f8b6f7-z9cs5",
       "label": "alertmanager-service:9093",
       "kind": "call"
     },
     {
-      "source": "monitoring/otel-collector-ff684b5d9-47bv4",
-      "target": "monitoring/tempo-7f6f89b49b-sh5l6",
+      "source": "monitoring/otel-collector-ff684b5d9-nrq55",
+      "target": "monitoring/tempo-7f6f89b49b-fhjch",
       "label": "tempo-service:4318",
       "kind": "call"
     },
     {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
-      "target": "apps/stock-app-65c9f7bc85-pxc42",
-      "label": "scrape 10.244.3.8:8000/metrics (job stock-app)",
+      "source": "monitoring/prometheus-7565548855-68d8z",
+      "target": "apps/stock-app-796c958797-m4hx2",
+      "label": "scrape 10.244.1.9:8000/metrics (job stock-app)",
       "kind": "scrape"
     },
     {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
+      "source": "monitoring/prometheus-7565548855-68d8z",
       "target": "data/timescaledb-0",
-      "label": "scrape 10.244.1.8:9187/metrics (job timescaledb)",
+      "label": "scrape 10.244.3.11:9187/metrics (job timescaledb)",
       "kind": "scrape"
     },
     {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
-      "target": "docs/documentation-c55fd68db-2mt5m",
-      "label": "scrape 10.244.3.13:8080/metrics (job documentation)",
+      "source": "monitoring/prometheus-7565548855-68d8z",
+      "target": "docs/documentation-5c9cbc8d44-trxg7",
+      "label": "scrape 10.244.1.8:8080/metrics (job documentation)",
       "kind": "scrape"
     },
     {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
-      "target": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r8bpk",
-      "label": "scrape 10.244.3.2:19001/stats/prometheus (job shared-gateway)",
+      "source": "monitoring/prometheus-7565548855-68d8z",
+      "target": "envoy-gateway-system/shared-gateway-proxy-94bbdd44d-r64ks",
+      "label": "scrape 10.244.1.2:19001/stats/prometheus (job shared-gateway)",
       "kind": "scrape"
     },
     {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
-      "target": "monitoring/alertmanager-5f79859785-qkpwj",
-      "label": "scrape 10.244.1.4:9093/metrics (job alertmanager)",
+      "source": "monitoring/prometheus-7565548855-68d8z",
+      "target": "monitoring/alertmanager-7b69f8b6f7-z9cs5",
+      "label": "scrape 10.244.1.3:9093/metrics (job alertmanager)",
       "kind": "scrape"
     },
     {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
-      "target": "monitoring/grafana-5676f598c8-r2pcf",
-      "label": "scrape 10.244.1.6:3000/metrics (job grafana)",
+      "source": "monitoring/prometheus-7565548855-68d8z",
+      "target": "monitoring/grafana-696458656b-24w94",
+      "label": "scrape 10.244.1.5:3000/metrics (job grafana)",
       "kind": "scrape"
     },
     {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
-      "target": "monitoring/node-exporter-4wgp6",
-      "label": "scrape 172.18.0.4:9100/metrics (job node-exporter)",
-      "kind": "scrape"
-    },
-    {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
-      "target": "monitoring/node-exporter-5w7mc",
-      "label": "scrape 172.18.0.2:9100/metrics (job node-exporter)",
-      "kind": "scrape"
-    },
-    {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
-      "target": "monitoring/node-exporter-jvx99",
+      "source": "monitoring/prometheus-7565548855-68d8z",
+      "target": "monitoring/node-exporter-9dt68",
       "label": "scrape 172.18.0.3:9100/metrics (job node-exporter)",
       "kind": "scrape"
     },
     {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
-      "target": "monitoring/otel-collector-ff684b5d9-47bv4",
-      "label": "scrape 10.244.3.4:8888/metrics (job otel-collector)",
+      "source": "monitoring/prometheus-7565548855-68d8z",
+      "target": "monitoring/node-exporter-f4vtq",
+      "label": "scrape 172.18.0.4:9100/metrics (job node-exporter)",
       "kind": "scrape"
     },
     {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
-      "target": "monitoring/tempo-7f6f89b49b-sh5l6",
-      "label": "scrape 10.244.1.5:3200/metrics (job tempo)",
+      "source": "monitoring/prometheus-7565548855-68d8z",
+      "target": "monitoring/node-exporter-kgjmf",
+      "label": "scrape 172.18.0.2:9100/metrics (job node-exporter)",
       "kind": "scrape"
     },
     {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
+      "source": "monitoring/prometheus-7565548855-68d8z",
+      "target": "monitoring/otel-collector-ff684b5d9-nrq55",
+      "label": "scrape 10.244.3.8:8888/metrics (job otel-collector)",
+      "kind": "scrape"
+    },
+    {
+      "source": "monitoring/prometheus-7565548855-68d8z",
+      "target": "monitoring/tempo-7f6f89b49b-fhjch",
+      "label": "scrape 10.244.3.7:3200/metrics (job tempo)",
+      "kind": "scrape"
+    },
+    {
+      "source": "monitoring/prometheus-7565548855-68d8z",
       "target": "vault/vault-0",
-      "label": "scrape 10.244.3.6:8200/v1/sys/metrics (job vault)",
+      "label": "scrape 10.244.3.15:8200/v1/sys/metrics (job vault)",
       "kind": "scrape"
     },
     {
-      "source": "docs/documentation-c55fd68db-2mt5m",
+      "source": "cert-manager/cert-manager-75c7bb8dcf-chqsq",
       "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
       "label": "Kubernetes API (ServiceAccount token)",
       "kind": "api"
     },
     {
-      "source": "envoy-gateway-system/envoy-gateway-7d79cf87b6-vhfs9",
+      "source": "cert-manager/cert-manager-cainjector-696bcd58f7-rgggd",
       "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
       "label": "Kubernetes API (ServiceAccount token)",
       "kind": "api"
     },
     {
-      "source": "kube-system/coredns-559f6c778d-4b8fb",
+      "source": "cert-manager/cert-manager-webhook-7d787c6866-8sj5t",
       "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
       "label": "Kubernetes API (ServiceAccount token)",
       "kind": "api"
     },
     {
-      "source": "kube-system/coredns-559f6c778d-8tqck",
+      "source": "docs/documentation-5c9cbc8d44-trxg7",
       "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
       "label": "Kubernetes API (ServiceAccount token)",
       "kind": "api"
     },
     {
-      "source": "local-path-storage/local-path-provisioner-75f7fc7dc5-pqsl7",
+      "source": "envoy-gateway-system/envoy-gateway-7d79cf87b6-nxhgw",
       "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
       "label": "Kubernetes API (ServiceAccount token)",
       "kind": "api"
     },
     {
-      "source": "monitoring/otel-collector-ff684b5d9-47bv4",
+      "source": "kube-system/coredns-559f6c778d-m4fh4",
       "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
       "label": "Kubernetes API (ServiceAccount token)",
       "kind": "api"
     },
     {
-      "source": "monitoring/prometheus-67d657dbb-ppftc",
+      "source": "kube-system/coredns-559f6c778d-z9kx9",
+      "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
+      "label": "Kubernetes API (ServiceAccount token)",
+      "kind": "api"
+    },
+    {
+      "source": "local-path-storage/local-path-provisioner-75f7fc7dc5-7wbbs",
+      "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
+      "label": "Kubernetes API (ServiceAccount token)",
+      "kind": "api"
+    },
+    {
+      "source": "monitoring/otel-collector-ff684b5d9-nrq55",
+      "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
+      "label": "Kubernetes API (ServiceAccount token)",
+      "kind": "api"
+    },
+    {
+      "source": "monitoring/prometheus-7565548855-68d8z",
       "target": "kube-system/kube-apiserver-sample-cluster-control-plane",
       "label": "Kubernetes API (ServiceAccount token)",
       "kind": "api"

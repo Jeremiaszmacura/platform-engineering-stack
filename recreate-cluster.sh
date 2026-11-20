@@ -47,16 +47,23 @@ URLS=(
     "Documentation http://docs.localhost"
 )
 
-# Poll url every 2s until curl -f succeeds; return 1 after timeout seconds.
-wait_for_url() {
-    local name=$1 url=$2 timeout=$3
-    until curl -sf -o /dev/null "$url"; do
+# Run the command in $2... every 2s until it succeeds; return 1 after $1 seconds.
+retry() {
+    local timeout=$1
+    shift
+    until "$@"; do
         if [ "$timeout" -le 0 ]; then
             return 1
         fi
         sleep 2
         timeout=$((timeout - 2))
     done
+}
+
+# Poll url until curl -f succeeds; return 1 after timeout seconds.
+wait_for_url() {
+    local name=$1 url=$2 timeout=$3
+    retry "$timeout" curl -sf -o /dev/null "$url" || return 1
     echo "✅ ${name}: ${url}"
 }
 
@@ -92,19 +99,22 @@ check_kind_version() {
     fi
 }
 
-# Exit if something other than this cluster, which is about to be deleted, listens on host port 80.
-check_port_80_free() {
+# Exit if something other than this cluster, which is about to be deleted, listens on host port 80 or 443.
+check_host_ports_free() {
+    local port
     if docker ps --format '{{.Names}}' | grep -qx "${CLUSTER_NAME}-control-plane"; then
         return 0
     fi
-    if (exec 3<>/dev/tcp/127.0.0.1/80) 2>/dev/null; then
-        echo "❌ Host port 80 is in use; stop whatever listens on it (sudo lsof -iTCP:80 -sTCP:LISTEN) and re-run"
-        exit 1
-    fi
+    for port in 80 443; do
+        if (exec 3<>"/dev/tcp/127.0.0.1/${port}") 2>/dev/null; then
+            echo "❌ Host port ${port} is in use; stop whatever listens on it (sudo lsof -iTCP:${port} -sTCP:LISTEN) and re-run"
+            exit 1
+        fi
+    done
 }
 
 check_kind_version
-check_port_80_free
+check_host_ports_free
 
 echo "🔄 Recreating kind cluster..."
 # Deletion fails when no cluster exists yet, which is fine
@@ -115,6 +125,9 @@ kind create cluster --config platform/kind-cluster.yaml --name "$CLUSTER_NAME"
 # Server-side apply: the bundled Gateway API CRDs are too large for client-side apply.
 echo "🌐 Installing Envoy Gateway (Gateway API controller)..."
 kubectl apply --server-side -k platform/envoy-gateway
+
+echo "🔐 Installing cert-manager (issues TLS certificates)..."
+kubectl apply -k platform/cert-manager
 
 # Namespaces and cluster-scoped RBAC must exist before any component applies
 echo "🏗️  Applying platform resources (namespaces, RBAC)..."
@@ -128,11 +141,22 @@ for entry in "${IMAGES[@]}"; do
     kind load docker-image "$image" --name "$CLUSTER_NAME"
 done
 
+# cert-manager's webhook rejects new objects until cainjector has handed it its CA, so the first apply is retried
+echo "🔐 Creating the cluster's certificate authority..."
+kubectl wait --for=condition=Available deployment --all -n cert-manager --timeout=180s \
+    || fail "cert-manager did not become available within 180s" cert-manager
+retry 60 kubectl apply -f platform/cert-manager/cluster-ca.yaml 2>/dev/null \
+    || fail "cert-manager's webhook did not accept the cluster CA within 60s" cert-manager
+kubectl wait --for=condition=Ready clusterissuer/sample-cluster-ca --timeout=60s \
+    || fail "the sample-cluster-ca issuer was not Ready within 60s" cert-manager
+
 # The shared Gateway every *.localhost URL enters through; Programmed means its Envoy proxy is running
-echo "🚪 Creating the shared Gateway..."
+echo "🚪 Creating the shared Gateway and its TLS certificate..."
 kubectl rollout status deployment/envoy-gateway -n envoy-gateway-system --timeout=180s \
     || fail "envoy-gateway did not finish rolling out within 180s" envoy-gateway-system
 kubectl apply -f platform/gateway/
+kubectl wait --for=condition=Ready certificate/shared-gateway-tls -n envoy-gateway-system --timeout=60s \
+    || fail "the Gateway's certificate was not issued within 60s" cert-manager envoy-gateway-system
 kubectl wait --for=condition=Programmed gateway/shared-gateway -n envoy-gateway-system --timeout=180s \
     || fail "shared-gateway was not Programmed within 180s" envoy-gateway-system
 
@@ -174,3 +198,4 @@ for entry in "${URLS[@]}"; do
 done
 
 echo "✅ Cluster ready. Start at http://docs.localhost (Grafana login: admin/admin, Vault token: root)"
+echo "🔒 Every URL also answers on https://, signed by the cluster's own CA: http://docs.localhost/security.html#certificates"

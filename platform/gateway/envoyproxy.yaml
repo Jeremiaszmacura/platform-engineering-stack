@@ -25,7 +25,7 @@ spec:
                     - name: shutdown-manager
                       resources:
                         limits: {cpu: 200m, memory: 256Mi}
-      # kind maps host port 80 to node port 30080 of the control-plane node (platform/kind-cluster.yaml).
+      # kind maps host ports 80 and 443 to node ports 30080 and 30443 of the control-plane node (platform/kind-cluster.yaml).
       # A NodePort is open on every node, so kube-proxy forwards it to the proxy pod wherever it runs.
       envoyService:
         name: shared-gateway-proxy
@@ -34,7 +34,7 @@ spec:
         annotations:
           prometheus.io/scrape: "true"  # Picked up by Prometheus kubernetes_sd
           prometheus.io/job: shared-gateway
-          prometheus.io/port: "19001"  # Envoy's metrics port on the pod; the Service only exposes 80
+          prometheus.io/port: "19001"  # Envoy's metrics port on the pod; the Service only exposes 80 and 443
           prometheus.io/path: /stats/prometheus
         patch:
           type: StrategicMerge
@@ -43,3 +43,5 @@ spec:
               ports:
                 - port: 80
                   nodePort: 30080
+                - port: 443
+                  nodePort: 30443

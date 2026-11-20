@@ -6,9 +6,9 @@ const isoDaysAgo = (days) => new Date(Date.now() - days * 86400000).toISOString(
 /** A past 30-day window: never in the future and always holds trading sessions. */
 export const DEFAULT_RANGE = { start: isoDaysAgo(37), end: isoDaysAgo(7) };
 
-/** Backends the tool can target, in the order the navigation offers them. */
+/** Backends the tool can target, in the order the navigation offers them, over this page's scheme (http: or https:). */
 export const APPS = [
-  { id: 'stock-app', label: 'Stock App', note: 'FastAPI + TimescaleDB', baseUrl: 'http://stock.localhost' },
+  { id: 'stock-app', label: 'Stock App', note: 'FastAPI + TimescaleDB', baseUrl: `${window.location.protocol}//stock.localhost` },
 ];
 
 /** Endpoints offered per backend, keyed by app id. */

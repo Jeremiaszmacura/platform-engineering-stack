@@ -32,14 +32,20 @@
   <div class="head"><span class="eyebrow">Decisions</span><h2>What we chose</h2></div>
   <ul class="prose">
     <li><b>Ownership.</b> A resource owned by one component lives in <code>&lt;component&gt;/k8s/</code>. Cluster-wide
-      resources (kind config, the Gateway API controller and the shared Gateway, namespaces, RBAC) live in
+      resources (kind config, the Gateway API controller and the shared Gateway, cert-manager and the cluster's CA,
+      namespaces, RBAC) live in
       <code>platform/</code> and are applied first. If deleting a component should delete a resource, it belongs to the
       component.</li>
     <li><b>Entry point.</b> Gateway API, implemented by Envoy Gateway (<code>platform/envoy-gateway/</code>). The platform
       owns the GatewayClass and the one shared Gateway (<code>platform/gateway/</code>); each component owns its HTTPRoute.
-      Only namespaces labelled <code>shared-gateway-access: "true"</code> may attach routes. kind maps host port 80 to the
-      fixed NodePort 30080 of the Gateway's Envoy Service, so the proxy needs no node pinning.
+      Only namespaces labelled <code>shared-gateway-access: "true"</code> may attach routes. kind maps host ports 80 and 443 to the
+      fixed NodePorts 30080 and 30443 of the Gateway's Envoy Service, so the proxy needs no node pinning. Every hostname
+      answers on HTTP and on HTTPS; TLS ends at the Gateway, and pods serve plain HTTP.
       <a href="networking.html#gateway">How it works</a>.</li>
+    <li><b>Certificates.</b> cert-manager (<code>platform/cert-manager/</code>) issues every certificate from the cluster's
+      own CA, the ClusterIssuer <code>sample-cluster-ca</code>: a certificate is a Certificate object, never a file a
+      script makes. The Gateway's certificate lists each hostname, because a <code>*.localhost</code> wildcard is
+      rejected. <a href="security.html#certificates">How</a>.</li>
     <li><b>Namespaces.</b> <code>apps</code> (stock-app, traffic-generator, stock-ui), <code>monitoring</code>,
       <code>vault</code>, <code>data</code> (TimescaleDB) and <code>docs</code> (this site). Every manifest sets its namespace;
       cross-namespace calls use <code>&lt;service&gt;.&lt;namespace&gt;</code>.</li>
