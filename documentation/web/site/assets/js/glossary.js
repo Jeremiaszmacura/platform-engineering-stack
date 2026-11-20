@@ -51,6 +51,8 @@ export const TERMS = [
     "A helper container that runs next to the main container in the same pod, sharing its network and volumes. Typical sidecars are proxies, log shippers and metrics exporters."),
   term("controller", "Controller", /controllers?/i, "concepts/architecture/controller/",
     "A control loop that watches the cluster and changes it until its actual state matches the desired state written in an object. The Deployment controller, for example, creates or deletes pods until the right number runs. Most of Kubernetes is controllers reacting to changes in the API."),
+  term("workload", "Workload", /workloads?/i, "concepts/workloads/",
+    "An app running on Kubernetes, declared as a workload resource: a Deployment, StatefulSet, DaemonSet or Job. Its controller creates the pods and replaces any that fail. Here, stock-app is a Deployment and TimescaleDB a StatefulSet."),
   term("deployment", "Deployment", /Deployments?/, "concepts/workloads/controllers/deployment/",
     "Runs a number of identical, interchangeable pods and keeps that number running. Changing its pod template starts a rolling update: a new ReplicaSet takes over from the old one step by step. It suits stateless apps."),
   term("replicaset", "ReplicaSet", /ReplicaSets?/, "concepts/workloads/controllers/replicaset/",

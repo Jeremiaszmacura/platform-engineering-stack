@@ -141,7 +141,9 @@ make test-e2e E2E_PYTEST_ARGS='-k stock'   # scope with -k</pre></div>
     <li><div><span class="where">docs</span>A section on <a href="components.html">Components</a> with a live spec sheet
       (<code>&lt;dl class="spec" data-app="my-service"&gt;</code>), a one-line purpose in
       <code>assets/js/catalog.js</code>, and a place in the architecture diagram (<code>assets/js/architecture.js</code>).
-      Until it has one, the Overview lists it under the diagram.</div></li>
+      Until it has one, the Overview lists it under the diagram. If it calls another service through an address in a config
+      file rather than an env var, add the pair to <code>REFERENCES</code> in
+      <code>documentation/k8s/documentation-deployment.yaml</code> so the map draws the line.</div></li>
     <li><div><span class="where">verify</span><code>make lint test-unit &amp;&amp; ./recreate-cluster.sh &amp;&amp; make test-e2e</code></div></li>
   </ol>
 </section>
