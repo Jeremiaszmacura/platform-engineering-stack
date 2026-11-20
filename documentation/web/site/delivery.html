@@ -53,6 +53,7 @@
       <tr><td><code>make test-unit</code></td><td>Go (<code>go test</code>) and Python (<code>tox -e tests</code>) unit tests, found by <code>go.mod</code> and <code>tox.ini</code>; for this site that includes a check of every link between pages</td></tr>
       <tr><td><code>make lint</code></td><td>golangci-lint, then pre-commit (black, bandit, YAML and JSON checks), stock-app's import rules and API-model drift check</td></tr>
       <tr><td><code>make build-frontend test-unit-frontend</code></td><td>both Vite frontends, stock-ui's Vitest tests (traffic-generator has none), and this site's JavaScript tests (<code>node --test</code>)</td></tr>
+      <tr><td><code>make test-rules</code></td><td>unit tests of the alert rules (<code>monitoring/prometheus/alerts.test.yml</code>) with <code>promtool</code>, from the image Prometheus runs; needs Docker</td></tr>
       <tr><td><code>make test-e2e</code></td><td>pytest in <code>e2e/</code> against the running cluster, over HTTP; <code>kubectl</code>,
         pinned to the <code>kind-sample-cluster</code> context, only restarts Vault, issues ServiceAccount tokens and checks
         who may read Vault's unseal key</td></tr>
@@ -74,6 +75,7 @@ make test-e2e E2E_PYTEST_ARGS='-k stock'   # scope with -k</pre></div>
       <tr><td>Go or Python code</td><td><code>make lint test-unit</code></td></tr>
       <tr><td><code>stock-app/openapi.yaml</code></td><td><code>cd stock-app &amp;&amp; tox -e api</code>, then <code>make lint test-unit</code></td></tr>
       <tr><td>A frontend, or this site</td><td><code>make build-frontend test-unit-frontend</code>, and for the site <code>cd documentation &amp;&amp; go test ./...</code></td></tr>
+      <tr><td>Alert rules (<code>alerts.yml</code>)</td><td><code>make test-rules</code>, then <code>./recreate-cluster.sh &amp;&amp; make test-e2e</code></td></tr>
       <tr><td>Manifests, <code>recreate-cluster.sh</code>, monitoring, Vault</td><td><code>./recreate-cluster.sh &amp;&amp; make test-e2e</code></td></tr>
     </tbody></table></div>
   <p>Claude Code runs this table for you: when it stops, <code>.claude/hooks/stop-checks.sh</code> runs the

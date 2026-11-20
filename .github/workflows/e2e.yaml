@@ -30,6 +30,9 @@ jobs:
         with:
           python-version: '3.14'
 
+      - name: Unit-test the alert rules
+        run: make test-rules
+
       # Yahoo rate-limits CI runners, so stock-app generates its prices.
       - name: Create cluster and deploy all components
         run: STOCK_PROVIDER=synthetic ./recreate-cluster.sh
