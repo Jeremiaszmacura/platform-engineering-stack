@@ -23,6 +23,7 @@ run_checks() {
 run_checks go tidy-go lint-go test-unit-go
 run_checks python lint-python test-unit-python
 run_checks frontend build-frontend test-unit-frontend
+run_checks rules test-rules
 
 if [[ -f "$cache/cluster-changed" ]]; then
     rm -f "$cache/cluster-changed"
