@@ -24,8 +24,8 @@
   <span class="eyebrow">Start here · a live field guide</span>
   <h1>Your cluster, explained while it runs</h1>
   <p class="lede">A three-node Kubernetes cluster on your laptop: a real stock-price service with its database and UI, one
-    Gateway (Envoy) for all incoming traffic, a secret store (Vault), and observability: metrics (Prometheus), traces
-    (OpenTelemetry and Tempo) and dashboards (Grafana). Diagrams marked
+    Gateway (Envoy) for all incoming traffic, a secret store (Vault), and observability: metrics (Prometheus), alerts (Alertmanager),
+    traces (OpenTelemetry and Tempo) and dashboards (Grafana). Diagrams marked
     <b>Live</b> are drawn from the running cluster, so they show what is there right now; those marked <b>Example</b> are
     drawn by hand to explain how something works.</p>
   <div class="facts" id="facts"></div>
@@ -62,7 +62,7 @@
     <div class="card"><h3>Requests: the data plane</h3><p>What your browser and the apps send each other. Every request from
       outside enters through one Envoy proxy; inside the cluster, pods call Services by DNS name.</p></div>
     <div class="card"><h3>Telemetry</h3><p>What the cluster says about itself. Prometheus pulls metrics from every annotated
-      Service, so the metrics flow to it; stock-app pushes traces to the OpenTelemetry Collector, which forwards them to Tempo.</p></div>
+      Service, so the metrics flow to it, and sends firing alerts to Alertmanager; stock-app pushes traces to the OpenTelemetry Collector, which forwards them to Tempo.</p></div>
     <div class="card"><h3>Control plane</h3><p>Who watches the Kubernetes API. Controllers turn objects into running config:
       Envoy Gateway turns HTTPRoutes into Envoy routes, and this site turns pods into these diagrams.</p></div>
   </div>
@@ -188,12 +188,14 @@
     <dt>EndpointSlice</dt><dd>The list of a Service's pod IPs, each marked ready or not, that kube-proxy and Envoy send traffic to. <a href="networking.html#in-cluster">Networking</a></dd>
     <dt>exemplar</dt><dd>A metric sample that carries a trace ID, so a latency spike links to one request's trace. <a href="observability.html#correlate">Observability</a></dd>
     <dt>GatewayClass</dt><dd>Names the controller that turns Gateways into a proxy or a cloud load balancer, like a StorageClass for volumes. <a href="networking.html#gateway">Networking</a></dd>
+    <dt>inhibition</dt><dd>An Alertmanager rule that hides the alerts another firing alert already explains. <a href="observability.html#alerts">Observability</a></dd>
     <dt>informer</dt><dd>A client-go cache: list each kind of object once, then watch, so reads come from memory. <a href="security.html#this-site">Identity</a></dd>
     <dt>ndots</dt><dd>A resolver option: names with fewer dots than this try every search domain first. <a href="networking.html#dns">Networking</a></dd>
     <dt>NodePort</dt><dd>A Service port opened on every node; here 30080 carries host port 80 to the Gateway. <a href="networking.html#incoming">Networking</a></dd>
     <dt>OTLP</dt><dd>OpenTelemetry Protocol: how spans travel from stock-app to the Collector and on to Tempo. <a href="observability.html#traces">Observability</a></dd>
     <dt>PSS, PSA</dt><dd>Pod Security Standards (privileged, baseline, restricted), enforced per namespace by Pod Security Admission. <a href="security.html#hardening">Identity</a></dd>
     <dt>QoS class</dt><dd>Guaranteed, Burstable or BestEffort, set by requests and limits; predicts eviction order. <a href="workloads.html#resources">Workloads</a></dd>
+    <dt>silence</dt><dd>Mutes matching alerts in Alertmanager until a set time, e.g. during planned work. <a href="observability.html#alerts">Observability</a></dd>
     <dt>xDS</dt><dd>The gRPC APIs over which Envoy Gateway streams routes and endpoints to Envoy. <a href="networking.html#gateway">Networking</a></dd>
   </dl>
 </section>

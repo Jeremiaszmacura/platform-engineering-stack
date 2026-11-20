@@ -1,0 +1,15 @@
+# Applied with `kubectl apply -k`, which builds the ConfigMap from the plain alertmanager.yml next to it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - alertmanager-deployment.yaml
+  - alertmanager-route.yaml
+  - alertmanager-serviceaccount.yaml
+configMapGenerator:
+  - name: alertmanager-config
+    namespace: monitoring
+    files:
+      - alertmanager.yml
+    options:
+      labels:
+        app: alertmanager

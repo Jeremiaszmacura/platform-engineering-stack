@@ -60,7 +60,8 @@
   <p class="prose">The end-to-end tests cover every <code>*.localhost</code> URL, this site's map, RBAC and Prometheus proxy,
     Vault secrets (kept across a Vault restart and a new pod), that only Vault may read its unseal key and that each
     service's Vault token opens only its own path, CORS for both frontends, every stock-app endpoint validated against its
-    published <code>/openapi.yaml</code>, the cache-aside flow, the Prometheus and Grafana pipeline, and request traces in
+    published <code>/openapi.yaml</code>, the cache-aside flow, the Prometheus and Grafana pipeline, alerts reaching
+    Alertmanager and silences, and request traces in
     Tempo.
     The suite passes with either stock-app provider: Yahoo Finance by default, generated prices in CI
     (<code>STOCK_PROVIDER=synthetic</code>).</p>

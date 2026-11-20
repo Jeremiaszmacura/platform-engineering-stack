@@ -132,10 +132,21 @@ kubectl scale statefulset/vault -n vault --replicas=1</pre></div>
       <code>prometheus.io/scrape: "true"</code> in <code>apps</code>, <code>monitoring</code>, <code>vault</code>,
       <code>data</code>, <code>docs</code> and <code>envoy-gateway-system</code> and scrapes each pod every 5 seconds
       (<a href="observability.html#metrics">how</a>). Runs with exemplar storage, so latency samples keep their trace IDs.
-      Evaluates the alert rules in <code>alerts.yml</code> (<a href="observability.html#alerts">which</a>).</p></div>
+      Evaluates the alert rules in <code>alerts.yml</code> and sends firing alerts to Alertmanager
+      (<a href="observability.html#alerts">which</a>).</p></div>
   <dl class="spec" data-app="prometheus"></dl>
   <p class="prose"><code>kubectl apply -k monitoring/prometheus/k8s</code> applies an edited <code>prometheus.yml</code>;
     Prometheus reloads it by itself (<a href="workloads.html#config">why it has no rollout</a>).</p>
+</section>
+
+<section class="chapter" id="alertmanager" style="--c:var(--ns-monitoring)">
+  <div class="head"><span class="eyebrow">monitoring · alerts</span><h2>Alertmanager</h2>
+    <p>At <a href="http://alertmanager.localhost">alertmanager.localhost</a>, and in Grafana as the
+      <code>Alertmanager</code> datasource. Receives firing alerts from Prometheus, groups them by <code>alertname</code>,
+      applies inhibitions and silences, and routes them to its only receiver, <code>null</code>, which sends nothing
+      (<a href="observability.html#alerts">how alerting works</a>). Config is <code>alertmanager.yml</code> in
+      <code>monitoring/alertmanager/k8s/</code>; silences live on an <code>emptyDir</code>.</p></div>
+  <dl class="spec" data-app="alertmanager"></dl>
 </section>
 
 <section class="chapter" id="node-exporter" style="--c:var(--ns-monitoring)">

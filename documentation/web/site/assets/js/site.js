@@ -13,7 +13,7 @@ export const PAGES = [
   { group: "Learn", items: [
     { href: "networking.html", title: "Networking", note: "Gateway, Services, DNS, packets" },
     { href: "security.html", title: "Identity & secrets", note: "RBAC, Secrets, Vault, hardening" },
-    { href: "observability.html", title: "Observability", note: "Metrics, traces and logs" },
+    { href: "observability.html", title: "Observability", note: "Metrics, alerts, traces and logs" },
     { href: "state.html", title: "State & storage", note: "Volumes, StatefulSets, caches" },
     { href: "workloads.html", title: "Workloads", note: "Controllers, probes, rollouts" },
   ] },

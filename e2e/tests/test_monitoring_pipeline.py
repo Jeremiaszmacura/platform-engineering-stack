@@ -26,8 +26,9 @@ EXPECTED_PROMETHEUS_JOBS = {
     "vault",
     "timescaledb",
     "shared-gateway",
+    "alertmanager",
 }
-EXPECTED_ALERT_RULES = {"TargetDown", "SpansQueued", "SpansDropped"}
+EXPECTED_ALERT_RULES = {"Watchdog", "TargetDown", "SpansQueued", "SpansDropped"}
 EXPECTED_DASHBOARD_TITLES = {
     "Infrastructure Overview",
     "Stock App Metrics",

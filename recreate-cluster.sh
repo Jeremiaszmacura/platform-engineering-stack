@@ -20,6 +20,7 @@ IMAGES=(
 # Applied in order, after platform/ (Vault and TimescaleDB before their clients).
 COMPONENTS=(
     monitoring/prometheus/k8s
+    monitoring/alertmanager/k8s
     monitoring/tempo/k8s
     monitoring/otel-collector/k8s
     monitoring/grafana/k8s
@@ -41,6 +42,7 @@ URLS=(
     "Stock-app http://stock.localhost"
     "Vault http://vault.localhost"
     "Prometheus http://prometheus.localhost"
+    "Alertmanager http://alertmanager.localhost"
     "Grafana http://grafana.localhost"
     "Documentation http://docs.localhost"
 )

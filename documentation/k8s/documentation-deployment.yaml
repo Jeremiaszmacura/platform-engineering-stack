@@ -32,7 +32,7 @@ spec:
               value: sample-cluster
             # Service addresses that live in config files, not in env vars, so the map can't see them otherwise
             - name: REFERENCES
-              value: grafana=http://prometheus-service:9090,grafana=http://tempo-service:3200,otel-collector=http://tempo-service:4318
+              value: grafana=http://prometheus-service:9090,grafana=http://tempo-service:3200,grafana=http://alertmanager-service:9093,prometheus=http://alertmanager-service:9093,otel-collector=http://tempo-service:4318
             - name: PROMETHEUS_URL
               value: http://prometheus-service.monitoring:9090
           securityContext:

@@ -1,7 +1,7 @@
 import { appLinks, health, podsOf } from "./model.js";
 import { num, nsColor } from "./util.js";
 
-const W = 1200;
+const W = 1328;
 const H = 740;
 const ROW = 52;
 
@@ -9,21 +9,21 @@ const ROW = 52;
 /** Namespaces as bands, drawn behind the boxes. */
 const GROUPS = [
   { x: 16, y: 16, w: 200, h: 424, label: "outside the cluster", color: nsColor("outside") },
-  { x: 232, y: 16, w: 952, h: 108, label: "envoy-gateway-system · entry", color: nsColor("envoy-gateway-system") },
+  { x: 232, y: 16, w: 1080, h: 108, label: "envoy-gateway-system · entry", color: nsColor("envoy-gateway-system") },
   { x: 232, y: 148, w: 400, h: 300, label: "apps", color: nsColor("apps") },
   { x: 648, y: 148, w: 224, h: 152, label: "vault", color: nsColor("vault") },
   { x: 648, y: 316, w: 224, h: 132, label: "data", color: nsColor("data") },
-  { x: 888, y: 148, w: 296, h: 136, label: "docs", color: nsColor("docs") },
-  { x: 232, y: 472, w: 952, h: 136, label: "monitoring · telemetry", color: nsColor("monitoring") },
+  { x: 888, y: 148, w: 424, h: 136, label: "docs", color: nsColor("docs") },
+  { x: 232, y: 472, w: 1080, h: 136, label: "monitoring · telemetry", color: nsColor("monitoring") },
   { x: 232, y: 640, w: 288, h: 92, label: "envoy-gateway-system · controller", color: nsColor("envoy-gateway-system") },
-  { x: 536, y: 640, w: 648, h: 92, label: "kube-system · control plane", color: nsColor("kube-system") },
+  { x: 536, y: 640, w: 776, h: 92, label: "kube-system · control plane", color: nsColor("kube-system") },
 ];
 
 /** Where each known component sits: [x, y, width, namespace, height]. */
 const PLACES = {
   browser: [32, 56, 168, "outside"],
   yahoo: [32, 356, 168, "outside"],
-  envoy: [248, 56, 920, "envoy-gateway-system"],
+  envoy: [248, 56, 1048, "envoy-gateway-system"],
   "stock-ui": [248, 196, 176, "apps"],
   "traffic-generator": [440, 196, 176, "apps"],
   "stock-app": [344, 356, 176, "apps"],
@@ -34,7 +34,8 @@ const PLACES = {
   tempo: [408, 512, 132, "monitoring"],
   grafana: [566, 512, 148, "monitoring"],
   prometheus: [806, 512, 148, "monitoring"],
-  "node-exporter": [1004, 512, 164, "monitoring"],
+  "node-exporter": [996, 512, 156, "monitoring"],
+  alertmanager: [1164, 512, 132, "monitoring"],
   "gateway-helm": [248, 668, 200, "envoy-gateway-system"],
   "kube-apiserver": [552, 668, 200, "kube-system"],
   "kube-dns": [968, 668, 176, "kube-system"],
@@ -56,6 +57,7 @@ const SUBS = {
   tempo: "traces :3200",
   grafana: "UI :3000",
   prometheus: "metrics :9090",
+  alertmanager: "alerts :9093",
   "node-exporter": ":9100 per node",
   "kube-dns": "Service kube-dns :53",
   "kube-apiserver": "control-plane :6443",
@@ -81,7 +83,7 @@ export const LAYERS = {
   all: "All",
 };
 
-const TELEMETRY_APPS = new Set(["prometheus", "tempo", "otel-collector", "grafana"]);
+const TELEMETRY_APPS = new Set(["prometheus", "alertmanager", "tempo", "otel-collector", "grafana"]);
 
 function node(map, id) {
   const [x, y, w, namespace, h = ROW] = PLACES[id];
@@ -95,13 +97,14 @@ function node(map, id) {
   return { ...base, bus: id === "envoy", status: state.state, sub: SUBS[id] + count, tip: `${id}: ${state.ready} of ${state.total} pods ready${state.restarts ? `, ${state.restarts} restarts` : ""}` };
 }
 
-// Apps that store telemetry: whoever calls them, except the Collector writing spans, is reading.
-const STORES = new Set(["prometheus", "tempo"]);
+// Apps that store telemetry: whoever calls them is reading, except the writers pushing spans or alerts.
+const STORES = new Set(["prometheus", "tempo", "alertmanager"]);
+const WRITERS = new Set(["otel-collector", "prometheus"]);
 
 /** The ends of link l as the data moves, which is not always the way the connection opens. */
 export function dataEnds(l) {
   // Prometheus opens the scrape but the metrics flow to it; a watcher opens the API connection but objects flow to it.
-  const pulled = l.kind === "scrape" || l.kind === "api" || (l.kind === "call" && STORES.has(l.to) && l.from !== "otel-collector");
+  const pulled = l.kind === "scrape" || l.kind === "api" || (l.kind === "call" && STORES.has(l.to) && !WRITERS.has(l.from));
   return pulled ? { from: l.to, to: l.from } : { from: l.from, to: l.to };
 }
 
@@ -149,6 +152,7 @@ function callEdge(e, l, map, m, rate, perSecond) {
     "otel-collector": ["OTLP" + perSecond("spansIn", "spans/s"), rate("spansIn")],
     tempo: [l.from === "otel-collector" ? "OTLP" + perSecond("spansOut", "spans/s") : "TraceQL", l.from === "otel-collector" ? rate("spansOut") : 0],
     prometheus: [l.from === "documentation" ? "PromQL · this page" : "PromQL", 0],
+    alertmanager: [l.from === "prometheus" ? "alerts" : "API", 0],
   }[l.to] || [target, 0];
   const telemetry = TELEMETRY_APPS.has(l.to) || l.from === "otel-collector";
   const tip = l.to === "timescaledb" ? DB_TIP : undefined;
@@ -185,6 +189,9 @@ const ROUTES = {
   "grafana|prometheus": { sides: ["r", "l"], ta: 0.72, tb: 0.72 },
   "prometheus|grafana": { sides: ["l", "r"], ta: 0.28, tb: 0.28 },
   "node-exporter|prometheus": { sides: ["l", "r"] },
+  "prometheus|alertmanager": { sides: ["b", "b"], ta: 0.82, tb: 0.15, via: [[927.4, 578], [1183.8, 578]] },
+  "alertmanager|prometheus": { sides: ["b", "b"], ta: 0.3, tb: 0.95, via: [[1203.6, 590], [946.6, 590]] },
+  "alertmanager|grafana": { sides: ["t", "t"], ta: 0.15, tb: 0.85, via: [[1183.8, 494], [691.8, 494]] },
   "tempo|prometheus": { sides: ["b", "b"], ta: 0.75, tb: 0.6, via: [[507, 596], [895, 596]] },
   "otel-collector|prometheus": { sides: ["b", "b"], ta: 0.75, tb: 0.75, via: [[355, 602], [917, 602]] },
   "tempo|grafana": { sides: ["t", "t"], ta: 0.5, tb: 0.3, via: [[474, 496], [610, 496]] },
@@ -209,7 +216,7 @@ export function architecture(map, m, layer, selected) {
   return {
     w: W, h: H, groups: GROUPS, nodes, edges, selected,
     label: `Architecture of the cluster, ${LAYERS[layer]} layer`,
-    notes: [{ x: 1168, y: 658, anchor: "end", text: "kube-proxy and kindnet run on every node: see the Cluster map" }],
+    notes: [{ x: 1296, y: 658, anchor: "end", text: "kube-proxy and kindnet run on every node: see the Cluster map" }],
   };
 }
 

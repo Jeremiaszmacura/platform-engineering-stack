@@ -23,6 +23,10 @@ export const APPS = {
     purpose: "Finds and scrapes metrics",
     note: "Asks the API which endpoints exist, keeps those whose Service is annotated prometheus.io/scrape=\"true\", and scrapes every pod directly, every 5 seconds.",
   },
+  alertmanager: {
+    purpose: "Groups, silences and shows the alerts Prometheus fires",
+    note: "Prometheus pushes firing alerts to it every minute. Its only receiver sends nothing, so alerts stay in its UI and in Grafana. Silences live on an emptyDir: a new pod forgets them.",
+  },
   grafana: {
     purpose: "Dashboards for metrics and traces",
     note: "Datasource access mode is \"proxy\": the Grafana server runs the queries, not your browser. Datasources and dashboards are files from ConfigMaps, loaded on every start.",

@@ -53,6 +53,9 @@
       <code>prometheus.io/path</code>), so a new service needs no Prometheus change. Each node's kubelet is scraped too
       (job <code>kubelet</code>), for the CPU and memory of nodes, pods and containers. A new namespace must be added to the
       scrape list in <code>prometheus.yml</code>.</li>
+    <li><b>Alerting.</b> Alert rules live in <code>alerts.yml</code> next to <code>prometheus.yml</code>, each with a
+      <code>severity</code> label. Prometheus evaluates them and sends firing alerts to Alertmanager, whose only receiver
+      sends nothing: alerts are read in its UI and in Grafana. <a href="observability.html#alerts">How</a>.</li>
     <li><b>Tracing.</b> stock-app traces every HTTP request with OpenTelemetry and sends it over OTLP to the OpenTelemetry
       Collector, which adds Kubernetes metadata and forwards it to Tempo; Grafana reads Tempo. Apps only know the
       Collector's address. The latency histogram's exemplars and the service's own log lines carry the trace ID.</li>
