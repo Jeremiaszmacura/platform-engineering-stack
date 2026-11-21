@@ -1,8 +1,9 @@
 // PAGES below is the only list of pages: documentation/web/embed_test.go checks it against the files.
 
-import { $, $$, esc } from "./util.js";
+import { $, $$, currentPage, esc } from "./util.js";
 import { live, onMap, onStatus } from "./live.js";
 import { explainTerms } from "./terms.js";
+import { initComments } from "./comments.js";
 
 /** Every page, in reading order. */
 export const PAGES = [
@@ -25,7 +26,6 @@ export const PAGES = [
 ];
 
 const ORDER = PAGES.flatMap((g) => g.items);
-const here = () => (location.pathname.split("/").pop() || "index.html");
 
 const LOGO = `<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
   <rect x="1" y="1" width="24" height="7" rx="2" fill="var(--ns-gateway)"/>
@@ -63,7 +63,7 @@ function toggleTheme() {
 }
 
 function sidebar() {
-  const page = here();
+  const page = currentPage();
   $("#sidebar").innerHTML = `<nav aria-label="Chapters">${PAGES.map((g) => `<div class="group"><span class="eyebrow">${esc(g.group)}</span>
     ${g.items.map((p) => `<a href="${p.href}"${p.href === page ? ' aria-current="page"' : ""}>${esc(p.title)}<small>${esc(p.note)}</small></a>`).join("")}</div>`).join("")}
     <div class="hosts" id="hosts"><span class="eyebrow">Open in the cluster</span></div></nav>`;
@@ -81,7 +81,7 @@ function pageContents() {
 }
 
 function pager() {
-  const i = ORDER.findIndex((p) => p.href === here());
+  const i = ORDER.findIndex((p) => p.href === currentPage());
   const prev = ORDER[i - 1];
   const next = ORDER[i + 1];
   const nav = document.createElement("nav");
@@ -170,3 +170,4 @@ pager();
 copyButtons();
 liveStatus();
 explainTerms($("article.page"));
+initComments($("article.page")); // after the term marks, so a comment mark never splits a term

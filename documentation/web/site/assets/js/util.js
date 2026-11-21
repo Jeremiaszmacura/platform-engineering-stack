@@ -49,3 +49,20 @@ export function fill(target, html) {
 export function rows(target, items, render, columns, emptyText = "Nothing in the cluster right now.") {
   return fill(target, items.length ? items.map(render).join("") : `<tr><td colspan="${columns}" class="muted">${esc(emptyText)}</td></tr>`);
 }
+
+/** The page's file name, e.g. "state.html". */
+export const currentPage = () => location.pathname.split("/").pop() || "index.html";
+
+const GAP_PX = 8;
+
+/** Position fixed box under anchor's first line (an element or a Range), or above it when there is no room below. */
+export function place(box, anchor) {
+  const line = anchor.getClientRects()[0] || anchor.getBoundingClientRect();
+  const size = box.getBoundingClientRect();
+  const width = document.documentElement.clientWidth;
+  const fitsBelow = line.bottom + GAP_PX + size.height <= innerHeight - GAP_PX;
+  const top = fitsBelow || line.top < size.height + 2 * GAP_PX ? line.bottom + GAP_PX : line.top - GAP_PX - size.height;
+  const left = Math.max(GAP_PX, Math.min(line.left, width - size.width - GAP_PX));
+  box.style.top = `${top}px`;
+  box.style.left = `${left}px`;
+}

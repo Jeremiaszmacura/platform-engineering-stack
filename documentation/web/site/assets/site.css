@@ -14,6 +14,8 @@
   --ok-soft: #dcf1e4;
   --bad: #b42318;
   --bad-soft: #fbe3e1;
+  --comment: #fff0a6;  /* yellow always means a reader's comment */
+  --comment-strong: #ffd84a;
   /* namespace colours */
   --ns-outside: #3d4b55;
   --ns-gateway: #c2410c;
@@ -34,6 +36,7 @@
     --bg: #0e171d; --surface: #15222a; --sunken: #1b2b34; --fg: #e3ecef; --muted: #98aab3; --line: #2b3d47;
     --accent: #5cc3db; --accent-soft: #163a45; --warn: #f0a85a; --warn-soft: #3a2a17;
     --ok: #4cc38a; --ok-soft: #173327; --bad: #ff8a80; --bad-soft: #3d1d1b;
+    --comment: #4a3f00; --comment-strong: #6e5c00;
     --ns-outside: #b7c4cc; --ns-gateway: #f2894f; --ns-apps: #7aa2ff; --ns-data: #b391ff; --ns-vault: #45c7b6;
     --ns-monitoring: #f075b4; --ns-docs: #a9cc4f; --ns-system: #9aabb6;
     color-scheme: dark;
@@ -43,6 +46,7 @@
   --bg: #0e171d; --surface: #15222a; --sunken: #1b2b34; --fg: #e3ecef; --muted: #98aab3; --line: #2b3d47;
   --accent: #5cc3db; --accent-soft: #163a45; --warn: #f0a85a; --warn-soft: #3a2a17;
   --ok: #4cc38a; --ok-soft: #173327; --bad: #ff8a80; --bad-soft: #3d1d1b;
+    --comment: #4a3f00; --comment-strong: #6e5c00;
   --ns-outside: #b7c4cc; --ns-gateway: #f2894f; --ns-apps: #7aa2ff; --ns-data: #b391ff; --ns-vault: #45c7b6;
   --ns-monitoring: #f075b4; --ns-docs: #a9cc4f; --ns-system: #9aabb6;
   color-scheme: dark;
@@ -228,7 +232,7 @@ details.qa > div { padding: 10px 14px 12px 36px; display: grid; gap: 8px; font-s
 
 /* ---------- figures and diagrams ---------- */
 figure { margin: 0; }
-.figure { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.figure { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 12px; min-width: 0; }
 .figure figcaption { font-size: 0.86rem; color: var(--muted); max-width: 90ch; }
 /* Every figure says where it comes from: the running cluster (Live) or a hand-drawn Example. */
 .figure[data-source]::before { justify-self: start; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em;
@@ -418,5 +422,39 @@ svg.dg { display: block; width: 100%; height: auto; font-family: var(--font-mono
 .term-tip p { margin: 4px 0 8px; }
 .term-tip a { font-size: 0.86rem; }
 
+/* ---------- Reader comments: select text or use a figure's button (comments.js) ---------- */
+mark.comment-mark { background: var(--comment); color: inherit; border-radius: 2px; cursor: pointer; }
+mark.comment-mark:hover, mark.comment-mark:focus-visible, mark.comment-mark:hover mark.comment-mark { background: var(--comment-strong); outline: none; }
+.figure.has-comment { outline: 3px solid var(--comment-strong); outline-offset: 2px; }
+.comment-ui button {
+  font: 600 0.75rem var(--font-body); border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+  padding: 4px 10px; border-radius: 6px; cursor: pointer;
+}
+.comment-ui button:hover { border-color: var(--accent); color: var(--accent); }
+.comment-figure { position: absolute; top: 10px; right: 10px; opacity: 0; }
+.figure:hover .comment-figure, .comment-figure:focus-visible, .has-comment .comment-figure { opacity: 1; }
+.has-comment .comment-figure { background: var(--comment); }
+@media (hover: none) { .comment-figure { opacity: 1; } }
+.comment-add, .comment-box {
+  position: fixed; inset: auto; margin: 0; box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  font: 400 0.92rem/1.45 var(--font-body); color: var(--fg);
+}
+button.comment-add { border-color: var(--comment-strong); background: var(--comment); }
+.comment-box {
+  width: min(340px, calc(100vw - 16px)); padding: 12px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; outline: none;
+}
+.comment-box:popover-open { display: grid; gap: 10px; } /* display on .comment-box itself would keep it shown when closed */
+.comment-box article { border-left: 3px solid var(--comment-strong); padding-left: 10px; }
+.comment-box p { margin: 0 0 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment-box footer, .comment-box .actions { display: flex; gap: 6px; align-items: center; }
+.comment-box time { font-size: 0.8rem; color: var(--muted); margin-right: auto; }
+.comment-box .actions { justify-content: flex-end; margin-top: 6px; }
+.comment-box textarea {
+  width: 100%; font: inherit; resize: vertical; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
+}
+.comment-box button[type="submit"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
-@media print { .topbar, .sidebar, .pager, .copy, .term-tip { display: none !important; } .frame { display: block; } }
+@media print { .topbar, .sidebar, .pager, .copy, .term-tip, .comment-ui { display: none !important; } .frame { display: block; } }

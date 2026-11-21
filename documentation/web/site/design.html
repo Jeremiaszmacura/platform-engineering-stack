@@ -80,7 +80,9 @@
     <li><b>Documentation.</b> This site is the only documentation: the root <code>README.md</code> just points here. One Go
       service, <code>documentation/</code>, serves the pages and their live data: the cluster map from the Kubernetes API
       (informers, read-only RBAC) and read-only PromQL forwarded to Prometheus. Pages are hand-written HTML with shared
-      JavaScript modules and no build step. GitHub Pages publishes the same files, which then render a recorded snapshot.</li>
+      JavaScript modules and no build step. GitHub Pages publishes the same files, which then render a recorded snapshot.
+      Reader comments stay in the reader's browser (<code>localStorage</code>), so the service stays read-only and keeps no
+      state. <a href="components.html#documentation">How</a>.</li>
     <li><b>Dependency updates.</b> Renovate opens update pull requests daily. Minor, patch and digest updates merge
       automatically when CI is green; majors and language runtimes wait for a human. Releases must be three days old; local
       <code>:dev</code> images are ignored. <a href="delivery.html#renovate">Details</a>.</li>
