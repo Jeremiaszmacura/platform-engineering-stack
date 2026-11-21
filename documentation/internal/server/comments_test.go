@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,7 +16,8 @@ import (
 
 var testNow = time.Date(2026, 11, 21, 12, 0, 0, 0, time.UTC)
 
-// fakeGitHub records what the handlers asked of GitHub; only token "ghu_ok" is accepted.
+// fakeGitHub records what the handlers asked of GitHub; only token "ghu_ok" is accepted. Issue 5 is a bug report,
+// 6 a pull request, 9 gets a 422; every other number is a comment issue.
 type fakeGitHub struct {
 	labels []string
 	closed map[int]string
@@ -29,42 +31,64 @@ func (f *fakeGitHub) Exchange(_ context.Context, code, _ string, now time.Time) 
 	return github.Token{AccessToken: "ghu_" + code, ExpiresAt: now.Add(8 * time.Hour)}, nil
 }
 
-func (f *fakeGitHub) CreateIssue(_ context.Context, token, _, _ string, labels []string) (json.RawMessage, error) {
+func (f *fakeGitHub) CreateIssue(_ context.Context, token, title, _ string, labels []string) (json.RawMessage, error) {
 	if token != "ghu_ok" {
 		return nil, github.ErrUnauthorized
+	}
+	if title == "rejected" {
+		return nil, &github.APIError{Status: http.StatusUnprocessableEntity, Message: "Validation Failed"}
 	}
 	f.labels = labels
 	return json.RawMessage(`{"number":7}`), nil
 }
 
-func (f *fakeGitHub) CloseIssue(_ context.Context, token string, number int, reason string) error {
+func (f *fakeGitHub) Issue(_ context.Context, token string, number int) (github.Issue, error) {
 	if token != "ghu_ok" {
-		return github.ErrUnauthorized
+		return github.Issue{}, github.ErrUnauthorized
 	}
+	var issue github.Issue
+	labels := map[int]string{5: `"bug"`}[number]
+	if labels == "" {
+		labels = `"docs-feedback"`
+	}
+	pullRequest := map[int]string{6: `,"pull_request":{"url":"x"}`}[number]
+	if err := json.Unmarshal([]byte(`{"labels":[{"name":`+labels+`}]`+pullRequest+`}`), &issue); err != nil {
+		return issue, fmt.Errorf("fake issue: %w", err)
+	}
+	return issue, nil
+}
+
+func (f *fakeGitHub) CloseIssue(_ context.Context, _ string, number int, reason string) error {
 	f.closed[number] = reason
 	return nil
 }
 
-// memoryStore keeps the token as Vault would.
-type memoryStore struct{ token *github.Token }
+// memoryStore keeps the session as Vault would.
+type memoryStore struct{ stored []byte }
 
 func (m *memoryStore) Read(_ context.Context, out any) (bool, error) {
-	if m.token == nil {
+	if m.stored == nil {
 		return false, nil
 	}
-	*out.(*github.Token) = *m.token
+	if err := json.Unmarshal(m.stored, out); err != nil {
+		return true, fmt.Errorf("fake read: %w", err)
+	}
 	return true, nil
 }
 
 func (m *memoryStore) Write(_ context.Context, data any) error {
-	token := data.(github.Token)
-	m.token = &token
+	stored, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("fake write: %w", err)
+	}
+	m.stored = stored
 	return nil
 }
 
-// commentServer is the site's handler with fakes; token, when given, is already stored.
-func commentServer(token *github.Token) (http.Handler, *fakeGitHub, *memoryStore) {
-	gh, store := &fakeGitHub{closed: map[int]string{}}, &memoryStore{token: token}
+// commentServer is the site's handler with fakes.
+func commentServer(t *testing.T) (http.Handler, *fakeGitHub, *memoryStore) {
+	t.Helper()
+	gh, store := &fakeGitHub{closed: map[int]string{}}, &memoryStore{}
 	comments := NewComments(gh, store)
 	comments.now = func() time.Time { return testNow }
 	return New(stubSource{}, site, &url.URL{}, comments), gh, store
@@ -82,87 +106,145 @@ func send(t *testing.T, handler http.Handler, method, path, body string, headers
 	return rec
 }
 
-var signedIn = &github.Token{AccessToken: "ghu_ok", ExpiresAt: testNow.Add(time.Hour)}
-
-func TestStatus(t *testing.T) {
-	off := New(stubSource{}, site, &url.URL{}, NewComments(nil, nil))
-	if got := send(t, off, http.MethodGet, "/api/github/status", "", nil).Body.String(); !strings.Contains(got, `"configured":false`) {
-		t.Errorf("off: %s", got)
-	}
-	expired := &github.Token{AccessToken: "ghu_ok", ExpiresAt: testNow.Add(-time.Minute)}
-	for token, want := range map[*github.Token]string{nil: `"signedIn":false`, expired: `"signedIn":false`, signedIn: `"signedIn":true`} {
-		handler, _, _ := commentServer(token)
-		if got := send(t, handler, http.MethodGet, "/api/github/status", "", nil).Body.String(); !strings.Contains(got, want) {
-			t.Errorf("token %v: %s, want %s", token, got, want)
-		}
-	}
-}
-
-func TestSignInRoundTripStoresTheToken(t *testing.T) {
-	handler, _, store := commentServer(nil)
+// signIn runs the sign-in with GitHub's code and returns the browser's session cookie header.
+func signIn(t *testing.T, handler http.Handler, code string) map[string]string {
+	t.Helper()
 	login := send(t, handler, http.MethodGet, "/api/github/login", "", map[string]string{"X-Forwarded-Proto": "https"})
 	target, err := url.Parse(login.Header().Get("Location"))
 	if login.Code != http.StatusFound || err != nil || target.Query().Get("redirect_uri") != "https://docs.localhost/api/github/callback" {
 		t.Fatalf("login: %d %s", login.Code, login.Header().Get("Location"))
 	}
 	state := target.Query().Get("state")
-	cookie := stateCookie + "=" + state
-	if bad := send(t, handler, http.MethodGet, "/api/github/callback?code=x&state="+state, "", nil); bad.Code != http.StatusBadRequest {
-		t.Errorf("callback without the cookie: %d, want 400", bad.Code)
+	callback := send(t, handler, http.MethodGet, "/api/github/callback?code="+code+"&state="+state, "",
+		map[string]string{"Cookie": stateCookie + "=" + state})
+	if callback.Code != http.StatusOK || !strings.Contains(callback.Body.String(), "BroadcastChannel") {
+		t.Fatalf("callback: %d %s", callback.Code, callback.Body)
 	}
-	ok := send(t, handler, http.MethodGet, "/api/github/callback?code=ok&state="+state, "", map[string]string{"Cookie": cookie})
-	if ok.Code != http.StatusOK || store.token == nil || store.token.AccessToken != "ghu_ok" {
-		t.Fatalf("callback: %d, stored %+v", ok.Code, store.token)
-	}
-	if !strings.Contains(ok.Body.String(), "BroadcastChannel") {
-		t.Error("the callback page must tell the site's tab")
-	}
-}
-
-func TestCreateNeedsASignedInPersonAndLabelsTheIssue(t *testing.T) {
-	comment := `{"title":"docs(state.html): fix","body":"text"}`
-	expired := &github.Token{AccessToken: "ghu_ok", ExpiresAt: testNow.Add(-time.Minute)}
-	rejected := &github.Token{AccessToken: "ghu_revoked"}
-	for name, token := range map[string]*github.Token{"none": nil, "expired": expired, "rejected by GitHub": rejected} {
-		handler, _, _ := commentServer(token)
-		if rec := send(t, handler, http.MethodPost, "/api/comments", comment, nil); rec.Code != http.StatusUnauthorized {
-			t.Errorf("%s: %d, want 401", name, rec.Code)
+	for _, c := range callback.Result().Cookies() {
+		if c.Name == sessionCookie && c.HttpOnly && c.SameSite == http.SameSiteStrictMode {
+			return map[string]string{"Cookie": c.Name + "=" + c.Value}
 		}
 	}
-	handler, gh, _ := commentServer(signedIn)
-	rec := send(t, handler, http.MethodPost, "/api/comments", comment, map[string]string{"Origin": "http://docs.localhost"})
-	if rec.Code != http.StatusCreated || rec.Body.String() != "{\"number\":7}\n" || len(gh.labels) != 2 {
-		t.Fatalf("create: %d %s, labels %v", rec.Code, rec.Body, gh.labels)
+	t.Fatal("callback set no HttpOnly, SameSite=Strict session cookie")
+	return nil
+}
+
+const comment = `{"title":"docs(state.html): fix","body":"text"}`
+
+func TestStatusSaysOnlyWhetherCommentsAreOn(t *testing.T) {
+	off := New(stubSource{}, site, &url.URL{}, NewComments(nil, nil))
+	if got := send(t, off, http.MethodGet, "/api/github/status", "", nil).Body.String(); got != "{\"configured\":false}\n" {
+		t.Errorf("off: %s", got)
 	}
-	if bad := send(t, handler, http.MethodPost, "/api/comments", `{"title":""}`, nil); bad.Code != http.StatusBadRequest {
-		t.Errorf("empty comment: %d, want 400", bad.Code)
+	handler, _, _ := commentServer(t)
+	if got := send(t, handler, http.MethodGet, "/api/github/status", "", nil).Body.String(); got != "{\"configured\":true}\n" {
+		t.Errorf("on: %s", got)
 	}
 }
 
-func TestResolveAndDeleteCloseTheIssue(t *testing.T) {
-	handler, gh, _ := commentServer(signedIn)
-	if rec := send(t, handler, http.MethodPost, "/api/comments/7/resolve", "", nil); rec.Code != http.StatusNoContent {
-		t.Errorf("resolve: %d", rec.Code)
+func TestCallbackChecksTheState(t *testing.T) {
+	handler, _, store := commentServer(t)
+	if rec := send(t, handler, http.MethodGet, "/api/github/callback?code=ok&state=s", "", nil); rec.Code != http.StatusBadRequest || store.stored != nil {
+		t.Errorf("callback without the state cookie: %d, stored %s", rec.Code, store.stored)
 	}
-	if rec := send(t, handler, http.MethodDelete, "/api/comments/8", "", nil); rec.Code != http.StatusNoContent {
+}
+
+func TestOnlyTheBrowserThatSignedInActs(t *testing.T) {
+	handler, gh, store := commentServer(t)
+	browser := signIn(t, handler, "ok")
+	if strings.Contains(string(store.stored), strings.TrimPrefix(browser["Cookie"], sessionCookie+"=")) {
+		t.Error("Vault must keep only a hash of the session cookie")
+	}
+	other := map[string]string{"Cookie": sessionCookie + "=guessed"}
+	for name, headers := range map[string]map[string]string{"no cookie": nil, "another cookie": other} {
+		if rec := send(t, handler, http.MethodPost, "/api/comments", comment, headers); rec.Code != http.StatusUnauthorized {
+			t.Errorf("%s: create %d, want 401", name, rec.Code)
+		}
+		if rec := send(t, handler, http.MethodDelete, "/api/comments/7", "", headers); rec.Code != http.StatusUnauthorized {
+			t.Errorf("%s: delete %d, want 401", name, rec.Code)
+		}
+	}
+	rec := send(t, handler, http.MethodPost, "/api/comments", comment, browser)
+	if rec.Code != http.StatusCreated || len(gh.labels) != 2 || len(gh.closed) != 0 {
+		t.Fatalf("create: %d %s, labels %v, closed %v", rec.Code, rec.Body, gh.labels, gh.closed)
+	}
+}
+
+func TestExpiredOrRejectedTokensNeedANewSignIn(t *testing.T) {
+	handler, _, _ := commentServer(t)
+	rejected := signIn(t, handler, "revoked") // the fake GitHub accepts only ghu_ok
+	if rec := send(t, handler, http.MethodPost, "/api/comments", comment, rejected); rec.Code != http.StatusUnauthorized {
+		t.Errorf("rejected: %d, want 401", rec.Code)
+	}
+
+	now := testNow
+	comments := NewComments(&fakeGitHub{closed: map[int]string{}}, &memoryStore{})
+	comments.now = func() time.Time { return now }
+	handler = New(stubSource{}, site, &url.URL{}, comments)
+	browser := signIn(t, handler, "ok")
+	now = testNow.Add(9 * time.Hour) // the token lasts 8
+	if rec := send(t, handler, http.MethodPost, "/api/comments", comment, browser); rec.Code != http.StatusUnauthorized {
+		t.Errorf("expired: %d, want 401", rec.Code)
+	}
+}
+
+func TestSignOutForgetsTheToken(t *testing.T) {
+	handler, _, store := commentServer(t)
+	browser := signIn(t, handler, "ok")
+	if rec := send(t, handler, http.MethodPost, "/api/github/logout", "", browser); rec.Code != http.StatusNoContent {
+		t.Fatalf("logout: %d", rec.Code)
+	}
+	if strings.Contains(string(store.stored), "ghu_ok") {
+		t.Errorf("token still stored: %s", store.stored)
+	}
+	if rec := send(t, handler, http.MethodPost, "/api/comments", comment, browser); rec.Code != http.StatusUnauthorized {
+		t.Errorf("create after logout: %d, want 401", rec.Code)
+	}
+}
+
+func TestOnlyCommentIssuesAreClosed(t *testing.T) {
+	handler, gh, _ := commentServer(t)
+	browser := signIn(t, handler, "ok")
+	for path, want := range map[string]int{
+		"/api/comments/7/resolve": http.StatusNoContent, "/api/comments/5/resolve": http.StatusNotFound,
+		"/api/comments/6/resolve": http.StatusNotFound, "/api/comments/abc/resolve": http.StatusBadRequest,
+	} {
+		if rec := send(t, handler, http.MethodPost, path, "", browser); rec.Code != want {
+			t.Errorf("%s: %d, want %d", path, rec.Code, want)
+		}
+	}
+	if rec := send(t, handler, http.MethodDelete, "/api/comments/8", "", browser); rec.Code != http.StatusNoContent {
 		t.Errorf("delete: %d", rec.Code)
 	}
-	if gh.closed[7] != "completed" || gh.closed[8] != "not_planned" {
+	if len(gh.closed) != 2 || gh.closed[7] != "completed" || gh.closed[8] != "not_planned" {
 		t.Errorf("closed = %v", gh.closed)
 	}
-	if rec := send(t, handler, http.MethodDelete, "/api/comments/abc", "", nil); rec.Code != http.StatusBadRequest {
-		t.Errorf("bad number: %d", rec.Code)
+}
+
+func TestBadCommentsAndGitHubErrorsAreExplained(t *testing.T) {
+	handler, _, _ := commentServer(t)
+	browser := signIn(t, handler, "ok")
+	tooLong := `{"title":"t","body":"` + strings.Repeat("x", maxBody+1) + `"}`
+	for _, body := range []string{`{"title":""}`, tooLong} {
+		if rec := send(t, handler, http.MethodPost, "/api/comments", body, browser); rec.Code != http.StatusBadRequest {
+			t.Errorf("bad comment: %d, want 400", rec.Code)
+		}
+	}
+	rec := send(t, handler, http.MethodPost, "/api/comments", `{"title":"rejected","body":"b"}`, browser)
+	if rec.Code != http.StatusBadGateway || !strings.Contains(rec.Body.String(), "Validation Failed") {
+		t.Errorf("GitHub 422: %d %s", rec.Code, rec.Body)
 	}
 }
 
 func TestOtherSitesAndUnconfiguredServersAreRefused(t *testing.T) {
-	handler, gh, _ := commentServer(signedIn)
-	rec := send(t, handler, http.MethodDelete, "/api/comments/7", "", map[string]string{"Origin": "https://evil.example"})
-	if rec.Code != http.StatusForbidden || len(gh.closed) != 0 {
+	handler, gh, _ := commentServer(t)
+	browser := signIn(t, handler, "ok")
+	browser["Origin"] = "https://evil.example"
+	if rec := send(t, handler, http.MethodDelete, "/api/comments/7", "", browser); rec.Code != http.StatusForbidden || len(gh.closed) != 0 {
 		t.Errorf("cross-origin delete: %d, closed %v", rec.Code, gh.closed)
 	}
 	off := New(stubSource{}, site, &url.URL{}, NewComments(nil, nil))
-	if rec := send(t, off, http.MethodPost, "/api/comments", `{"title":"t","body":"b"}`, nil); rec.Code != http.StatusServiceUnavailable {
+	if rec := send(t, off, http.MethodPost, "/api/comments", comment, nil); rec.Code != http.StatusServiceUnavailable {
 		t.Errorf("unconfigured: %d, want 503", rec.Code)
 	}
 }

@@ -66,3 +66,16 @@ export function place(box, anchor) {
   box.style.top = `${top}px`;
   box.style.left = `${left}px`;
 }
+
+/** The text nodes of root in document order, except those inside an element below root that matches skip. */
+export function textNodes(root, skip) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      const el = node.parentElement.closest(skip);
+      return el && el !== root && root.contains(el) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  return nodes;
+}

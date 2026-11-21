@@ -27,6 +27,39 @@ type App struct {
 	HTTP         *http.Client
 }
 
+// APIError is an answer from GitHub other than 2xx and 401, with GitHub's own message.
+type APIError struct {
+	Status  int
+	Message string
+}
+
+func (e *APIError) Error() string {
+	return fmt.Sprintf("github: HTTP %d: %s", e.Status, e.Message)
+}
+
+// Issue is what the site checks before closing an issue.
+type Issue struct {
+	Labels []struct {
+		Name string `json:"name"`
+	} `json:"labels"`
+	PullRequest json.RawMessage `json:"pull_request"`
+}
+
+// HasLabel reports whether the issue has the label name.
+func (i Issue) HasLabel(name string) bool {
+	for _, label := range i.Labels {
+		if label.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// IsPullRequest reports whether the "issue" is a pull request, which the issues API also returns.
+func (i Issue) IsPullRequest() bool {
+	return len(i.PullRequest) > 0 && string(i.PullRequest) != "null"
+}
+
 // Token is a person's GitHub token; ExpiresAt is zero when it doesn't expire.
 type Token struct {
 	AccessToken string    `json:"access_token"`
@@ -73,6 +106,13 @@ func (a App) CreateIssue(ctx context.Context, token, title, body string, labels 
 	return issue, err
 }
 
+// Issue reads issue number.
+func (a App) Issue(ctx context.Context, token string, number int) (Issue, error) {
+	var issue Issue
+	err := a.call(ctx, http.MethodGet, a.API+"/repos/"+a.Repo+"/issues/"+strconv.Itoa(number), token, nil, &issue)
+	return issue, err
+}
+
 // CloseIssue closes issue number with reason "completed" or "not_planned".
 func (a App) CloseIssue(ctx context.Context, token string, number int, reason string) error {
 	request := map[string]string{"state": "closed", "state_reason": reason}
@@ -97,18 +137,13 @@ func (a App) call(ctx context.Context, method, target, token string, body, out a
 	return decodeAnswer(res, out)
 }
 
-// decodeAnswer decodes a 2xx answer into out; a 401 is ErrUnauthorized, any other status an error.
+// decodeAnswer decodes a 2xx answer into out; a 401 is ErrUnauthorized, any other status an *APIError.
 func decodeAnswer(res *http.Response, out any) error {
-	request := res.Request.Method + " " + res.Request.URL.String()
 	if res.StatusCode == http.StatusUnauthorized {
 		return ErrUnauthorized
 	}
 	if res.StatusCode/100 != 2 {
-		detail, err := io.ReadAll(io.LimitReader(res.Body, 512))
-		if err != nil {
-			return fmt.Errorf("github %s: HTTP %d, unreadable answer: %w", request, res.StatusCode, err)
-		}
-		return fmt.Errorf("github %s: HTTP %d: %s", request, res.StatusCode, detail)
+		return apiError(res)
 	}
 	if out == nil {
 		return nil
@@ -119,8 +154,11 @@ func decodeAnswer(res *http.Response, out any) error {
 	return nil
 }
 
-// newRequest encodes body as a form when it is url.Values, else as JSON.
+// newRequest encodes body as a form when it is url.Values, else as JSON; a nil body sends none.
 func newRequest(ctx context.Context, method, target string, body any) (*http.Request, error) {
+	if body == nil {
+		return request(ctx, method, target, "", nil)
+	}
 	if form, ok := body.(url.Values); ok {
 		return request(ctx, method, target, "application/x-www-form-urlencoded", []byte(form.Encode()))
 	}
@@ -131,12 +169,33 @@ func newRequest(ctx context.Context, method, target string, body any) (*http.Req
 	return request(ctx, method, target, "application/json", encoded)
 }
 
-// request is a request with payload of contentType.
+// request is a request with payload of contentType; no payload when contentType is empty.
 func request(ctx context.Context, method, target, contentType string, payload []byte) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, method, target, bytes.NewReader(payload))
+	var body io.Reader = http.NoBody
+	if contentType != "" {
+		body = bytes.NewReader(payload)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, target, body)
 	if err != nil {
 		return nil, fmt.Errorf("github request: %w", err)
 	}
-	req.Header.Set("Content-Type", contentType)
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
 	return req, nil
+}
+
+// apiError is the *APIError for res, with the message from GitHub's JSON error, or the raw answer.
+func apiError(res *http.Response) error {
+	raw, err := io.ReadAll(io.LimitReader(res.Body, 4096))
+	if err != nil {
+		return fmt.Errorf("github: HTTP %d, unreadable answer: %w", res.StatusCode, err)
+	}
+	var answer struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(raw, &answer) != nil || answer.Message == "" {
+		answer.Message = string(raw)
+	}
+	return &APIError{Status: res.StatusCode, Message: answer.Message}
 }

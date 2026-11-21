@@ -114,3 +114,36 @@ func TestCloseIssueAndRejectedTokens(t *testing.T) {
 		t.Fatalf("err = %v, want ErrUnauthorized", err)
 	}
 }
+
+func TestIssueTellsCommentsFromPullRequests(t *testing.T) {
+	app := fakeGitHub(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.ContentLength > 0 {
+			t.Errorf("unexpected %s with %d bytes", r.Method, r.ContentLength)
+		}
+		answers := map[string]string{
+			"/repos/o/r/issues/7": `{"labels":[{"name":"documentation"},{"name":"docs-feedback"}],"pull_request":null}`,
+			"/repos/o/r/issues/8": `{"labels":[{"name":"docs-feedback"}],"pull_request":{"url":"x"}}`,
+		}
+		reply(t, w, answers[r.URL.Path])
+	})
+	comment, err := app.Issue(context.Background(), "ghu_1", 7)
+	if err != nil || !comment.HasLabel("docs-feedback") || comment.IsPullRequest() {
+		t.Errorf("#7 = %+v, err %v", comment, err)
+	}
+	pull, err := app.Issue(context.Background(), "ghu_1", 8)
+	if err != nil || !pull.IsPullRequest() {
+		t.Errorf("#8 = %+v, err %v", pull, err)
+	}
+}
+
+func TestErrorsCarryGitHubsMessage(t *testing.T) {
+	app := fakeGitHub(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		reply(t, w, `{"message":"Resource not accessible by integration"}`)
+	})
+	_, err := app.CreateIssue(context.Background(), "ghu_1", "t", "b", nil)
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusForbidden || apiErr.Message != "Resource not accessible by integration" {
+		t.Fatalf("err = %v", err)
+	}
+}

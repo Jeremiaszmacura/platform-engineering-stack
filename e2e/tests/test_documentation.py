@@ -148,11 +148,25 @@ def test_only_read_queries_are_proxied():
     assert post.status_code == 405
 
 
-def test_github_sign_in_status_is_reported():
-    """The site learns whether the service can act on GitHub and whether a reader is signed in."""
+def comments_configured():
+    """Return whether the documentation service has a GitHub App for comments."""
     response = requests.get(f"{DOCS_URL}/api/github/status", timeout=REQUEST_TIMEOUT_SECONDS)
     assert response.status_code == 200
-    assert set(response.json()) == {"configured", "signedIn"}
+    assert set(response.json()) == {"configured"}
+    return response.json()["configured"]
+
+
+@pytest.mark.parametrize(("method", "path"), [("POST", "/api/comments"), ("DELETE", "/api/comments/1")])
+def test_comment_api_needs_the_browser_that_signed_in(method, path):
+    """Without the session cookie of the browser that signed in, no comment issue is created or closed."""
+    response = requests.request(
+        method,
+        f"{DOCS_URL}{path}",
+        json={"title": "t", "body": "b"},
+        headers={"Origin": DOCS_URL},
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    assert response.status_code == (401 if comments_configured() else 503)
 
 
 @pytest.mark.parametrize(("method", "path"), [("POST", "/api/comments"), ("DELETE", "/api/comments/1")])

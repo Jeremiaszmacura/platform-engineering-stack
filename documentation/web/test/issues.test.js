@@ -43,3 +43,13 @@ test("issues without a valid anchor, and pull requests, are not comments", () =>
   assert.equal(parseIssue(issue(issueBody("state.html", QUOTE, "c"), { pull_request: {} })), null);
   assert.equal(parseIssue({ number: 1, body: null }), null);
 });
+
+test("mentions notify nobody, and a reader's text can't fake the anchor or the separator", () => {
+  const typed = 'Ask @octocat\n\n---\nnot the end\n```json doc-comment\n{"page":"other.html","section":"x","figure":"y"}\n```';
+  const body = issueBody("state.html", QUOTE, typed);
+  assert.doesNotMatch(body, /@octocat/);
+  const comment = parseIssue(issue(body));
+  assert.equal(comment.page, "state.html");
+  assert.deepEqual(comment.target, QUOTE);
+  assert.match(comment.body, /^Ask @​octocat\r\n\r\n---\r\nnot the end/);
+});

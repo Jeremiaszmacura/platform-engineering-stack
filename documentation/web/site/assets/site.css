@@ -46,7 +46,7 @@
   --bg: #0e171d; --surface: #15222a; --sunken: #1b2b34; --fg: #e3ecef; --muted: #98aab3; --line: #2b3d47;
   --accent: #5cc3db; --accent-soft: #163a45; --warn: #f0a85a; --warn-soft: #3a2a17;
   --ok: #4cc38a; --ok-soft: #173327; --bad: #ff8a80; --bad-soft: #3d1d1b;
-    --comment: #4a3f00; --comment-strong: #6e5c00;
+  --comment: #4a3f00; --comment-strong: #6e5c00;
   --ns-outside: #b7c4cc; --ns-gateway: #f2894f; --ns-apps: #7aa2ff; --ns-data: #b391ff; --ns-vault: #45c7b6;
   --ns-monitoring: #f075b4; --ns-docs: #a9cc4f; --ns-system: #9aabb6;
   color-scheme: dark;
@@ -426,11 +426,11 @@ svg.dg { display: block; width: 100%; height: auto; font-family: var(--font-mono
 mark.comment-mark { background: var(--comment); color: inherit; border-radius: 2px; cursor: pointer; }
 mark.comment-mark:hover, mark.comment-mark:focus-visible, mark.comment-mark:hover mark.comment-mark { background: var(--comment-strong); outline: none; }
 .figure.has-comment { outline: 3px solid var(--comment-strong); outline-offset: 2px; }
-.comment-ui button {
+.comment-ui button, button.comment-ui {
   font: 600 0.75rem var(--font-body); border: 1px solid var(--line); background: var(--surface); color: var(--fg);
   padding: 4px 10px; border-radius: 6px; cursor: pointer;
 }
-.comment-ui button:hover { border-color: var(--accent); color: var(--accent); }
+.comment-ui button:hover, button.comment-ui:hover { border-color: var(--accent); color: var(--accent); }
 .comment-figure { position: absolute; top: 10px; right: 10px; opacity: 0; }
 .figure:hover .comment-figure, .comment-figure:focus-visible, .has-comment .comment-figure { opacity: 1; }
 .has-comment .comment-figure { background: var(--comment); }
@@ -456,6 +456,7 @@ button.comment-add { border-color: var(--comment-strong); background: var(--comm
   border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
 }
 .comment-box .comment-error { color: var(--bad); margin: 0; }
+.comment-box button.quiet { border: 0; background: none; color: var(--muted); padding: 4px 0; margin-right: auto; }
 .comment-box button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

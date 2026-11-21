@@ -1,6 +1,6 @@
 // Kubernetes terms in the text explain themselves: hover, focus or tap the first mention in each section.
 
-import { $$, esc, place } from "./util.js";
+import { $$, esc, place, textNodes } from "./util.js";
 import { TERMS, findTerm } from "./glossary.js";
 
 /** Text inside these is never marked: code, links, headings, navigation and controls. */
@@ -18,17 +18,7 @@ export function explainTerms(article) {
 /** Wrap the first mention of every term within section. */
 function markSection(section) {
   const seen = new Set();
-  for (const node of textNodes(section)) markText(node, seen);
-}
-
-/** The text nodes of root that may hold a term, in document order. */
-function textNodes(root) {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    acceptNode: (node) => (node.parentElement.closest(SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
-  });
-  const nodes = [];
-  while (walker.nextNode()) nodes.push(walker.currentNode);
-  return nodes;
+  for (const node of textNodes(section, SKIP)) markText(node, seen);
 }
 
 /** Wrap every term in the text node that seen doesn't hold yet, and add it to seen. */
@@ -87,7 +77,7 @@ class TermTip {
   /** Focus on a term opens its box; focus anywhere but the box closes it. */
   onFocus(e) {
     const el = termAt(e.target);
-    if (el) this.show(el);
+    if (el) this.later(() => this.show(el), 0); // not during another popover's hide, which can move focus here
     else if (!this.box.contains(e.target)) this.hide();
   }
 

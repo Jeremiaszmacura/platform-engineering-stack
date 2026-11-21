@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -11,25 +13,37 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"documentation/internal/github"
 )
 
-// Labels of every comment issue; the site lists comments by docs-feedback.
-var commentLabels = []string{"documentation", "docs-feedback"}
+// commentLabel marks comment issues: the site lists them by it, and closes only issues that have it.
+const commentLabel = "docs-feedback"
+
+// Labels of every comment issue.
+var commentLabels = []string{"documentation", commentLabel}
 
 const (
-	stateCookie  = "github_sign_in_state"
-	maxBodyBytes = 64 << 10
+	stateCookie   = "github_sign_in_state"
+	sessionCookie = "docs_session"
+	maxBodyBytes  = 128 << 10
+	maxTitle      = 256   // GitHub's limit, in characters
+	maxBody       = 65536 // GitHub's limit, in characters
 )
 
-// errSignIn means no valid GitHub token is stored: the person must sign in.
-var errSignIn = errors.New("sign in to GitHub")
+var (
+	// errSignIn means this browser has no valid GitHub token: the person must sign in.
+	errSignIn = errors.New("sign in to GitHub")
+	// errNotComment means the issue isn't a comment issue, which this site must not close.
+	errNotComment = errors.New("not a comment issue")
+)
 
 type issueTracker interface {
 	AuthorizeURL(redirectURI, state string) string
 	Exchange(ctx context.Context, code, redirectURI string, now time.Time) (github.Token, error)
 	CreateIssue(ctx context.Context, token, title, body string, labels []string) (json.RawMessage, error)
+	Issue(ctx context.Context, token string, number int) (github.Issue, error)
 	CloseIssue(ctx context.Context, token string, number int, reason string) error
 }
 
@@ -38,7 +52,13 @@ type secretStore interface {
 	Write(ctx context.Context, data any) error
 }
 
-// Comments creates and closes the site's comment issues as the person signed in to GitHub; their token stays in Vault.
+// session is what Vault keeps: the GitHub token of the one browser that signed in, and a hash of its session cookie.
+type session struct {
+	github.Token
+	CookieHash string `json:"cookie_hash"`
+}
+
+// Comments creates and closes the site's comment issues with the GitHub account of the browser that signed in.
 type Comments struct {
 	github issueTracker // nil when no GitHub App is configured
 	tokens secretStore
@@ -55,20 +75,20 @@ func (c *Comments) register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/github/status", c.status)
 	mux.HandleFunc("GET /api/github/login", c.configured(c.login))
 	mux.HandleFunc("GET /api/github/callback", c.configured(c.callback))
+	mux.HandleFunc("POST /api/github/logout", sameOrigin(c.configured(c.logout)))
 	mux.HandleFunc("POST /api/comments", sameOrigin(c.configured(c.create)))
 	mux.HandleFunc("POST /api/comments/{number}/resolve", sameOrigin(c.configured(c.closer("completed"))))
 	mux.HandleFunc("DELETE /api/comments/{number}", sameOrigin(c.configured(c.closer("not_planned"))))
 }
 
-// status tells the site whether it can act on GitHub and whether someone is signed in.
-func (c *Comments) status(w http.ResponseWriter, r *http.Request) {
-	_, err := c.token(r.Context())
-	writeJSON(w, http.StatusOK, map[string]bool{"configured": c.github != nil, "signedIn": err == nil})
+// status tells the site whether it can act on GitHub.
+func (c *Comments) status(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]bool{"configured": c.github != nil})
 }
 
 // login sends the person to GitHub's sign-in page; GitHub returns them to callback.
 func (c *Comments) login(w http.ResponseWriter, r *http.Request) {
-	state, err := randomState()
+	state, err := randomHex()
 	if err != nil {
 		http.Error(w, "sign-in failed", http.StatusInternalServerError)
 		return
@@ -80,7 +100,8 @@ func (c *Comments) login(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, c.github.AuthorizeURL(redirectURI(r), state), http.StatusFound)
 }
 
-// callback trades GitHub's code for the person's token, keeps it in Vault and tells the site's other tab.
+// callback trades GitHub's code for the person's token, keeps it in Vault for this browser only and tells the
+// site's other tab. A new sign-in replaces the previous browser's session.
 func (c *Comments) callback(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie(stateCookie)
 	if err != nil || cookie.Value != r.URL.Query().Get("state") {
@@ -88,26 +109,52 @@ func (c *Comments) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.SetCookie(w, &http.Cookie{Name: stateCookie, Path: "/api/github/", MaxAge: -1})
-	token, err := c.github.Exchange(r.Context(), r.URL.Query().Get("code"), redirectURI(r), c.now())
-	if err == nil {
-		err = c.tokens.Write(r.Context(), token)
-	}
+	id, err := c.signIn(r.Context(), r.URL.Query().Get("code"), redirectURI(r))
 	if err != nil {
 		slog.Error("github sign-in", "error", err)
 		page(w, http.StatusBadGateway, "Sign-in failed. Close this tab and try again.")
 		return
 	}
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookie, Value: id, Path: "/api/",
+		HttpOnly: true, Secure: isHTTPS(r), SameSite: http.SameSiteStrictMode,
+	})
 	page(w, http.StatusOK, "Signed in to GitHub. You can close this tab.")
+}
+
+// signIn exchanges code for a token and stores it with a new session; it returns the session cookie's value.
+func (c *Comments) signIn(ctx context.Context, code, redirect string) (string, error) {
+	token, err := c.github.Exchange(ctx, code, redirect, c.now())
+	if err != nil {
+		return "", err //nolint:wrapcheck // the client's error says what failed
+	}
+	id, err := randomHex()
+	if err != nil {
+		return "", err
+	}
+	return id, c.tokens.Write(ctx, session{Token: token, CookieHash: hash(id)}) //nolint:wrapcheck // as above
+}
+
+// logout forgets the GitHub token of the browser that signed in.
+func (c *Comments) logout(w http.ResponseWriter, r *http.Request) {
+	if _, err := c.token(r); err == nil {
+		if err := c.tokens.Write(r.Context(), session{}); err != nil {
+			c.fail(w, err)
+			return
+		}
+	}
+	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Path: "/api/", MaxAge: -1})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // create opens an issue for a new comment and answers with it.
 func (c *Comments) create(w http.ResponseWriter, r *http.Request) {
 	var comment struct{ Title, Body string }
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes)).Decode(&comment); err != nil || comment.Title == "" || comment.Body == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "a comment needs a title and a body"})
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes)).Decode(&comment); err != nil || !validComment(comment.Title, comment.Body) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "a comment needs a title and a body within GitHub's limits"})
 		return
 	}
-	token, err := c.token(r.Context())
+	token, err := c.token(r)
 	if err != nil {
 		c.fail(w, err)
 		return
@@ -128,9 +175,9 @@ func (c *Comments) closer(reason string) http.HandlerFunc {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "not an issue number"})
 			return
 		}
-		token, err := c.token(r.Context())
+		token, err := c.token(r)
 		if err == nil {
-			err = c.github.CloseIssue(r.Context(), token.AccessToken, number, reason)
+			err = c.closeComment(r.Context(), token.AccessToken, number, reason)
 		}
 		if err != nil {
 			c.fail(w, err)
@@ -140,30 +187,57 @@ func (c *Comments) closer(reason string) http.HandlerFunc {
 	}
 }
 
-// token is the stored GitHub token, or errSignIn when there is none or it has expired.
-func (c *Comments) token(ctx context.Context) (github.Token, error) {
-	var token github.Token
-	if c.tokens == nil {
-		return token, errSignIn
-	}
-	found, err := c.tokens.Read(ctx, &token)
+// closeComment closes issue number with reason, unless it isn't a comment issue.
+func (c *Comments) closeComment(ctx context.Context, token string, number int, reason string) error {
+	issue, err := c.github.Issue(ctx, token, number)
 	if err != nil {
-		return token, err //nolint:wrapcheck // the store's own error says what failed
+		return err //nolint:wrapcheck // the client's error says what failed
 	}
-	if !found || !token.Valid(c.now()) {
-		return token, errSignIn
+	if !issue.HasLabel(commentLabel) || issue.IsPullRequest() {
+		return errNotComment
 	}
-	return token, nil
+	return c.github.CloseIssue(ctx, token, number, reason) //nolint:wrapcheck // as above
 }
 
-// fail answers 401 when the person must sign in again, else 502.
-func (c *Comments) fail(w http.ResponseWriter, err error) {
-	if errors.Is(err, errSignIn) || errors.Is(err, github.ErrUnauthorized) {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": errSignIn.Error()})
-		return
+// token is the GitHub token stored for the browser of request r, or errSignIn when it has none or it has expired.
+func (c *Comments) token(r *http.Request) (github.Token, error) {
+	cookie, err := r.Cookie(sessionCookie)
+	if err != nil || c.tokens == nil {
+		return github.Token{}, errSignIn
 	}
-	slog.Error("comment", "error", err)
-	writeJSON(w, http.StatusBadGateway, map[string]string{"error": "GitHub or Vault did not answer"})
+	var stored session
+	found, err := c.tokens.Read(r.Context(), &stored)
+	if err != nil {
+		return github.Token{}, err //nolint:wrapcheck // the store's own error says what failed
+	}
+	sameBrowser := subtle.ConstantTimeCompare([]byte(stored.CookieHash), []byte(hash(cookie.Value))) == 1
+	if !found || !sameBrowser || !stored.Valid(c.now()) {
+		return github.Token{}, errSignIn
+	}
+	return stored.Token, nil
+}
+
+// fail answers 401 when the person must sign in again, 404 for an issue that isn't a comment, else 502 with
+// GitHub's message when it gave one.
+func (c *Comments) fail(w http.ResponseWriter, err error) {
+	var apiErr *github.APIError
+	switch {
+	case errors.Is(err, errSignIn) || errors.Is(err, github.ErrUnauthorized):
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": errSignIn.Error()})
+	case errors.Is(err, errNotComment):
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": errNotComment.Error()})
+	case errors.As(err, &apiErr):
+		slog.Error("comment", "error", err)
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "GitHub: " + apiErr.Message})
+	default:
+		slog.Error("comment", "error", err)
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "GitHub or Vault did not answer"})
+	}
+}
+
+// validComment reports whether title and body are present and within GitHub's limits.
+func validComment(title, body string) bool {
+	return title != "" && body != "" && utf8.RuneCountInString(title) <= maxTitle && utf8.RuneCountInString(body) <= maxBody
 }
 
 // configured answers 503 when no GitHub App is set up.
@@ -204,13 +278,19 @@ func isHTTPS(r *http.Request) bool {
 	return r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 }
 
-// randomState is an unguessable value tying GitHub's callback to the sign-in it started.
-func randomState() (string, error) {
-	b := make([]byte, 16)
+// randomHex is an unguessable value: the sign-in state and the session cookie.
+func randomHex() (string, error) {
+	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", err //nolint:wrapcheck // crypto/rand fails only if the OS has no entropy
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// hash is the hex SHA-256 of value; Vault keeps the session cookie only as this.
+func hash(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])
 }
 
 // page answers with a small HTML page showing message, which tells the site's tabs that sign-in finished.

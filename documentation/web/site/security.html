@@ -112,7 +112,7 @@ Role            monitoring/documentation-prometheus    get configmaps "prometheu
       starts</a>): <code>services/</code>, one path per service, and <code>infra/</code>, reserved. No app holds a Vault
       password. Each signs in with its <b>ServiceAccount</b> through Vault's built-in <b>kubernetes auth method</b> and gets
       a short-lived Vault token that opens only its own path. These steps follow stock-app; the documentation service does
-      the same to keep the GitHub token of the reader who comments (<a href="components.html#documentation">how</a>).</p>
+      the same to keep the GitHub token of the browser signed in for comments (<a href="components.html#documentation">how</a>).</p>
   </div>
   <ol class="steps">
     <li><div><span class="where">kubelet</span>Mounts a token for stock-app's ServiceAccount at

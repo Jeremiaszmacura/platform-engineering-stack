@@ -1,14 +1,14 @@
 // Reader comments on text and figures, stored as GitHub issues that the documentation service creates and closes;
 // without the service, GitHub's pre-filled new-issue page opens instead.
 
-import { $, $$, currentPage, esc, place, plural } from "./util.js";
+import { $, $$, currentPage, esc, place, plural, textNodes } from "./util.js";
 import { flatten, locate, quoteAt } from "./annotations.js";
 import { LABEL, REPO, issueBody, issueTitle, newIssueURL, parseIssue } from "./issues.js";
 
 const ISSUES_API = `https://api.github.com/repos/${REPO}/issues?labels=${LABEL}&state=open&per_page=100`;
 const SELECTION_DELAY_MS = 250;
-/** Not commentable as text: elements with an id hold live data that is re-rendered. */
-const SKIP = "[id], [data-app], figure, svg, button, nav, .term-tip, .comment-ui";
+/** Not commentable as text: live data (elements with an id), figures, and controls that must stay clickable. */
+const SKIP = "[id], [data-app], a, summary, .figure, svg, button, nav, .term-tip, .comment-ui";
 const ROOTS = ".page-head, section.chapter[id]";
 
 /** Show this page's comments and let the reader add new ones. */
@@ -20,8 +20,8 @@ export function initComments(article) {
 /** The open comments on page, or none when GitHub can't be reached. */
 async function fetchComments(page) {
   try {
-    // no-cache revalidates with the ETag: a 304 doesn't count against GitHub's rate limit
-    const res = await fetch(ISSUES_API, { cache: "no-cache" });
+    // Cached for GitHub's max-age (60 s): every answered request, 304s too, counts against 60 per hour and IP.
+    const res = await fetch(ISSUES_API);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return (await res.json()).map(parseIssue).filter((c) => c?.page === page);
   } catch (err) {
@@ -54,6 +54,7 @@ class Comments {
     this.comments = [];
     this.canAct = false; // the service can create and close issues
     this.retry = null; // the request to send again once the reader has signed in
+    this.sending = false; // a request is on its way: further clicks are ignored
     this.box = popover("div", "comment-box", "auto");
     this.box.setAttribute("role", "dialog");
     this.box.setAttribute("aria-label", "Comments");
@@ -69,12 +70,13 @@ class Comments {
 
   /** Wire up the events and show the stored comments. */
   bind() {
-    for (const figure of $$("figure.figure", this.article)) this.addFigureButton(figure);
+    for (const figure of $$(".figure", this.article)) this.addFigureButton(figure);
     document.addEventListener("selectionchange", () => {
       clearTimeout(this.timer);
       this.timer = setTimeout(() => this.offerSelection(), SELECTION_DELAY_MS);
     });
     this.addButton.addEventListener("pointerdown", (e) => e.preventDefault()); // keep the selection
+    document.addEventListener("keydown", (e) => this.onTab(e));
     this.addButton.addEventListener("click", () => this.selected && this.open([], this.selected.range, this.selected.target));
     this.article.addEventListener("click", (e) => this.onMarkClick(e));
     this.article.addEventListener("keydown", (e) => (e.key === "Enter" || e.key === " ") && this.onMarkClick(e));
@@ -105,7 +107,7 @@ class Comments {
     for (const mark of $$("mark.comment-mark", this.article)) unwrap(mark);
     const open = this.comments;
     const lost = open.filter((c) => !c.target.figure && !this.markText(c));
-    for (const figure of $$("figure.figure", this.article)) this.paintFigure(figure, open);
+    for (const figure of $$(".figure", this.article)) this.paintFigure(figure, open);
     lost.push(...open.filter((c) => c.target.figure && !document.getElementById(c.target.figure)));
     this.showLost(lost);
   }
@@ -198,12 +200,20 @@ class Comments {
     if (document.activeElement === document.body) this.anchor?.focus?.({ preventScroll: true });
   }
 
-  /** Cancel, Sign in, Resolve (closes the issue as completed) and Delete (closes it as not planned). */
+  /** Tab from a commentable selection moves to its Comment button. */
+  onTab(e) {
+    if (e.key !== "Tab" || e.shiftKey || !this.addButton.matches(":popover-open")) return;
+    e.preventDefault();
+    this.addButton.focus();
+  }
+
+  /** Cancel, Sign in, Sign out, Resolve (closes the issue as completed) and Delete (closes it as not planned). */
   onBoxClick(e) {
     const action = e.target.closest("[data-action]")?.dataset.action;
     const id = e.target.closest("[data-id]")?.dataset.id;
     if (action === "cancel") this.box.hidePopover();
     if (action === "sign-in") window.open("api/github/login", "_blank");
+    if (action === "sign-out") this.send(() => api("POST", "api/github/logout"), () => {});
     if (action === "resolve") this.send(() => api("POST", `api/comments/${id}/resolve`), () => this.drop(id));
     if (action === "delete") this.send(() => api("DELETE", `api/comments/${id}`), () => this.drop(id));
   }
@@ -224,13 +234,17 @@ class Comments {
     this.send(() => api("POST", "api/comments", issue), async (res) => this.add(parseIssue(await res.json())));
   }
 
-  /** Send request; on 401 ask the reader to sign in to GitHub and send it again after; on success close and run done. */
+  /** Send request, one at a time; on 401 ask the reader to sign in and send it again after; on success close and run done. */
   async send(request, done) {
+    if (this.sending) return;
+    this.sending = true;
     let res;
     try {
       res = await request();
     } catch {
       return this.showError("The documentation service did not answer.");
+    } finally {
+      this.sending = false;
     }
     if (res.status === 401) return this.askSignIn(() => this.send(request, done));
     if (!res.ok) return this.showError((await res.json().catch(() => null))?.error || `HTTP ${res.status}`);
@@ -274,13 +288,13 @@ class Comments {
 }
 
 // One line: the box keeps line breaks (white-space: pre-wrap) for comment text.
-const SIGN_IN = `<p>Sign in to GitHub once to save comments as issues in your name. GitHub opens in a new tab; your token stays in the cluster's Vault.</p>
+const SIGN_IN = `<p>Sign in to GitHub in this browser to save comments as issues from your account. GitHub opens in a new tab.</p>
   <div class="actions"><button type="button" data-action="cancel">Cancel</button><button type="button" data-action="sign-in" class="primary">Sign in with GitHub</button></div>`;
 
 /** The form for a new comment; without the service it hands the comment to GitHub's new-issue page. */
-const formHTML = (canAct) => `<form><textarea name="body" rows="3" required aria-label="Your comment" placeholder="What should change?"></textarea>
+const formHTML = (canAct) => `<form><textarea name="body" rows="3" required maxlength="60000" aria-label="Your comment" placeholder="What should change?"></textarea>
   ${canAct ? "" : "<small>Opens a pre-filled GitHub issue: submit it there.</small>"}
-  <div class="actions"><button type="button" data-action="cancel">Cancel</button><button type="submit" class="primary">${canAct ? "Comment" : "Create issue"}</button></div></form>`;
+  <div class="actions">${canAct ? '<button type="button" data-action="sign-out" class="quiet">Sign out of GitHub</button>' : ""}<button type="button" data-action="cancel">Cancel</button><button type="submit" class="primary">${canAct ? "Comment" : "Create issue"}</button></div></form>`;
 
 /** One comment in the box, with Resolve and Delete when the service can close its issue. */
 const commentHTML = (c, canAct) => `<article data-id="${esc(c.id)}"><p>${esc(c.body)}</p><footer>
@@ -306,22 +320,9 @@ function ancestors(el, selector) {
   return found;
 }
 
-/** The commentable text nodes of root. */
-function textNodes(root) {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    acceptNode: (node) => {
-      const skip = node.parentElement.closest(SKIP);
-      return skip && skip !== root && root.contains(skip) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
-    },
-  });
-  const nodes = [];
-  while (walker.nextNode()) nodes.push(walker.currentNode);
-  return nodes;
-}
-
 /** root's commentable text, flattened. */
 function textIndex(root) {
-  const nodes = textNodes(root);
+  const nodes = textNodes(root, SKIP);
   return { nodes, ...flatten(nodes.map((n) => n.data)) };
 }
 
@@ -347,7 +348,7 @@ function rangeOf(root, quote) {
 
 /** Wrap range's text in marks for comment id. */
 function wrap(root, range, id) {
-  const parts = textNodes(root).filter((n) => range.intersectsNode(n)).map((node) => ({
+  const parts = textNodes(root, SKIP).filter((n) => range.intersectsNode(n)).map((node) => ({
     node,
     start: node === range.startContainer ? range.startOffset : 0,
     end: node === range.endContainer ? range.endOffset : node.length,

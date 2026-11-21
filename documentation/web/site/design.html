@@ -38,8 +38,8 @@
       component.</li>
     <li><b>Entry point.</b> Gateway API, implemented by Envoy Gateway (<code>platform/envoy-gateway/</code>). The platform
       owns the GatewayClass and the one shared Gateway (<code>platform/gateway/</code>); each component owns its HTTPRoute.
-      Only namespaces labelled <code>shared-gateway-access: "true"</code> may attach routes. kind maps host ports 80 and 443 to the
-      fixed NodePorts 30080 and 30443 of the Gateway's Envoy Service, so the proxy needs no node pinning. Every hostname
+      Only namespaces labelled <code>shared-gateway-access: "true"</code> may attach routes. kind maps host ports 80 and 443, on
+      127.0.0.1 only, to the fixed NodePorts 30080 and 30443 of the Gateway's Envoy Service, so the proxy needs no node pinning. Every hostname
       answers on HTTP and on HTTPS; TLS ends at the Gateway, and pods serve plain HTTP.
       <a href="networking.html#gateway">How it works</a>.</li>
     <li><b>Certificates.</b> cert-manager (<code>platform/cert-manager/</code>) issues every certificate from the cluster's
@@ -81,8 +81,9 @@
       service, <code>documentation/</code>, serves the pages and their live data: the cluster map from the Kubernetes API
       (informers, read-only RBAC) and read-only PromQL forwarded to Prometheus. Pages are hand-written HTML with shared
       JavaScript modules and no build step. GitHub Pages publishes the same files, which then render a recorded snapshot.
-      Reader comments are GitHub issues labelled <code>docs-feedback</code>, created and closed in the reader's name: the
-      service runs GitHub's sign-in for a GitHub App and keeps the reader's token in Vault, so the browser never holds it.
+      Reader comments are GitHub issues labelled <code>docs-feedback</code>, created and closed with the GitHub account of
+      the one browser that signed in: the service runs a GitHub App's sign-in and keeps the token in Vault, tied to that
+      browser's session cookie, so the browser never holds the token.
       <a href="components.html#documentation">How</a>.</li>
     <li><b>Dependency updates.</b> Renovate opens update pull requests daily. Minor, patch and digest updates merge
       automatically when CI is green; majors and language runtimes wait for a human. Releases must be three days old; local
