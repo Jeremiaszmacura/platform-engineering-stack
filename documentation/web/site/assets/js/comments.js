@@ -1,5 +1,5 @@
-// Reader comments on text and figures, kept as GitHub issues so agents can act on them. The documentation service
-// creates and closes them as the reader signed in to GitHub; without it, the reader submits a pre-filled issue.
+// Reader comments on text and figures, stored as GitHub issues that the documentation service creates and closes;
+// without the service, GitHub's pre-filled new-issue page opens instead.
 
 import { $, $$, currentPage, esc, place, plural } from "./util.js";
 import { flatten, locate, quoteAt } from "./annotations.js";
@@ -30,7 +30,7 @@ async function fetchComments(page) {
   }
 }
 
-/** Whether the documentation service can act on GitHub; false without it (e.g. on GitHub Pages) or its GitHub App. */
+/** Whether the documentation service can create and close issues. */
 async function canActOnGitHub() {
   try {
     const res = await fetch("api/github/status", { cache: "no-store" });
@@ -81,7 +81,7 @@ class Comments {
     this.box.addEventListener("click", (e) => this.onBoxClick(e));
     this.box.addEventListener("submit", (e) => this.onSubmit(e));
     this.box.addEventListener("toggle", (e) => e.newState === "closed" && this.onClose());
-    // The sign-in tab says when it is done; then the request that needed it is sent again.
+    // Sent by the sign-in tab when it finishes.
     new BroadcastChannel("github-sign-in").addEventListener("message", (e) => this.onSignedIn(e.data === 200));
     addEventListener("scroll", () => this.follow(), { passive: true, capture: true });
     document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && this.refresh());

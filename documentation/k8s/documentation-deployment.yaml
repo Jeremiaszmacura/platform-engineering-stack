@@ -35,7 +35,7 @@ spec:
               value: grafana=http://prometheus-service:9090,grafana=http://tempo-service:3200,grafana=http://alertmanager-service:9093,prometheus=http://alertmanager-service:9093,otel-collector=http://tempo-service:4318
             - name: PROMETHEUS_URL
               value: http://prometheus-service.monitoring:9090
-            # Comments: a GitHub App signs the reader in; without its Secret (recreate-cluster.sh), comments are off
+            # GitHub App for comments; the Secret is optional (recreate-cluster.sh)
             - name: GITHUB_REPO
               value: Jeremiaszmacura/platform-engineering-stack
             - name: GITHUB_CLIENT_ID

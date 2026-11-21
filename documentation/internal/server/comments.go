@@ -15,7 +15,7 @@ import (
 	"documentation/internal/github"
 )
 
-// Every comment issue carries these labels; the site and agents find comments by docs-feedback.
+// Labels of every comment issue; the site lists comments by docs-feedback.
 var commentLabels = []string{"documentation", "docs-feedback"}
 
 const (

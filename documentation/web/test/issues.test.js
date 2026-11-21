@@ -20,7 +20,7 @@ test("a new issue is pre-filled with the label, a short title and the comment", 
   assert.equal(long.length, 80);
 });
 
-test("an issue body tells agents the file and quote, and parses back to the comment", () => {
+test("an issue body names the file and quote, and parses back to the comment", () => {
   const body = issueBody("state.html", QUOTE, "Link the repo here.\nIt helps.");
   assert.match(body, /> provisioner/);
   assert.match(body, /File: `documentation\/web\/site\/state\.html`, section `#volumes`/);

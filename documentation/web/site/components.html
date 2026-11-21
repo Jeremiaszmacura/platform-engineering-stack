@@ -220,26 +220,15 @@ go test ./... &amp;&amp; golangci-lint run
 node --test 'web/test/*.test.js'
 go run .     # http://localhost:8080, against your current kubeconfig context
 curl -s http://docs.localhost/api/map | jq . &gt; web/site/assets/snapshot.json   # refresh the offline snapshot</pre></div>
-  <p class="prose"><b>Comments.</b> To ask for a change, select text or use a figure's <b>Comment</b> button. The comment
-    becomes a GitHub issue labelled <code>documentation</code> and <code>docs-feedback</code>, in your name. Its text turns
-    yellow and shows the comment on click, with <b>Resolve</b> (closes the issue as completed) and <b>Delete</b> (closes it
-    as not planned). Each issue names the file and quotes the text, so when you ask a coding agent to fix
-    them, it finds them with <code>gh issue list --label docs-feedback</code>; nothing acts on them by itself. A pull
-    request with <code>Fixes #N</code> closes the issue and removes the highlight. Live tables and values can't be commented as text.</p>
-  <p class="prose">The first comment asks you to sign in to GitHub in a new tab: the service runs the sign-in of a GitHub App
-    and keeps your token in Vault (<code>services/documentation/github</code>). When the token expires (after 8 hours) or
-    the cluster is recreated, the next action asks again, and GitHub, which remembers the app, answers at once. Without
-    the app, and on GitHub Pages, a comment opens a pre-filled GitHub issue that you submit, and you close it there. To set
-    the app up once: on GitHub, <i>Settings → Developer settings → GitHub Apps → New GitHub App</i>, with the callback URLs
-    <code>http://docs.localhost/api/github/callback</code> and <code>https://docs.localhost/api/github/callback</code>, the
-    webhook off and the repository permission <i>Issues: Read and write</i>; generate a client secret, install the app on
-    this repository only, then:</p>
-  <div class="cmd"><pre>export GITHUB_APP_CLIENT_ID=Iv23… GITHUB_APP_CLIENT_SECRET=…   # e.g. in your shell profile
-./recreate-cluster.sh                                         # saves them in Secret docs/documentation-github
-<span class="c"># or, on a running cluster:</span>
-kubectl create secret generic documentation-github -n docs \
-  --from-literal=client-id="$GITHUB_APP_CLIENT_ID" --from-literal=client-secret="$GITHUB_APP_CLIENT_SECRET"
-kubectl rollout restart deployment/documentation -n docs</pre></div>
+  <p class="prose"><b>Comments.</b> Select text, or use a figure's <b>Comment</b> button. Each comment is a GitHub issue
+    labelled <code>documentation</code> and <code>docs-feedback</code>, created in the signed-in reader's name; its body
+    names the file, quotes the text and ends with the anchor the site uses to find it. Open ones are shown in yellow.
+    <b>Resolve</b> closes the issue as completed, <b>Delete</b> as not planned. Live tables and values can't be commented.</p>
+  <p class="prose">Sign-in runs a GitHub App's web flow; the token is kept in Vault (<code>services/documentation/github</code>)
+    and asked for again when it expires or the cluster is recreated. Without the app, and on GitHub Pages, a comment opens a
+    pre-filled new issue. The app has the callback URL <code>http(s)://docs.localhost/api/github/callback</code>, no
+    webhook and the repository permission <i>Issues: Read and write</i>, and is installed on this repository only:</p>
+  <div class="cmd"><pre>GITHUB_APP_CLIENT_ID=… GITHUB_APP_CLIENT_SECRET=… ./recreate-cluster.sh   # Secret docs/documentation-github</pre></div>
 </section>
 
 <section class="chapter" id="platform" style="--c:var(--ns-gateway)">
