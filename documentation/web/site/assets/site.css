@@ -448,13 +448,15 @@ button.comment-add { border-color: var(--comment-strong); background: var(--comm
 .comment-box article { border-left: 3px solid var(--comment-strong); padding-left: 10px; }
 .comment-box p { margin: 0 0 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .comment-box footer, .comment-box .actions { display: flex; gap: 6px; align-items: center; }
-.comment-box time { font-size: 0.8rem; color: var(--muted); margin-right: auto; }
+.comment-box footer, .comment-box small { font-size: 0.8rem; color: var(--muted); }
+.comment-box footer span { margin-right: auto; }
 .comment-box .actions { justify-content: flex-end; margin-top: 6px; }
 .comment-box textarea {
   width: 100%; font: inherit; resize: vertical; color: var(--fg); background: var(--bg);
   border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
 }
-.comment-box button[type="submit"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.comment-box .comment-error { color: var(--bad); margin: 0; }
+.comment-box button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 @media print { .topbar, .sidebar, .pager, .copy, .term-tip, .comment-ui { display: none !important; } .frame { display: block; } }

@@ -1,85 +1,59 @@
-// Reader comments on text and figures, kept in localStorage so the service stays read-only.
+// Reader comments on text and figures, kept as GitHub issues so agents can act on them. The documentation service
+// creates and closes them as the reader signed in to GitHub; without it, the reader submits a pre-filled issue.
 
 import { $, $$, currentPage, esc, place, plural } from "./util.js";
 import { flatten, locate, quoteAt } from "./annotations.js";
+import { LABEL, REPO, issueBody, issueTitle, newIssueURL, parseIssue } from "./issues.js";
 
-const STORAGE_KEY = "doc-comments";
+const ISSUES_API = `https://api.github.com/repos/${REPO}/issues?labels=${LABEL}&state=open&per_page=100`;
 const SELECTION_DELAY_MS = 250;
 /** Not commentable as text: elements with an id hold live data that is re-rendered. */
 const SKIP = "[id], [data-app], figure, svg, button, nav, .term-tip, .comment-ui";
 const ROOTS = ".page-head, section.chapter[id]";
 
-/** Show this page's comments and let the reader add, resolve and delete them. */
+/** Show this page's comments and let the reader add new ones. */
 export function initComments(article) {
   if (!article || !("popover" in HTMLElement.prototype)) return;
-  new Comments(article, new CommentStore(currentPage())).bind();
+  new Comments(article).bind();
 }
 
-/** All comments of the site, in localStorage. */
-class CommentStore {
-  constructor(page) {
-    this.page = page;
-    this.reload();
-  }
-
-  /** Re-read the comments from storage. */
-  reload() {
-    this.all = readStorage();
-  }
-
-  /** This page's unresolved comments. */
-  open() {
-    return this.all.filter((c) => c.page === this.page && !c.resolved);
-  }
-
-  /** Save a comment on target: {section, quote} or {figure}. */
-  add(target, body) {
-    const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    this.all.push({ id, page: this.page, target, body, createdAt: new Date().toISOString(), resolved: false });
-    this.save();
-  }
-
-  /** Resolve a comment: kept, but hidden. */
-  resolve(id) {
-    const comment = this.all.find((c) => c.id === id);
-    if (comment) comment.resolved = true;
-    this.save();
-  }
-
-  /** Delete a comment. */
-  remove(id) {
-    this.all = this.all.filter((c) => c.id !== id);
-    this.save();
-  }
-
-  /** Write the comments to localStorage. */
-  save() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.all));
-    } catch {
-      // Storage blocked: comments last for this page view.
-    }
-  }
-}
-
-/** The stored comments, skipping invalid entries. */
-function readStorage() {
+/** The open comments on page, or none when GitHub can't be reached. */
+async function fetchComments(page) {
   try {
-    const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(list) ? list.filter(isComment) : [];
-  } catch {
+    // no-cache revalidates with the ETag: a 304 doesn't count against GitHub's rate limit
+    const res = await fetch(ISSUES_API, { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()).map(parseIssue).filter((c) => c?.page === page);
+  } catch (err) {
+    console.warn("comments: GitHub issues unavailable:", err.message);
     return [];
   }
 }
 
-const isComment = (c) => typeof c?.id === "string" && typeof c.page === "string" && typeof c.body === "string"
-  && (typeof c.target?.figure === "string" || (typeof c.target?.section === "string" && typeof c.target.quote?.exact === "string"));
+/** Whether the documentation service can act on GitHub; false without it (e.g. on GitHub Pages) or its GitHub App. */
+async function canActOnGitHub() {
+  try {
+    const res = await fetch("api/github/status", { cache: "no-store" });
+    return res.ok && (await res.json()).configured === true;
+  } catch {
+    return false;
+  }
+}
+
+/** A JSON request to the documentation service. */
+const api = (method, path, body) => fetch(path, {
+  method,
+  headers: body ? { "Content-Type": "application/json" } : {},
+  body: body ? JSON.stringify(body) : undefined,
+});
 
 /** The page's comment UI: marks, figure buttons, the Comment button and the box. */
 class Comments {
-  constructor(article, store) {
+  constructor(article) {
     this.article = article;
-    this.store = store;
+    this.comments = [];
+    this.canAct = false; // the service can create and close issues
+    this.retry = null; // the request to send again once the reader has signed in
     this.box = popover("div", "comment-box", "auto");
     this.box.setAttribute("role", "dialog");
     this.box.setAttribute("aria-label", "Comments");
@@ -106,9 +80,17 @@ class Comments {
     this.article.addEventListener("keydown", (e) => (e.key === "Enter" || e.key === " ") && this.onMarkClick(e));
     this.box.addEventListener("click", (e) => this.onBoxClick(e));
     this.box.addEventListener("submit", (e) => this.onSubmit(e));
-    this.box.addEventListener("toggle", (e) => e.newState === "closed" && document.activeElement === document.body && this.anchor?.focus?.({ preventScroll: true }));
+    this.box.addEventListener("toggle", (e) => e.newState === "closed" && this.onClose());
+    // The sign-in tab says when it is done; then the request that needed it is sent again.
+    new BroadcastChannel("github-sign-in").addEventListener("message", (e) => this.onSignedIn(e.data === 200));
     addEventListener("scroll", () => this.follow(), { passive: true, capture: true });
-    addEventListener("storage", (e) => e.key === STORAGE_KEY && (this.store.reload(), this.render()));
+    document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && this.refresh());
+    this.refresh();
+  }
+
+  /** Load the open comments from GitHub and show them. */
+  async refresh() {
+    [this.comments, this.canAct] = await Promise.all([fetchComments(currentPage()), canActOnGitHub()]);
     this.render();
   }
 
@@ -121,8 +103,8 @@ class Comments {
   /** Redraw marks, figure outlines and the note for lost comments. */
   render() {
     for (const mark of $$("mark.comment-mark", this.article)) unwrap(mark);
-    const open = this.store.open();
-    const lost = open.filter((c) => c.target.section && !this.markText(c));
+    const open = this.comments;
+    const lost = open.filter((c) => !c.target.figure && !this.markText(c));
     for (const figure of $$("figure.figure", this.article)) this.paintFigure(figure, open);
     lost.push(...open.filter((c) => c.target.figure && !document.getElementById(c.target.figure)));
     this.showLost(lost);
@@ -148,7 +130,8 @@ class Comments {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "comment-ui comment-figure";
-    button.addEventListener("click", () => this.open(this.store.open().filter((c) => c.target.figure === key), button, { figure: key }));
+    const section = figure.closest("section.chapter[id]")?.id || "page-head";
+    button.addEventListener("click", () => this.open(this.comments.filter((c) => c.target.figure === key), button, { section, figure: key }));
     figure.append(button);
   }
 
@@ -195,7 +178,7 @@ class Comments {
     e.preventDefault();
     e.stopPropagation(); // don't also open the term explanation
     const ids = new Set(marks.map((m) => m.dataset.comment));
-    this.open(this.store.open().filter((c) => ids.has(c.id)), marks.at(-1));
+    this.open(this.comments.filter((c) => ids.has(c.id)), marks.at(-1));
   }
 
   /** Open the box at anchor, with a form when target is given. */
@@ -203,42 +186,106 @@ class Comments {
     if (this.addButton.matches(":popover-open")) this.addButton.hidePopover();
     this.target = target;
     this.anchor = anchor;
-    this.box.innerHTML = comments.map(commentHTML).join("") + (target ? FORM : "");
+    this.box.innerHTML = comments.map((c) => commentHTML(c, this.canAct)).join("") + (target ? formHTML(this.canAct) : "");
     if (!this.box.matches(":popover-open")) this.box.showPopover();
     place(this.box, anchor);
     ($("textarea", this.box) || this.box).focus({ preventScroll: true });
   }
 
-  /** Handle Resolve, Delete and Cancel. */
+  /** Forget the pending request and give focus back to the commented text. */
+  onClose() {
+    this.retry = null;
+    if (document.activeElement === document.body) this.anchor?.focus?.({ preventScroll: true });
+  }
+
+  /** Cancel, Sign in, Resolve (closes the issue as completed) and Delete (closes it as not planned). */
   onBoxClick(e) {
     const action = e.target.closest("[data-action]")?.dataset.action;
     const id = e.target.closest("[data-id]")?.dataset.id;
-    if (action === "resolve") this.store.resolve(id);
-    if (action === "delete") this.store.remove(id);
-    if (!action) return;
+    if (action === "cancel") this.box.hidePopover();
+    if (action === "sign-in") window.open("api/github/login", "_blank");
+    if (action === "resolve") this.send(() => api("POST", `api/comments/${id}/resolve`), () => this.drop(id));
+    if (action === "delete") this.send(() => api("DELETE", `api/comments/${id}`), () => this.drop(id));
+  }
+
+  /** Create the comment's issue through the service, or open GitHub's pre-filled new-issue page without it. */
+  onSubmit(e) {
+    e.preventDefault();
+    const text = e.target.elements.body.value.trim();
+    if (!text || !this.target) return;
+    const page = currentPage();
+    getSelection().removeAllRanges();
+    if (!this.canAct) {
+      window.open(newIssueURL(page, this.target, text), "_blank", "noopener");
+      this.box.hidePopover();
+      return;
+    }
+    const issue = { title: issueTitle(page, text), body: issueBody(page, this.target, text) };
+    this.send(() => api("POST", "api/comments", issue), async (res) => this.add(parseIssue(await res.json())));
+  }
+
+  /** Send request; on 401 ask the reader to sign in to GitHub and send it again after; on success close and run done. */
+  async send(request, done) {
+    let res;
+    try {
+      res = await request();
+    } catch {
+      return this.showError("The documentation service did not answer.");
+    }
+    if (res.status === 401) return this.askSignIn(() => this.send(request, done));
+    if (!res.ok) return this.showError((await res.json().catch(() => null))?.error || `HTTP ${res.status}`);
     this.box.hidePopover();
+    await done(res);
+  }
+
+  /** Ask the reader to sign in to GitHub; retry runs once they have. */
+  askSignIn(retry) {
+    this.box.innerHTML = SIGN_IN;
+    this.retry = retry;
+    $('[data-action="sign-in"]', this.box).focus();
+  }
+
+  /** The sign-in tab finished: send the pending request again, or say it failed. */
+  onSignedIn(ok) {
+    const retry = this.retry;
+    this.retry = null;
+    if (!retry) return;
+    if (ok) retry();
+    else this.showError("GitHub sign-in failed.");
+  }
+
+  /** Show message at the top of the box. */
+  showError(message) {
+    $(".comment-error", this.box)?.remove();
+    this.box.insertAdjacentHTML("afterbegin", `<p class="comment-error" role="alert">${esc(message)}</p>`);
+  }
+
+  /** Show a comment just created. */
+  add(comment) {
+    if (comment) this.comments.push(comment);
     this.render();
   }
 
-  /** Save the new comment. */
-  onSubmit(e) {
-    e.preventDefault();
-    const body = e.target.elements.body.value.trim();
-    if (!body || !this.target) return;
-    this.store.add(this.target, body);
-    this.box.hidePopover();
-    getSelection().removeAllRanges();
+  /** Stop showing comment id, now that its issue is closed. */
+  drop(id) {
+    this.comments = this.comments.filter((c) => c.id !== id);
     this.render();
   }
 }
 
-const FORM = `<form><textarea name="body" rows="3" required aria-label="Your comment" placeholder="Add a comment"></textarea>
-  <div class="actions"><button type="button" data-action="cancel">Cancel</button><button type="submit">Comment</button></div></form>`;
+const SIGN_IN = `<p>Sign in to GitHub once to save comments as issues in your name. GitHub opens in a new tab; your token
+  stays in the cluster's Vault.</p>
+  <div class="actions"><button type="button" data-action="cancel">Cancel</button><button type="button" data-action="sign-in" class="primary">Sign in with GitHub</button></div>`;
 
-/** One comment in the box. */
-const commentHTML = (c) => `<article data-id="${esc(c.id)}"><p>${esc(c.body)}</p><footer>
-  <time datetime="${esc(c.createdAt)}">${esc(new Date(c.createdAt).toLocaleString())}</time>
-  <button type="button" data-action="resolve">Resolve</button><button type="button" data-action="delete">Delete</button></footer></article>`;
+/** The form for a new comment; without the service it hands the comment to GitHub's new-issue page. */
+const formHTML = (canAct) => `<form><textarea name="body" rows="3" required aria-label="Your comment" placeholder="What should change?"></textarea>
+  ${canAct ? "" : "<small>Opens a pre-filled GitHub issue: submit it there.</small>"}
+  <div class="actions"><button type="button" data-action="cancel">Cancel</button><button type="submit" class="primary">${canAct ? "Comment" : "Create issue"}</button></div></form>`;
+
+/** One comment in the box, with Resolve and Delete when the service can close its issue. */
+const commentHTML = (c, canAct) => `<article data-id="${esc(c.id)}"><p>${esc(c.body)}</p><footer>
+  <span><a href="${esc(c.url)}" target="_blank" rel="noopener">#${esc(c.id)}</a> · ${esc(c.author)} · <time datetime="${esc(c.createdAt)}">${esc(new Date(c.createdAt).toLocaleDateString())}</time></span>
+  ${canAct ? '<button type="button" data-action="resolve">Resolve</button><button type="button" data-action="delete">Delete</button>' : `<a href="${esc(c.url)}" target="_blank" rel="noopener">Open issue ↗</a>`}</footer></article>`;
 
 /** A new popover element in the page. */
 function popover(tag, className, kind) {

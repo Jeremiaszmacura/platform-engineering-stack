@@ -35,11 +35,28 @@ spec:
               value: grafana=http://prometheus-service:9090,grafana=http://tempo-service:3200,grafana=http://alertmanager-service:9093,prometheus=http://alertmanager-service:9093,otel-collector=http://tempo-service:4318
             - name: PROMETHEUS_URL
               value: http://prometheus-service.monitoring:9090
+            # Comments: a GitHub App signs the reader in; without its Secret (recreate-cluster.sh), comments are off
+            - name: GITHUB_REPO
+              value: Jeremiaszmacura/platform-engineering-stack
+            - name: GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef: {name: documentation-github, key: client-id, optional: true}
+            - name: GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef: {name: documentation-github, key: client-secret, optional: true}
+            - name: VAULT_ADDR
+              value: http://vault-service.vault:8200  # keeps the reader's GitHub token
+            - name: VAULT_ROLE
+              value: documentation
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            - name: vault-token
+              mountPath: /var/run/secrets/vault
+              readOnly: true
           resources:
             requests: {cpu: 50m, memory: 64Mi}
             limits: {cpu: 250m, memory: 256Mi}
@@ -51,6 +68,15 @@ spec:
             httpGet: {path: /health, port: 8080}
             initialDelaySeconds: 30
             periodSeconds: 20
+      volumes:
+        # For Vault only: the Kubernetes API rejects this audience.
+        - name: vault-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: vault
+                  expirationSeconds: 3600
+                  path: token
 ---
 apiVersion: v1
 kind: Service

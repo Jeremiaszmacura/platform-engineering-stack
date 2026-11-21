@@ -27,8 +27,8 @@ type mapSource interface {
 	Ready() bool
 }
 
-// New returns the handler for the site, /api/map, the Prometheus query proxy, /health and /metrics.
-func New(source mapSource, site fs.FS, prometheus *url.URL) http.Handler {
+// New returns the handler for the site, /api/map, the Prometheus query proxy, the comment API, /health and /metrics.
+func New(source mapSource, site fs.FS, prometheus *url.URL, comments *Comments) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /", withoutListings(http.FileServerFS(site)))
 	mux.Handle("GET /metrics", promhttp.Handler())
@@ -37,6 +37,7 @@ func New(source mapSource, site fs.FS, prometheus *url.URL) http.Handler {
 	queries := http.StripPrefix("/api/prometheus", prometheusProxy(prometheus))
 	mux.Handle("GET /api/prometheus/api/v1/query", queries)
 	mux.Handle("GET /api/prometheus/api/v1/query_range", queries)
+	comments.register(mux)
 	return mux
 }
 

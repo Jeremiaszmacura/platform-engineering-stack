@@ -189,13 +189,17 @@ kubectl scale statefulset/vault -n vault --replicas=1</pre></div>
   <div class="head"><span class="eyebrow">docs · this site</span><h2>documentation</h2>
     <p>A Go service at <a href="http://docs.localhost">docs.localhost</a> that serves these pages and the live data behind
       them. It reads the Kubernetes API through informers (<a href="security.html#this-site">how</a>) with a read-only
-      ClusterRole that excludes Secrets, and forwards read-only PromQL to Prometheus, the way Grafana's proxy mode does.</p></div>
+      ClusterRole that excludes Secrets, and forwards read-only PromQL to Prometheus, the way Grafana's proxy mode does.
+      It also turns readers' comments into GitHub issues, in their name (below).</p></div>
   <dl class="spec" data-app="documentation"></dl>
   <div class="grid-2">
     <div class="card"><h3>Endpoints</h3><ul>
       <li><code>/</code> and <code>/*.html</code>: the pages, embedded in the binary</li>
       <li><code>/api/map</code>: the cluster as JSON, built from the informer caches</li>
       <li><code>/api/prometheus/api/v1/query</code> and <code>query_range</code>: forwarded to Prometheus, nothing else</li>
+      <li><code>/api/github/login</code>, <code>callback</code> and <code>status</code>: GitHub sign-in</li>
+      <li><code>POST /api/comments</code>, <code>POST /api/comments/{n}/resolve</code>, <code>DELETE /api/comments/{n}</code>:
+        comment issues, only from this site's own pages</li>
       <li><code>/health</code> (ready once the informers have synced) and <code>/metrics</code></li></ul></div>
     <div class="card"><h3>Code</h3><ul>
       <li><code>internal/topology</code> turns API objects into the map: pure and unit-tested</li>
@@ -207,11 +211,7 @@ kubectl scale statefulset/vault -n vault --replicas=1</pre></div>
     link to it. A new page goes into the <code>PAGES</code> list in <code>assets/js/site.js</code>. The first mention of a
     Kubernetes term or an abbreviation in each section explains itself on hover. A term or abbreviation a page starts
     using goes into <code>assets/js/glossary.js</code>: a term with two to four sentences and a link to kubernetes.io, an
-    abbreviation with its full form (the tests fail on one without). To comment on a page, select text, or use a
-    figure's <b>Comment</b> button; commented text turns yellow and shows its comments on click, to resolve or delete.
-    Comments are kept in your browser only, are not shared, and point at the quoted text (<code>assets/js/comments.js</code>),
-    so editing a page keeps them; one whose text is gone is listed under the page's title. Live tables and values can't
-    be commented as text. Outside the cluster
+    abbreviation with its full form (the tests fail on one without). Outside the cluster
     <code>go run .</code> uses your kubeconfig and reaches Prometheus through <code>prometheus.localhost</code>. Without any
     API (GitHub Pages publishes <code>web/site</code> as it is), the pages render <code>assets/snapshot.json</code>; refresh it
     from a running cluster with the command below.</p>
@@ -220,6 +220,26 @@ go test ./... &amp;&amp; golangci-lint run
 node --test 'web/test/*.test.js'
 go run .     # http://localhost:8080, against your current kubeconfig context
 curl -s http://docs.localhost/api/map | jq . &gt; web/site/assets/snapshot.json   # refresh the offline snapshot</pre></div>
+  <p class="prose"><b>Comments.</b> To ask for a change, select text or use a figure's <b>Comment</b> button. The comment
+    becomes a GitHub issue labelled <code>documentation</code> and <code>docs-feedback</code>, in your name. Its text turns
+    yellow and shows the comment on click, with <b>Resolve</b> (closes the issue as completed) and <b>Delete</b> (closes it
+    as not planned). Each issue names the file and quotes the text, so an agent can fix them all
+    (<code>gh issue list --label docs-feedback</code>); a pull request with <code>Fixes #N</code> closes the issue and removes
+    the highlight. Live tables and values can't be commented as text.</p>
+  <p class="prose">The first comment asks you to sign in to GitHub in a new tab: the service runs the sign-in of a GitHub App
+    and keeps your token in Vault (<code>services/documentation/github</code>). When the token expires (after 8 hours) or
+    the cluster is recreated, the next action asks again, and GitHub, which remembers the app, answers at once. Without
+    the app, and on GitHub Pages, a comment opens a pre-filled GitHub issue that you submit, and you close it there. To set
+    the app up once: on GitHub, <i>Settings → Developer settings → GitHub Apps → New GitHub App</i>, with the callback URLs
+    <code>http://docs.localhost/api/github/callback</code> and <code>https://docs.localhost/api/github/callback</code>, the
+    webhook off and the repository permission <i>Issues: Read and write</i>; generate a client secret, install the app on
+    this repository only, then:</p>
+  <div class="cmd"><pre>export GITHUB_APP_CLIENT_ID=Iv23… GITHUB_APP_CLIENT_SECRET=…   # e.g. in your shell profile
+./recreate-cluster.sh                                         # saves them in Secret docs/documentation-github
+<span class="c"># or, on a running cluster:</span>
+kubectl create secret generic documentation-github -n docs \
+  --from-literal=client-id="$GITHUB_APP_CLIENT_ID" --from-literal=client-secret="$GITHUB_APP_CLIENT_SECRET"
+kubectl rollout restart deployment/documentation -n docs</pre></div>
 </section>
 
 <section class="chapter" id="platform" style="--c:var(--ns-gateway)">

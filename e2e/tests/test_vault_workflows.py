@@ -38,10 +38,10 @@ def read_secret(contract, key):
     return conforming(contract, requests.get(f"{STOCK_APP_URL}/secret/{key}", timeout=REQUEST_TIMEOUT_SECONDS))
 
 
-def service_account_token(name, audience=None):
-    """Return a 10-minute token for ServiceAccount name in apps."""
+def service_account_token(name, audience=None, namespace="apps"):
+    """Return a 10-minute token for ServiceAccount name in namespace."""
     audience_args = ["--audience", audience] if audience else []
-    return kubectl("create", "token", name, "-n", "apps", "--duration=10m", *audience_args)
+    return kubectl("create", "token", name, "-n", namespace, "--duration=10m", *audience_args)
 
 
 def may(account, verb, resource):
@@ -54,11 +54,29 @@ def may(account, verb, resource):
 
 def sign_in_as_stock_app(jwt):
     """Sign in to Vault as role stock-app with jwt; return the response."""
+    return sign_in("stock-app", jwt)
+
+
+def sign_in(role, jwt):
+    """Sign in to Vault as role with jwt; return the response."""
     return requests.post(
         f"{VAULT_URL}/v1/auth/kubernetes/login",
-        json={"role": "stock-app", "jwt": jwt},
+        json={"role": role, "jwt": jwt},
         timeout=REQUEST_TIMEOUT_SECONDS,
     )
+
+
+def assert_token_opens_only(token, own):
+    """Assert Vault token can write under services/<own>/ and is denied another service's path and infra/."""
+    headers = {"X-Vault-Token": token}
+    own_path = f"{VAULT_URL}/v1/services/data/{own}/{unique_key('e2e-own')}"
+    written = requests.post(
+        own_path, json={"data": {"value": SECRET_VALUE}}, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS
+    )
+    assert written.status_code == 200
+    for other_path in ("services/data/another-service/key", "infra/data/key"):
+        denied = requests.get(f"{VAULT_URL}/v1/{other_path}", headers=headers, timeout=REQUEST_TIMEOUT_SECONDS)
+        assert denied.status_code == 403, other_path
 
 
 def vault_restart_count():
@@ -125,16 +143,16 @@ def test_stock_app_vault_token_opens_only_its_own_path():
     """stock-app's Vault token opens its own path and nothing else."""
     response = sign_in_as_stock_app(service_account_token("stock-app", audience="vault"))
     assert response.status_code == 200
-    headers = {"X-Vault-Token": response.json()["auth"]["client_token"]}
+    assert_token_opens_only(response.json()["auth"]["client_token"], "stock-app")
 
-    own_path = f"{VAULT_URL}/v1/services/data/stock-app/{unique_key('e2e-own')}"
-    written = requests.post(
-        own_path, json={"data": {"value": SECRET_VALUE}}, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS
-    )
-    assert written.status_code == 200
-    for other_path in ("services/data/another-service/key", "infra/data/key"):
-        denied = requests.get(f"{VAULT_URL}/v1/{other_path}", headers=headers, timeout=REQUEST_TIMEOUT_SECONDS)
-        assert denied.status_code == 403, other_path
+
+def test_documentation_vault_token_opens_only_its_own_path():
+    """The documentation service's Vault token, which keeps the reader's GitHub token, opens only its own path."""
+    jwt = service_account_token("documentation", audience="vault", namespace="docs")
+    response = sign_in("documentation", jwt)
+    assert response.status_code == 200
+    assert_token_opens_only(response.json()["auth"]["client_token"], "documentation")
+    assert sign_in("stock-app", jwt).status_code == 403
 
 
 def test_vault_rejects_tokens_not_issued_to_stock_app_for_vault():

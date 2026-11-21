@@ -21,8 +21,10 @@ import (
 	gatewayclient "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 
 	"documentation/internal/cluster"
+	"documentation/internal/github"
 	"documentation/internal/server"
 	"documentation/internal/topology"
+	"documentation/internal/vault"
 	"documentation/web"
 )
 
@@ -58,7 +60,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + envOr("PORT", "8080"),
-		Handler:           server.New(watcher, site, prometheus),
+		Handler:           server.New(watcher, site, prometheus, comments()),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	return serve(ctx, srv)
@@ -102,6 +104,29 @@ func serve(ctx context.Context, srv *http.Server) error {
 		return fmt.Errorf("shutdown: %w", err)
 	}
 	return nil
+}
+
+// comments acts on GitHub through the GitHub App in GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET, keeping the
+// signed-in person's token in Vault; without the app, comments are off.
+func comments() *server.Comments {
+	id, secret, repo := os.Getenv("GITHUB_CLIENT_ID"), os.Getenv("GITHUB_CLIENT_SECRET"), os.Getenv("GITHUB_REPO")
+	if id == "" || secret == "" || repo == "" {
+		slog.Info("github sign-in off: GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET or GITHUB_REPO is unset")
+		return server.NewComments(nil, nil)
+	}
+	client := &http.Client{Timeout: 10 * time.Second}
+	app := github.App{
+		ClientID: id, ClientSecret: secret, Repo: repo,
+		Web: "https://github.com", API: "https://api.github.com", HTTP: client,
+	}
+	tokens := vault.Secret{
+		Addr:      envOr("VAULT_ADDR", "http://vault.localhost"),
+		Role:      envOr("VAULT_ROLE", "documentation"),
+		TokenFile: envOr("VAULT_TOKEN_FILE", "/var/run/secrets/vault/token"),
+		Path:      "services/data/documentation/github",
+		HTTP:      client,
+	}
+	return server.NewComments(app, tokens)
 }
 
 // restConfig uses the pod's ServiceAccount in the cluster and the local kubeconfig outside it.

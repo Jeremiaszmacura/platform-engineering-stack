@@ -111,7 +111,8 @@ Role            monitoring/documentation-prometheus    get configmaps "prometheu
     <p>HashiCorp Vault holds the apps' own secrets in two KV v2 mounts (<a href="components.html#vault">how it
       starts</a>): <code>services/</code>, one path per service, and <code>infra/</code>, reserved. No app holds a Vault
       password. Each signs in with its <b>ServiceAccount</b> through Vault's built-in <b>kubernetes auth method</b> and gets
-      a short-lived Vault token that opens only its own path.</p>
+      a short-lived Vault token that opens only its own path. These steps follow stock-app; the documentation service does
+      the same to keep the GitHub token of the reader who comments (<a href="components.html#documentation">how</a>).</p>
   </div>
   <ol class="steps">
     <li><div><span class="where">kubelet</span>Mounts a token for stock-app's ServiceAccount at
@@ -135,7 +136,9 @@ ClusterRoleBinding vault-tokenreview   ServiceAccount vault/vault → ClusterRol
 RoleBinding vault/vault-unseal-key     ServiceAccount vault/vault → create secrets, get secret "vault-unseal-key"
 <span class="c"># vault/k8s/configure-vault.sh and stock-app-policy.hcl: set up again on every Vault start</span>
 role    auth/kubernetes/role/stock-app   ServiceAccount apps/stock-app   audience vault   TTL 1h   policy stock-app
-policy  stock-app                        create, read, update on services/data/stock-app/*</pre>
+policy  stock-app                        create, read, update on services/data/stock-app/*
+role    auth/kubernetes/role/documentation   ServiceAccount docs/documentation   audience vault   TTL 1h   policy documentation
+policy  documentation                    create, read, update on services/data/documentation/*</pre>
   <p class="callout">The root token, <code>root</code>, is only for people at <a href="http://vault.localhost">vault.localhost</a>
     and for Vault's start-up hook. A token stolen from stock-app is worth little: the ServiceAccount token works only with
     Vault, and the Vault token only on stock-app's path, for an hour at most.</p>

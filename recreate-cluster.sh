@@ -134,6 +134,15 @@ echo "🏗️  Applying platform resources (namespaces, RBAC)..."
 kubectl apply -f platform/namespaces.yaml
 kubectl apply -f platform/rbac/
 
+# Optional: the GitHub App that signs readers in to comment on the docs (documentation/web/site/components.html#documentation)
+if [ -n "${GITHUB_APP_CLIENT_ID:-}" ] && [ -n "${GITHUB_APP_CLIENT_SECRET:-}" ]; then
+    echo "💬 Saving the docs' GitHub App credentials..."
+    kubectl create secret generic documentation-github -n docs --from-literal=client-id="$GITHUB_APP_CLIENT_ID" \
+        --from-literal=client-secret="$GITHUB_APP_CLIENT_SECRET" --dry-run=client -o yaml | kubectl apply -f -
+else
+    echo "💬 GITHUB_APP_CLIENT_ID/GITHUB_APP_CLIENT_SECRET unset: docs comments open pre-filled GitHub issues instead"
+fi
+
 echo "🐳 Building and loading images..."
 for entry in "${IMAGES[@]}"; do
     read -r image context <<< "$entry"

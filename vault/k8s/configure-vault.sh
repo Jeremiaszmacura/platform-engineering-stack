@@ -101,10 +101,10 @@ enable_kubernetes_auth() {
     vault write auth/kubernetes/config kubernetes_host=https://kubernetes.default.svc
 }
 
-# Let ServiceAccount $1 in apps sign in, with the policy in $1-policy.hcl.
+# Let ServiceAccount $1 in namespace $2 sign in, with the policy in $1-policy.hcl.
 add_service_role() {
     vault policy write "$1" "/etc/vault/$1-policy.hcl"
-    vault write "auth/kubernetes/role/$1" bound_service_account_names="$1" bound_service_account_namespaces=apps \
+    vault write "auth/kubernetes/role/$1" bound_service_account_names="$1" bound_service_account_namespaces="$2" \
         audience=vault token_policies="$1" token_ttl=1h
 }
 
@@ -124,4 +124,5 @@ for mount in services infra; do
     enable_kv_mount "$mount"
 done
 enable_kubernetes_auth
-add_service_role stock-app
+add_service_role stock-app apps
+add_service_role documentation docs

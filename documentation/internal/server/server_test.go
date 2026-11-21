@@ -84,7 +84,7 @@ func TestRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rec := get(t, New(tt.source, site, prometheus), tt.method, tt.path)
+			rec := get(t, New(tt.source, site, prometheus, NewComments(nil, nil)), tt.method, tt.path)
 			if rec.Code != tt.wantStatus || !strings.Contains(rec.Body.String(), tt.wantBody) {
 				t.Errorf("%s %s = %d %q, want %d containing %q", tt.method, tt.path, rec.Code, rec.Body.String(), tt.wantStatus, tt.wantBody)
 			}
@@ -94,7 +94,7 @@ func TestRoutes(t *testing.T) {
 
 func TestPrometheusDown(t *testing.T) {
 	down := &url.URL{Scheme: "http", Host: "127.0.0.1:1"}
-	rec := get(t, New(stubSource{}, site, down), http.MethodGet, "/api/prometheus/api/v1/query?query=up")
+	rec := get(t, New(stubSource{}, site, down, NewComments(nil, nil)), http.MethodGet, "/api/prometheus/api/v1/query?query=up")
 	if rec.Code != http.StatusBadGateway || !strings.Contains(rec.Body.String(), "prometheus did not answer") {
 		t.Errorf("query with Prometheus down = %d %q, want 502 with an error", rec.Code, rec.Body.String())
 	}
