@@ -92,6 +92,10 @@ make test-e2e E2E_PYTEST_ARGS='-k stock'   # scope with -k</pre></div>
       cluster with generated prices, runs the suite, then restarts the Gateway's Envoy proxy and checks that
       <code>*.localhost</code> still answers, wherever the new pod lands. Pushes to <code>main</code> that touch this site
       publish it to GitHub Pages, where it shows a recorded snapshot.</p>
+    <p>The <code>protect-main</code> ruleset (repository Settings → Rules) guards <code>main</code>: every change goes
+      through a pull request, the four jobs above must pass and review threads must be resolved, but no approval is
+      needed, since the project has one maintainer. Force pushes and deleting <code>main</code> are blocked. An admin can
+      merge a pull request with a failing check (a flaky e2e run), never push to <code>main</code> directly.</p>
   </div>
   <figure class="figure" data-source="example"><div class="scroll-x" id="ci-flow"></div></figure>
 </section>
