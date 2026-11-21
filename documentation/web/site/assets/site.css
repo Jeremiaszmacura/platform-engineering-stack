@@ -423,8 +423,9 @@ svg.dg { display: block; width: 100%; height: auto; font-family: var(--font-mono
 .term-tip a { font-size: 0.86rem; }
 
 /* ---------- Reader comments (comments.js) ---------- */
-mark.comment-mark { background: var(--comment); color: inherit; border-radius: 2px; cursor: pointer; }
-mark.comment-mark:hover, mark.comment-mark:focus-visible, mark.comment-mark:hover mark.comment-mark { background: var(--comment-strong); outline: none; }
+/* The shadow widens the mark without moving text, so a quote of one character stays visible. */
+mark.comment-mark { background: var(--comment); box-shadow: 0 0 0 3px var(--comment); color: inherit; border-radius: 2px; cursor: pointer; }
+mark.comment-mark.lit, mark.comment-mark.lit mark.comment-mark { background: var(--comment-strong); box-shadow: 0 0 0 3px var(--comment-strong); outline: none; }
 .figure.has-comment { outline: 3px solid var(--comment-strong); outline-offset: 2px; }
 .comment-ui button, button.comment-ui {
   font: 600 0.75rem var(--font-body); border: 1px solid var(--line); background: var(--surface); color: var(--fg);
