@@ -223,9 +223,9 @@ curl -s http://docs.localhost/api/map | jq . &gt; web/site/assets/snapshot.json 
   <p class="prose"><b>Comments.</b> To ask for a change, select text or use a figure's <b>Comment</b> button. The comment
     becomes a GitHub issue labelled <code>documentation</code> and <code>docs-feedback</code>, in your name. Its text turns
     yellow and shows the comment on click, with <b>Resolve</b> (closes the issue as completed) and <b>Delete</b> (closes it
-    as not planned). Each issue names the file and quotes the text, so an agent can fix them all
-    (<code>gh issue list --label docs-feedback</code>); a pull request with <code>Fixes #N</code> closes the issue and removes
-    the highlight. Live tables and values can't be commented as text.</p>
+    as not planned). Each issue names the file and quotes the text, so when you ask a coding agent to fix
+    them, it finds them with <code>gh issue list --label docs-feedback</code>; nothing acts on them by itself. A pull
+    request with <code>Fixes #N</code> closes the issue and removes the highlight. Live tables and values can't be commented as text.</p>
   <p class="prose">The first comment asks you to sign in to GitHub in a new tab: the service runs the sign-in of a GitHub App
     and keeps your token in Vault (<code>services/documentation/github</code>). When the token expires (after 8 hours) or
     the cluster is recreated, the next action asks again, and GitHub, which remembers the app, answers at once. Without
