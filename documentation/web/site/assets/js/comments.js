@@ -273,8 +273,8 @@ class Comments {
   }
 }
 
-const SIGN_IN = `<p>Sign in to GitHub once to save comments as issues in your name. GitHub opens in a new tab; your token
-  stays in the cluster's Vault.</p>
+// One line: the box keeps line breaks (white-space: pre-wrap) for comment text.
+const SIGN_IN = `<p>Sign in to GitHub once to save comments as issues in your name. GitHub opens in a new tab; your token stays in the cluster's Vault.</p>
   <div class="actions"><button type="button" data-action="cancel">Cancel</button><button type="button" data-action="sign-in" class="primary">Sign in with GitHub</button></div>`;
 
 /** The form for a new comment; without the service it hands the comment to GitHub's new-issue page. */
