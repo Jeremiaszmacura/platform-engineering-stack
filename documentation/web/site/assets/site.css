@@ -188,7 +188,7 @@ ol.steps .where { font-family: var(--font-mono); font-size: 0.75rem; color: var(
 
 pre { margin: 0; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; background: var(--sunken); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
 pre .c { color: var(--muted); }
-.cmd { position: relative; }
+.cmd { position: relative; min-width: 0; }
 .cmd pre { padding-right: 76px; }
 .copy {
   position: absolute; top: 8px; right: 8px; font: 600 0.7rem var(--font-mono); border: 1px solid var(--line);

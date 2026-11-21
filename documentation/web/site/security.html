@@ -111,7 +111,7 @@ Role            monitoring/documentation-prometheus    get configmaps "prometheu
     <p>HashiCorp Vault holds the apps' own secrets in two KV v2 mounts (<a href="components.html#vault">how it
       starts</a>): <code>services/</code>, one path per service, and <code>infra/</code>, reserved. No app holds a Vault
       password. Each signs in with its <b>ServiceAccount</b> through Vault's built-in <b>kubernetes auth method</b> and gets
-      a short-lived Vault token that opens only its own path. These steps follow stock-app; the documentation service does
+      a short-lived Vault token that opens only its own path. These steps follow stock-app. The documentation service does
       the same to keep the GitHub token of the browser signed in for comments (<a href="components.html#documentation">how</a>).</p>
   </div>
   <ol class="steps">
@@ -144,7 +144,7 @@ policy  documentation                    create, read, update on services/data/d
     Vault, and the Vault token only on stock-app's path, for an hour at most.</p>
   <p class="callout warn"><b>The unseal key is a Kubernetes Secret.</b> Vault's start-up hook saves it as
     <code>vault-unseal-key</code> in namespace <code>vault</code> (<a href="components.html#vault">how</a>). Of the
-    project's workloads only Vault's ServiceAccount may read it; RBAC can't limit <code>create</code> to one name, so Vault
+    project's workloads only Vault's ServiceAccount may read it. RBAC can't limit <code>create</code> to one name, so Vault
     may also create other Secrets there. Cluster admins, Kubernetes' own controllers, Envoy Gateway's controller, which
     reads Secrets in every namespace for TLS certificates, and cert-manager, which writes them, can read it too, and etcd keeps it unencrypted
     (<a href="state.html#practice">the fix</a>).</p>
@@ -166,7 +166,7 @@ curl http://stock.localhost/secret/demo</pre></div></div>
       hostnames it may serve, its public key and the signature of a <b>certificate authority</b> (CA). The client accepts
       it only if a CA it already trusts signed it and the hostname it asked for is listed, and the server proves in the
       handshake that it holds the matching private key. In <b>mutual TLS</b> (mTLS) the client sends a certificate too.
-      These are the certificates in your cluster; kind and Envoy Gateway made all but the last on their own.</p>
+      These are the certificates in your cluster. kind and Envoy Gateway made all but the last on their own.</p>
   </div>
   <div class="table-wrap"><table>
     <thead><tr><th>Connection</th><th>Certificate signed by</th><th>Checked by</th></tr></thead>
@@ -179,16 +179,16 @@ curl http://stock.localhost/secret/demo</pre></div></div>
     </tbody></table></div>
   <div class="grid-3">
     <div class="card"><h3>ca.crt: trusting the API server</h3><p>kubeadm created the Kubernetes CA with the cluster
-      (valid 10 years; the certificates it signed, 1 year). Kubernetes copies it into the ConfigMap
+      (valid 10 years. The certificates it signed, 1 year). Kubernetes copies it into the ConfigMap
       <code>kube-root-ca.crt</code> in every namespace, and the kubelet mounts it as <code>ca.crt</code> with the token.
       This site, Prometheus and Vault's hook check the API server with it.</p></div>
-    <div class="card"><h3>A token is not a certificate</h3><p>The certificate proves the server to the pod; the
+    <div class="card"><h3>A token is not a certificate</h3><p>The certificate proves the server to the pod. The
       ServiceAccount token proves the pod to the server. The token is a JWT the API server signs with its private key
       (<code>sa.key</code>). Anyone can check the signature with the public key (published at
       <code>/openid/v1/jwks</code>), but only the API server knows if the token is still valid, for example that its pod
       still exists. A TokenReview asks it, as Vault does (<a href="#vault">above</a>).</p></div>
     <div class="card"><h3>How a node gets its certificate</h3><p>A joining node's kubelet sends a
-      CertificateSigningRequest (CSR) with a bootstrap token; the controller manager approves and signs it, and the
+      CertificateSigningRequest (CSR) with a bootstrap token. The controller manager approves and signs it, and the
       kubelet renews it the same way before it expires. <code>kubectl get csr</code> lists these requests.</p></div>
   </div>
   <h3>How the Gateway gets its HTTPS certificate</h3>
@@ -258,7 +258,7 @@ sudo security delete-certificate -c "sample-cluster CA" /Library/Keychains/Syste
     <tbody id="hardening-rows"></tbody></table></div>
   <p class="prose">Most failures are one missing line: <code>seccompProfile: {type: RuntimeDefault}</code> on the pod. The
     others are real trade-offs: the TimescaleDB and Vault images start as root and drop to <code>postgres</code> and
-    <code>vault</code> themselves; node-exporter needs the host's network and process table to report on the node.</p>
+    <code>vault</code> themselves. node-exporter needs the host's network and process table to report on the node.</p>
 </section>
 
 <section class="chapter" id="network-policy">
@@ -293,7 +293,7 @@ spec:
 <section class="chapter" id="try">
   <div class="head"><span class="eyebrow">Hands on</span><h2>Try it</h2></div>
   <div class="try">
-    <div><p>Ask the API what an identity may do: this site may watch pods, may not read Secrets; stock-app may do nothing.</p>
+    <div><p>Ask the API what an identity may do: this site may watch pods, may not read Secrets. stock-app may do nothing.</p>
       <div class="cmd"><pre>kubectl auth can-i watch pods  --as=system:serviceaccount:docs:documentation -A   # yes
 kubectl auth can-i get secrets --as=system:serviceaccount:docs:documentation -A   # no
 kubectl auth can-i list pods   --as=system:serviceaccount:apps:stock-app -n apps  # no
@@ -338,12 +338,12 @@ kubectl get pod -n apps -l app=stock-app -o jsonpath='{.items[0].spec.volumes[*]
   <div class="qa-list">
     <details class="qa"><summary>How does a pod authenticate to the Kubernetes API, and how would you stop it from being able to?</summary><div>
       <p>The kubelet mounts a short-lived, audience-bound ServiceAccount token (a projected volume,
-      <code>kube-api-access-*</code>) plus the cluster CA; the client sends it as a Bearer token and RBAC authorizes the
+      <code>kube-api-access-*</code>) plus the cluster CA. The client sends it as a Bearer token and RBAC authorizes the
       <code>system:serviceaccount:&lt;ns&gt;:&lt;name&gt;</code> user. Stop it with
       <code>automountServiceAccountToken: false</code> on the ServiceAccount or the pod, and by binding no roles.</p></div></details>
     <details class="qa"><summary>Role versus ClusterRole, RoleBinding versus ClusterRoleBinding: which combinations exist?</summary><div>
-      <p>A Role grants within one namespace; a ClusterRole defines rules that can be cluster-wide. A RoleBinding grants a Role
-      or a ClusterRole <i>inside its namespace</i>; a ClusterRoleBinding grants a ClusterRole everywhere. Binding a
+      <p>A Role grants within one namespace. A ClusterRole defines rules that can be cluster-wide. A RoleBinding grants a Role
+      or a ClusterRole <i>inside its namespace</i>. A ClusterRoleBinding grants a ClusterRole everywhere. Binding a
       ClusterRole with RoleBindings is the usual way to reuse one set of rules in a few namespaces.</p></div></details>
     <details class="qa"><summary>How can a pod sign in to Vault without a stored password?</summary><div>
       <p>With its ServiceAccount token, through Vault's kubernetes auth method. Vault checks the token with the API's
@@ -362,18 +362,18 @@ kubectl get pod -n apps -l app=stock-app -o jsonpath='{.items[0].spec.volumes[*]
       <code>pod-security.kubernetes.io/enforce</code>, with <code>warn</code> and <code>audit</code> modes to roll it out gently.</p></div></details>
     <details class="qa"><summary>Two NetworkPolicy <code>from</code> entries: when is it AND, when is it OR?</summary><div>
       <p>Selectors in the <i>same</i> list item (a namespaceSelector and a podSelector together) must both match: AND.
-      Separate list items are alternatives: OR. Policies are additive allow-lists; once any policy selects a pod for
+      Separate list items are alternatives: OR. Policies are additive allow-lists. Once any policy selects a pod for
       ingress, everything not allowed is denied.</p></div></details>
     <details class="qa"><summary>What does a client check before it trusts a server's certificate?</summary><div>
-      <p>That a CA in its trust store signed it, directly or through intermediates; that the hostname it connected to is
-      in the certificate's names; and that today is between its <code>notBefore</code> and <code>notAfter</code>. In the
+      <p>Three things: a CA in its trust store signed it, directly or through intermediates. The hostname it connected to is
+      in the certificate's names. Today is between its <code>notBefore</code> and <code>notAfter</code>. In the
       handshake the server then proves it holds the private key. A self-signed certificate passes only if the client
       trusts that exact certificate.</p></div></details>
     <details class="qa"><summary>A certificate expired and the cluster stopped working. Where do you look?</summary><div>
       <p>On kubeadm clusters the control plane's certificates last one year: <code>kubeadm certs check-expiration</code>
       shows them, <code>kubeadm certs renew all</code> and a restart of the control-plane pods fixes them, and every
       <code>kubeadm upgrade</code> renews them. Kubelets renew their client certificates themselves through CSRs.
-      cert-manager renews at two thirds of a certificate's life; alert on
+      cert-manager renews at two thirds of a certificate's life. Alert on
       <code>certmanager_certificate_expiration_timestamp_seconds</code> in case it can't.</p></div></details>
     <details class="qa"><summary>TLS at a gateway: terminate or pass through?</summary><div>
       <p>Terminate (this cluster): the gateway holds the certificate, decrypts, routes by HTTP host and path, applies

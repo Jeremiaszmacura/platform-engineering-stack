@@ -24,7 +24,7 @@
   <span class="eyebrow">Reference · components</span>
   <h1>Every component, with its live spec sheet</h1>
   <p class="lede">One section per component: what it is for, its facts as the cluster reports them right now, the ideas
-    worth knowing and how to work on it. Each top-level directory of the repository is one component; its Kubernetes
+    worth knowing and how to work on it. Each top-level directory of the repository is one component. Its Kubernetes
     manifests live in <code>&lt;component&gt;/k8s/</code>.</p>
   <nav class="toc" id="toc" aria-label="On this page"></nav>
 </header>
@@ -40,16 +40,16 @@
       request and response models are generated from it (<code>tox -e api</code>) and <code>make lint</code> fails if they
       drift. The running service publishes it at <a href="http://stock.localhost/openapi.yaml">/openapi.yaml</a>, with
       Swagger UI at <a href="http://stock.localhost/docs">/docs</a>, and the e2e tests validate every response against it, <code>/secret</code> included.</p></div>
-    <div class="card"><h3>Providers</h3><p><code>STOCK_PROVIDER=yahoo</code> (the default) calls Yahoo Finance;
+    <div class="card"><h3>Providers</h3><p><code>STOCK_PROVIDER=yahoo</code> (the default) calls Yahoo Finance.
       <code>synthetic</code> generates prices for AAPL, MSFT, NVDA, AMZN and GOOGL without a network, which CI uses
       because Yahoo rate-limits its runners. Each symbol's prices are a random walk seeded by the symbol, so a date always
-      gets the same bar and nothing expires; they are not real prices. How the cache decides what to fetch:
+      gets the same bar and nothing expires. They are not real prices. How the cache decides what to fetch:
       <a href="state.html#cache-aside">State &amp; storage</a>.</p></div>
   </div>
   <figure class="figure" data-source="example"><div class="scroll-x" id="hexagon"></div>
     <figcaption>Hexagonal layout: every arrow is an import, and they all point inwards. The domain and the application
       know nothing about FastAPI, SQL, Yahoo or Vault. Outbound adapters satisfy the application's ports
-      (<code>typing.Protocol</code>) structurally; only the tracing decorator imports one, to type the provider it wraps. <code>src/main.py</code> is the only place adapters are built.
+      (<code>typing.Protocol</code>) structurally. Only the tracing decorator imports one, to type the provider it wraps. <code>src/main.py</code> is the only place adapters are built.
       <code>lint-imports</code> checks five such rules (<code>.importlinter</code>) in <code>make lint</code>.</figcaption></figure>
   <div class="cmd"><pre>cd stock-app
 tox -e tests          # unit tests: no database or network needed
@@ -83,7 +83,7 @@ kubectl rollout restart deployment stock-app -n apps   # migrations run in its i
     <p>"Stock App", a React (Vite) app at <a href="http://stock-ui.localhost">stock-ui.localhost</a> that charts stock-app's
       daily prices (line or candles, one week to five years). Only the Markets view uses the backend: Portfolio, Watchlist
       and the account menu are mocked on purpose (<code>src/mocks/demoData.js</code>) and the indicator panels are empty
-      placeholders. Search filters stock-app's instrument list; any other ticker can be typed in full.</p></div>
+      placeholders. Search filters stock-app's instrument list. Any other ticker can be typed in full.</p></div>
   <dl class="spec" data-app="stock-ui"></dl>
   <div class="cmd"><pre>cd stock-ui
 npm ci
@@ -135,7 +135,7 @@ kubectl scale statefulset/vault -n vault --replicas=1</pre></div>
       Evaluates the alert rules in <code>alerts.yml</code> and sends firing alerts to Alertmanager
       (<a href="observability.html#alerts">which</a>).</p></div>
   <dl class="spec" data-app="prometheus"></dl>
-  <p class="prose"><code>kubectl apply -k monitoring/prometheus/k8s</code> applies an edited <code>prometheus.yml</code>;
+  <p class="prose"><code>kubectl apply -k monitoring/prometheus/k8s</code> applies an edited <code>prometheus.yml</code>.
     Prometheus reloads it by itself (<a href="workloads.html#config">why it has no rollout</a>).</p>
 </section>
 
@@ -145,7 +145,7 @@ kubectl scale statefulset/vault -n vault --replicas=1</pre></div>
       <code>Alertmanager</code> datasource. Receives firing alerts from Prometheus, groups them by <code>alertname</code>,
       applies inhibitions and silences, and routes them to its only receiver, <code>null</code>, which sends nothing
       (<a href="observability.html#alerts">how alerting works</a>). Config is <code>alertmanager.yml</code> in
-      <code>monitoring/alertmanager/k8s/</code>; silences live on an <code>emptyDir</code>.</p></div>
+      <code>monitoring/alertmanager/k8s/</code>. Silences live on an <code>emptyDir</code>.</p></div>
   <dl class="spec" data-app="alertmanager"></dl>
 </section>
 
@@ -155,7 +155,7 @@ kubectl scale statefulset/vault -n vault --replicas=1</pre></div>
       mounts of <code>/proc</code>, <code>/sys</code> and <code>/</code>. On kind the nodes are containers sharing one kernel,
       the Docker host's (on macOS the Docker Desktop VM), and <code>/proc</code> describes that whole kernel: all three pods
       report the same machine, including every other container on it. The Infrastructure Overview dashboard therefore draws
-      it as one Docker host line; per-node use comes from the kubelet (<a href="observability.html#kubelet">how</a>). On a
+      it as one Docker host line. Per-node use comes from the kubelet (<a href="observability.html#kubelet">how</a>). On a
       cloud, where each node is its own VM, each pod would report its own node.</p></div>
   <dl class="spec" data-app="node-exporter"></dl>
 </section>
@@ -180,7 +180,7 @@ kubectl scale statefulset/vault -n vault --replicas=1</pre></div>
 <section class="chapter" id="tempo" style="--c:var(--ns-monitoring)">
   <div class="head"><span class="eyebrow">monitoring · trace storage</span><h2>Tempo</h2>
     <p>A single binary with local storage on an <code>emptyDir</code>, so traces survive a container restart and are lost when the pod is replaced. No
-      HTTPRoute: Grafana is its UI. Search finds a new trace after about 30 seconds, once a block is cut; opening a trace by
+      HTTPRoute: Grafana is its UI. Search finds a new trace after about 30 seconds, once a block is cut. Opening a trace by
       ID works at once.</p></div>
   <dl class="spec" data-app="tempo"></dl>
 </section>
@@ -203,7 +203,8 @@ kubectl scale statefulset/vault -n vault --replicas=1</pre></div>
       <li><code>/health</code> (ready once the informers have synced) and <code>/metrics</code></li></ul></div>
     <div class="card"><h3>Code</h3><ul>
       <li><code>internal/topology</code> turns API objects into the map: pure and unit-tested</li>
-      <li><code>internal/cluster</code> holds the informers; <code>internal/server</code> the HTTP routes and the proxy</li>
+      <li><code>internal/cluster</code> holds the informers</li>
+      <li><code>internal/server</code> holds the HTTP routes and the proxy</li>
       <li><code>web/site</code>: one HTML page per topic, shared CSS and JavaScript modules, no build step</li>
       <li><code>web/test</code>: unit tests for the JavaScript model, run by Node's own test runner</li></ul></div>
   </div>
@@ -213,7 +214,7 @@ kubectl scale statefulset/vault -n vault --replicas=1</pre></div>
     using goes into <code>assets/js/glossary.js</code>: a term with two to four sentences and a link to kubernetes.io, an
     abbreviation with its full form (the tests fail on one without). Outside the cluster
     <code>go run .</code> uses your kubeconfig and reaches Prometheus through <code>prometheus.localhost</code>. Without any
-    API (GitHub Pages publishes <code>web/site</code> as it is), the pages render <code>assets/snapshot.json</code>; refresh it
+    API (GitHub Pages publishes <code>web/site</code> as it is), the pages render <code>assets/snapshot.json</code>. Refresh it
     from a running cluster with the command below.</p>
   <div class="cmd"><pre>cd documentation
 go test ./... &amp;&amp; golangci-lint run
@@ -222,9 +223,9 @@ go run .     # http://localhost:8080, against your current kubeconfig context
 curl -s http://docs.localhost/api/map | jq . &gt; web/site/assets/snapshot.json   # refresh the offline snapshot</pre></div>
   <p class="prose"><b>Comments.</b> Select text and click <b>Comment</b> (or press Tab), or use a figure's
     <b>Comment</b> button. Each comment is a GitHub issue labelled <code>documentation</code> and <code>docs-feedback</code>,
-    created with the GitHub account of the browser that signed in; its body names the file, quotes the text and ends with
+    created with the GitHub account of the browser that signed in. Its body names the file, quotes the text and ends with
     the anchor the site uses to find it. Open ones are shown in yellow. <b>Resolve</b> closes the issue as completed,
-    <b>Delete</b> as not planned; only issues labelled <code>docs-feedback</code> can be closed. Links and live tables and
+    <b>Delete</b> as not planned. Only issues labelled <code>docs-feedback</code> can be closed. Links and live tables and
     values can't be commented.</p>
   <p class="prose">Sign-in runs a GitHub App's web flow. Vault (<code>services/documentation/github</code>) keeps the token
     with a hash of the browser's session cookie: other clients get 401, a sign-in from another browser replaces it, and

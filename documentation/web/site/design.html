@@ -23,7 +23,7 @@
 <header class="page-head">
   <span class="eyebrow">Reference · design of record</span>
   <h1>Design decisions</h1>
-  <p class="lede">What this cluster chose and why. Every change follows these decisions and conventions; a change that
+  <p class="lede">What this cluster chose and why. Every change follows these decisions and conventions. A change that
     needs a different one updates this page in the same pull request.</p>
   <nav class="toc" id="toc" aria-label="On this page"></nav>
 </header>
@@ -37,22 +37,22 @@
       <code>platform/</code> and are applied first. If deleting a component should delete a resource, it belongs to the
       component.</li>
     <li><b>Entry point.</b> Gateway API, implemented by Envoy Gateway (<code>platform/envoy-gateway/</code>). The platform
-      owns the GatewayClass and the one shared Gateway (<code>platform/gateway/</code>); each component owns its HTTPRoute.
+      owns the GatewayClass and the one shared Gateway (<code>platform/gateway/</code>). Each component owns its HTTPRoute.
       Only namespaces labelled <code>shared-gateway-access: "true"</code> may attach routes. kind maps host ports 80 and 443, on
       127.0.0.1 only, to the fixed NodePorts 30080 and 30443 of the Gateway's Envoy Service, so the proxy needs no node pinning. Every hostname
-      answers on HTTP and on HTTPS; TLS ends at the Gateway, and pods serve plain HTTP.
+      answers on HTTP and on HTTPS. TLS ends at the Gateway, and pods serve plain HTTP.
       <a href="networking.html#gateway">How it works</a>.</li>
     <li><b>Certificates.</b> cert-manager (<code>platform/cert-manager/</code>) issues every certificate from the cluster's
       own CA, the ClusterIssuer <code>sample-cluster-ca</code>: a certificate is a Certificate object, never a file a
       script makes. The Gateway's certificate lists each hostname, because a <code>*.localhost</code> wildcard is
       rejected. <a href="security.html#certificates">How</a>.</li>
     <li><b>Namespaces.</b> <code>apps</code> (stock-app, traffic-generator, stock-ui), <code>monitoring</code>,
-      <code>vault</code>, <code>data</code> (TimescaleDB) and <code>docs</code> (this site). Every manifest sets its namespace;
-      cross-namespace calls use <code>&lt;service&gt;.&lt;namespace&gt;</code>.</li>
+      <code>vault</code>, <code>data</code> (TimescaleDB) and <code>docs</code> (this site). Every manifest sets its namespace.
+      Cross-namespace calls use <code>&lt;service&gt;.&lt;namespace&gt;</code>.</li>
     <li><b>Least privilege.</b> Each workload has its own ServiceAccount, with no API token unless it needs one: Prometheus
       (service discovery, kubelet metrics), the documentation site (the live diagrams) and the OpenTelemetry Collector (pods in
       <code>apps</code>, to label spans) get read-only API access. Vault may check tokens (TokenReview) and keep its unseal key
-      in one Secret in its own namespace; no other workload of the project can read Secrets.
+      in one Secret in its own namespace. No other workload of the project can read Secrets.
       <a href="security.html#api-access">Live view</a>.</li>
     <li><b>Metrics discovery.</b> A Service is scraped when annotated <code>prometheus.io/scrape: "true"</code> and
       <code>prometheus.io/job: &lt;name&gt;</code> (optionally <code>prometheus.io/port</code> and
@@ -63,20 +63,20 @@
       <code>severity</code> label. Prometheus evaluates them and sends firing alerts to Alertmanager, whose only receiver
       sends nothing: alerts are read in its UI and in Grafana. <a href="observability.html#alerts">How</a>.</li>
     <li><b>Tracing.</b> stock-app traces every HTTP request with OpenTelemetry and sends it over OTLP to the OpenTelemetry
-      Collector, which adds Kubernetes metadata and forwards it to Tempo; Grafana reads Tempo. Apps only know the
+      Collector, which adds Kubernetes metadata and forwards it to Tempo. Grafana reads Tempo. Apps only know the
       Collector's address. The latency histogram's exemplars and the service's own log lines carry the trace ID.</li>
     <li><b>Secrets.</b> Development credentials live in one Secret per tool. Secrets can't cross namespaces, so the database
       password is declared in both namespaces that need it. Vault holds the apps' secrets, one path per service
       (<code>services/&lt;service&gt;/</code>). Apps sign in to Vault with their ServiceAccount (kubernetes auth method) and
-      get a token for their own path only; the root token is for people and Vault's setup hook.
+      get a token for their own path only. The root token is for people and Vault's setup hook.
       <a href="security.html#vault">How</a>.</li>
     <li><b>Stateful data.</b> TimescaleDB and Vault (Raft storage) keep their data on PVCs, which are empty after every
-      <code>./recreate-cluster.sh</code>; that is fine because stock-app refills the database from the provider and Vault
+      <code>./recreate-cluster.sh</code>. That is fine because stock-app refills the database from the provider and Vault
       holds only demo secrets. Setup that a restart can undo runs on every start, never once in a Job: Grafana loads its
       dashboards and datasources from ConfigMaps, and Vault, which restarts sealed, unseals itself with the key it keeps in
       a Secret and applies its KV mounts, auth method and policies in a <code>postStart</code> hook. Grafana's database
       (logins, preferences) is on an <code>emptyDir</code>.</li>
-    <li><b>API contract.</b> stock-app's <code>openapi.yaml</code> is the source of truth; its models are generated from it.</li>
+    <li><b>API contract.</b> stock-app's <code>openapi.yaml</code> is the source of truth. Its models are generated from it.</li>
     <li><b>Documentation.</b> This site is the only documentation: the root <code>README.md</code> just points here. One Go
       service, <code>documentation/</code>, serves the pages and their live data: the cluster map from the Kubernetes API
       (informers, read-only RBAC) and read-only PromQL forwarded to Prometheus. Pages are hand-written HTML with shared
@@ -86,7 +86,7 @@
       browser's session cookie, so the browser never holds the token.
       <a href="components.html#documentation">How</a>.</li>
     <li><b>Dependency updates.</b> Renovate opens update pull requests daily. Minor, patch and digest updates merge
-      automatically when CI is green; majors and language runtimes wait for a human. Releases must be three days old; local
+      automatically when CI is green. Majors and language runtimes wait for a human. Releases must be three days old. Local
       <code>:dev</code> images are ignored. <a href="delivery.html#renovate">Details</a>.</li>
   </ul>
 </section>
@@ -94,17 +94,18 @@
 <section class="chapter" id="conventions">
   <div class="head"><span class="eyebrow">Conventions</span><h2>How things are named and built</h2></div>
   <ul class="prose">
-    <li>Deployment and <code>app</code> label = the component's name; Service <code>&lt;component&gt;-service</code> (a
-      StatefulSet's <code>serviceName</code> is a second, headless one, <code>&lt;component&gt;-headless</code>); HTTPRoute
-      <code>&lt;component&gt;-route</code>; ServiceAccount <code>&lt;component&gt;</code>.</li>
-    <li>Every workload has requests, limits and a readiness probe; own images run as non-root; every image is pinned (base images and GitHub Actions by digest).</li>
-    <li>A config file a container reads (e.g. <code>prometheus.yml</code>) is a plain file in <code>k8s/</code>; a
+    <li>The Deployment and its <code>app</code> label are named after the component, the Service is
+      <code>&lt;component&gt;-service</code> (a StatefulSet's <code>serviceName</code> is a second, headless one,
+      <code>&lt;component&gt;-headless</code>), the HTTPRoute <code>&lt;component&gt;-route</code> and the ServiceAccount
+      <code>&lt;component&gt;</code>.</li>
+    <li>Every workload has requests, limits and a readiness probe. Own images run as non-root. Every image is pinned (base images and GitHub Actions by digest).</li>
+    <li>A config file a container reads (e.g. <code>prometheus.yml</code>) is a plain file in <code>k8s/</code>. A
       <code>kustomization.yaml</code> turns it into a ConfigMap, and <code>./recreate-cluster.sh</code> applies such
       directories with <code>kubectl apply -k</code>. Kustomize adds a hash of the content to the ConfigMap's name, so a
       changed file rolls out new pods. Only <code>prometheus-config</code> keeps a fixed name (the documentation site reads it
-      by name); Prometheus re-reads it itself (<code>--config.auto-reload</code>).</li>
+      by name). Prometheus re-reads it itself (<code>--config.auto-reload</code>).</li>
     <li><code>./recreate-cluster.sh</code> is the single entry point and stays idempotent.</li>
-    <li>Each fact is written on one page of this site; other pages link to it. A new page goes into <code>PAGES</code> in
+    <li>Each fact is written on one page of this site. Other pages link to it. A new page goes into <code>PAGES</code> in
       <code>documentation/web/site/assets/js/site.js</code>.</li>
   </ul>
 </section>
