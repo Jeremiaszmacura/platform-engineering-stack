@@ -62,7 +62,7 @@ class Comments {
     this.addButton = popover("button", "comment-add", "manual");
     this.addButton.type = "button";
     this.addButton.textContent = "Comment";
-    this.selected = null; // {target, range} of the text selected right now
+    this.selected = null; // {target, range, tabbed} of the text selected right now
     this.target = null; // what the box's form comments on
     this.anchor = null; // what the box is placed at
     this.timer = 0;
@@ -200,9 +200,11 @@ class Comments {
     if (document.activeElement === document.body) this.anchor?.focus?.({ preventScroll: true });
   }
 
-  /** Tab from a commentable selection moves to its Comment button. */
+  /** The first Tab after a commentable selection moves to its Comment button; later ones move on as usual. */
   onTab(e) {
-    if (e.key !== "Tab" || e.shiftKey || !this.addButton.matches(":popover-open")) return;
+    const selected = this.selected;
+    if (e.key !== "Tab" || e.shiftKey || !selected || selected.tabbed || !this.addButton.matches(":popover-open")) return;
+    selected.tabbed = true;
     e.preventDefault();
     this.addButton.focus();
   }
