@@ -49,3 +49,33 @@ export function fill(target, html) {
 export function rows(target, items, render, columns, emptyText = "Nothing in the cluster right now.") {
   return fill(target, items.length ? items.map(render).join("") : `<tr><td colspan="${columns}" class="muted">${esc(emptyText)}</td></tr>`);
 }
+
+/** The page's file name, e.g. "state.html". */
+export const currentPage = () => location.pathname.split("/").pop() || "index.html";
+
+const GAP_PX = 8;
+
+/** Place fixed box below anchor (element or Range), or above if there is no room. */
+export function place(box, anchor) {
+  const line = anchor.getClientRects()[0] || anchor.getBoundingClientRect();
+  const size = box.getBoundingClientRect();
+  const width = document.documentElement.clientWidth;
+  const fitsBelow = line.bottom + GAP_PX + size.height <= innerHeight - GAP_PX;
+  const top = fitsBelow || line.top < size.height + 2 * GAP_PX ? line.bottom + GAP_PX : line.top - GAP_PX - size.height;
+  const left = Math.max(GAP_PX, Math.min(line.left, width - size.width - GAP_PX));
+  box.style.top = `${top}px`;
+  box.style.left = `${left}px`;
+}
+
+/** The text nodes of root in document order, except those inside an element below root that matches skip. */
+export function textNodes(root, skip) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      const el = node.parentElement.closest(skip);
+      return el && el !== root && root.contains(el) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  return nodes;
+}

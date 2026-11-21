@@ -146,3 +146,37 @@ def test_only_read_queries_are_proxied():
         f"{DOCS_URL}/api/prometheus/api/v1/query", data={"query": "up"}, timeout=REQUEST_TIMEOUT_SECONDS
     )
     assert post.status_code == 405
+
+
+def comments_configured():
+    """Return whether the documentation service has a GitHub App for comments."""
+    response = requests.get(f"{DOCS_URL}/api/github/status", timeout=REQUEST_TIMEOUT_SECONDS)
+    assert response.status_code == 200
+    assert set(response.json()) == {"configured"}
+    return response.json()["configured"]
+
+
+@pytest.mark.parametrize(("method", "path"), [("POST", "/api/comments"), ("DELETE", "/api/comments/1")])
+def test_comment_api_needs_the_browser_that_signed_in(method, path):
+    """Without the session cookie of the browser that signed in, no comment issue is created or closed."""
+    response = requests.request(
+        method,
+        f"{DOCS_URL}{path}",
+        json={"title": "t", "body": "b"},
+        headers={"Origin": DOCS_URL},
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    assert response.status_code == (401 if comments_configured() else 503)
+
+
+@pytest.mark.parametrize(("method", "path"), [("POST", "/api/comments"), ("DELETE", "/api/comments/1")])
+def test_comment_api_refuses_other_sites(method, path):
+    """Another site's page can't create or close comment issues through the reader's browser."""
+    response = requests.request(
+        method,
+        f"{DOCS_URL}{path}",
+        json={"title": "t", "body": "b"},
+        headers={"Origin": "https://attacker.example"},
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    assert response.status_code == 403

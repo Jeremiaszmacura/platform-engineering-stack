@@ -1,13 +1,12 @@
 // Kubernetes terms in the text explain themselves: hover, focus or tap the first mention in each section.
 
-import { $$, esc } from "./util.js";
+import { $$, esc, place, textNodes } from "./util.js";
 import { TERMS, findTerm } from "./glossary.js";
 
 /** Text inside these is never marked: code, links, headings, navigation and controls. */
 const SKIP = "a, code, pre, kbd, h1, h2, h3, h4, button, svg, nav, .eyebrow, .term, .term-tip";
 const SHOW_DELAY_MS = 120;
 const HIDE_DELAY_MS = 250;
-const GAP_PX = 8;
 
 /** Mark the terms in article's static text and wire up the explanation box. */
 export function explainTerms(article) {
@@ -19,17 +18,7 @@ export function explainTerms(article) {
 /** Wrap the first mention of every term within section. */
 function markSection(section) {
   const seen = new Set();
-  for (const node of textNodes(section)) markText(node, seen);
-}
-
-/** The text nodes of root that may hold a term, in document order. */
-function textNodes(root) {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    acceptNode: (node) => (node.parentElement.closest(SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
-  });
-  const nodes = [];
-  while (walker.nextNode()) nodes.push(walker.currentNode);
-  return nodes;
+  for (const node of textNodes(section, SKIP)) markText(node, seen);
 }
 
 /** Wrap every term in the text node that seen doesn't hold yet, and add it to seen. */
@@ -88,7 +77,7 @@ class TermTip {
   /** Focus on a term opens its box; focus anywhere but the box closes it. */
   onFocus(e) {
     const el = termAt(e.target);
-    if (el) this.show(el);
+    if (el) this.later(() => this.show(el), 0); // not during another popover's hide, which can move focus here
     else if (!this.box.contains(e.target)) this.hide();
   }
 
@@ -141,15 +130,3 @@ function tipContent(term) {
 
 /** The marked term at or around target, if any. */
 const termAt = (target) => target.closest?.(".term");
-
-/** Position the box under el's first line, or above it when there is no room below, inside the viewport. */
-function place(tip, el) {
-  const anchor = el.getClientRects()[0] || el.getBoundingClientRect();
-  const box = tip.getBoundingClientRect();
-  const width = document.documentElement.clientWidth;
-  const fitsBelow = anchor.bottom + GAP_PX + box.height <= innerHeight - GAP_PX;
-  const top = fitsBelow || anchor.top < box.height + 2 * GAP_PX ? anchor.bottom + GAP_PX : anchor.top - GAP_PX - box.height;
-  const left = Math.max(GAP_PX, Math.min(anchor.left, width - box.width - GAP_PX));
-  tip.style.top = `${top}px`;
-  tip.style.left = `${left}px`;
-}

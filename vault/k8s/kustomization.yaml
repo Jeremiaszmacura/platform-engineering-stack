@@ -13,6 +13,7 @@ configMapGenerator:
       - vault.hcl
       - configure-vault.sh
       - stock-app-policy.hcl
+      - documentation-policy.hcl
     options:
       labels:
         app: vault

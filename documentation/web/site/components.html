@@ -189,13 +189,17 @@ kubectl scale statefulset/vault -n vault --replicas=1</pre></div>
   <div class="head"><span class="eyebrow">docs · this site</span><h2>documentation</h2>
     <p>A Go service at <a href="http://docs.localhost">docs.localhost</a> that serves these pages and the live data behind
       them. It reads the Kubernetes API through informers (<a href="security.html#this-site">how</a>) with a read-only
-      ClusterRole that excludes Secrets, and forwards read-only PromQL to Prometheus, the way Grafana's proxy mode does.</p></div>
+      ClusterRole that excludes Secrets, and forwards read-only PromQL to Prometheus, the way Grafana's proxy mode does.
+      It also turns readers' comments into GitHub issues, in their name (below).</p></div>
   <dl class="spec" data-app="documentation"></dl>
   <div class="grid-2">
     <div class="card"><h3>Endpoints</h3><ul>
       <li><code>/</code> and <code>/*.html</code>: the pages, embedded in the binary</li>
       <li><code>/api/map</code>: the cluster as JSON, built from the informer caches</li>
       <li><code>/api/prometheus/api/v1/query</code> and <code>query_range</code>: forwarded to Prometheus, nothing else</li>
+      <li><code>/api/github/login</code>, <code>callback</code>, <code>logout</code> and <code>status</code>: GitHub sign-in</li>
+      <li><code>POST /api/comments</code>, <code>POST /api/comments/{n}/resolve</code>, <code>DELETE /api/comments/{n}</code>:
+        comment issues, only for the browser that signed in, from this site's pages</li>
       <li><code>/health</code> (ready once the informers have synced) and <code>/metrics</code></li></ul></div>
     <div class="card"><h3>Code</h3><ul>
       <li><code>internal/topology</code> turns API objects into the map: pure and unit-tested</li>
@@ -216,6 +220,19 @@ go test ./... &amp;&amp; golangci-lint run
 node --test 'web/test/*.test.js'
 go run .     # http://localhost:8080, against your current kubeconfig context
 curl -s http://docs.localhost/api/map | jq . &gt; web/site/assets/snapshot.json   # refresh the offline snapshot</pre></div>
+  <p class="prose"><b>Comments.</b> Select text and click <b>Comment</b> (or press Tab), or use a figure's
+    <b>Comment</b> button. Each comment is a GitHub issue labelled <code>documentation</code> and <code>docs-feedback</code>,
+    created with the GitHub account of the browser that signed in; its body names the file, quotes the text and ends with
+    the anchor the site uses to find it. Open ones are shown in yellow. <b>Resolve</b> closes the issue as completed,
+    <b>Delete</b> as not planned; only issues labelled <code>docs-feedback</code> can be closed. Links and live tables and
+    values can't be commented.</p>
+  <p class="prose">Sign-in runs a GitHub App's web flow. Vault (<code>services/documentation/github</code>) keeps the token
+    with a hash of the browser's session cookie: other clients get 401, a sign-in from another browser replaces it, and
+    <b>Sign out of GitHub</b> forgets it. Sign-in is asked for again when the token expires or the cluster is recreated.
+    Without the app, and on GitHub Pages, a comment opens a pre-filled new issue. The app has the callback URL
+    <code>http(s)://docs.localhost/api/github/callback</code>, no webhook and the repository permission <i>Issues: Read
+    and write</i>, and is installed on this repository only:</p>
+  <div class="cmd"><pre>GITHUB_APP_CLIENT_ID=… GITHUB_APP_CLIENT_SECRET=… ./recreate-cluster.sh   # Secret docs/documentation-github</pre></div>
 </section>
 
 <section class="chapter" id="platform" style="--c:var(--ns-gateway)">

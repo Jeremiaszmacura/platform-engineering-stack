@@ -56,7 +56,7 @@
     <thead><tr><th>Hop</th><th>Here (kind on a laptop)</th><th>On a cloud, e.g. AWS EKS</th></tr></thead>
     <tbody>
       <tr><td>Name to address</td><td><code>*.localhost</code> is always <code>127.0.0.1</code></td><td>public DNS (Route 53) points the hostname at the load balancer</td></tr>
-      <tr><td>Into the cluster</td><td>Docker publishes host ports 80 and 443 to NodePorts 30080 and 30443 of one node</td><td>a cloud load balancer (an NLB on AWS), created for the Gateway's <code>type: LoadBalancer</code> Service, sends to the nodes or straight to the Envoy pods</td></tr>
+      <tr><td>Into the cluster</td><td>Docker publishes host ports 80 and 443, on 127.0.0.1 only, to NodePorts 30080 and 30443 of one node</td><td>a cloud load balancer (an NLB on AWS), created for the Gateway's <code>type: LoadBalancer</code> Service, sends to the nodes or straight to the Envoy pods</td></tr>
       <tr><td>Routing by hostname</td><td colspan="2">the same on both: Envoy picks the HTTPRoute and a ready pod IP</td></tr>
       <tr><td>Node to pod</td><td>kindnet routes the packet to the pod's node</td><td>the VPC delivers it: the AWS VPC CNI gives pods VPC addresses</td></tr>
     </tbody></table></div>
