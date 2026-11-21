@@ -47,14 +47,16 @@
   <div class="head">
     <span class="eyebrow">Incoming traffic</span>
     <h2>Your browser to a pod</h2>
-    <p>You open <code>http://stock-ui.localhost</code>. Step through the hops: the packet moves, and every address is live.</p>
+    <p>You open <code>http://stock-ui.localhost</code>. Step through the hops: the packet moves, and every address is live.
+      <code>https://</code> takes the same path through port 443, and Envoy decrypts it first
+      (<a href="security.html#certificates">certificates</a>).</p>
   </div>
   <div class="figure" data-source="live"><div id="journey-incoming"></div></div>
   <div class="table-wrap"><table>
     <thead><tr><th>Hop</th><th>Here (kind on a laptop)</th><th>On a cloud, e.g. AWS EKS</th></tr></thead>
     <tbody>
       <tr><td>Name to address</td><td><code>*.localhost</code> is always <code>127.0.0.1</code></td><td>public DNS (Route 53) points the hostname at the load balancer</td></tr>
-      <tr><td>Into the cluster</td><td>Docker publishes host port 80 to NodePort 30080 of one node</td><td>a cloud load balancer (an NLB on AWS), created for the Gateway's <code>type: LoadBalancer</code> Service, sends to the nodes or straight to the Envoy pods</td></tr>
+      <tr><td>Into the cluster</td><td>Docker publishes host ports 80 and 443 to NodePorts 30080 and 30443 of one node</td><td>a cloud load balancer (an NLB on AWS), created for the Gateway's <code>type: LoadBalancer</code> Service, sends to the nodes or straight to the Envoy pods</td></tr>
       <tr><td>Routing by hostname</td><td colspan="2">the same on both: Envoy picks the HTTPRoute and a ready pod IP</td></tr>
       <tr><td>Node to pod</td><td>kindnet routes the packet to the pod's node</td><td>the VPC delivers it: the AWS VPC CNI gives pods VPC addresses</td></tr>
     </tbody></table></div>
@@ -87,7 +89,8 @@
       names <code>controllerName: gateway.envoyproxy.io/gatewayclass-controller</code>; every controller ignores Gateways of
       other classes, so one cluster can run several. The class has no network layer of its own: a Gateway's listeners and
       the kinds of route attached to it decide. HTTPRoute and GRPCRoute work at layer 7 (HTTP: hostnames, paths, headers);
-      TCPRoute, UDPRoute and TLSRoute at layer 4 (addresses and ports). This cluster uses only HTTP.</p>
+      TCPRoute, UDPRoute and TLSRoute at layer 4 (addresses and ports). This cluster uses only HTTPRoutes, on an HTTP
+      and an HTTPS listener.</p>
   </div>
   <div class="table-wrap"><table>
     <thead><tr><th>GatewayClass</th><th>The controller turns a Gateway into</th><th>Layer</th></tr></thead>
@@ -111,7 +114,7 @@
     <thead><tr><th>Object</th><th>Owner here</th><th>Decides</th></tr></thead>
     <tbody>
       <tr><td><b>GatewayClass</b> <code>envoy-gateway</code></td><td>whoever installs the implementation (<code>platform/gateway/</code>)</td><td>which controller turns Gateways of this class into a working proxy or load balancer</td></tr>
-      <tr><td><b>Gateway</b> <code>shared-gateway</code></td><td>the platform team (<code>platform/gateway/</code>)</td><td>listeners (HTTP :80, <code>*.localhost</code>) and which namespaces may attach routes</td></tr>
+      <tr><td><b>Gateway</b> <code>shared-gateway</code></td><td>the platform team (<code>platform/gateway/</code>)</td><td>listeners (HTTP :80 and HTTPS :443 for <code>*.localhost</code>, with the <a href="security.html#certificates">certificate</a>) and which namespaces may attach routes</td></tr>
       <tr><td><b>EnvoyProxy</b> <code>shared-gateway</code></td><td>the platform team (<code>platform/gateway/</code>)</td><td>how the proxy runs: Deployment size, NodePort Service (an Envoy Gateway resource, not Gateway API)</td></tr>
       <tr><td><b>HTTPRoute</b> <code>&lt;component&gt;-route</code></td><td>each app team (<code>&lt;component&gt;/k8s/</code>)</td><td>hostnames, matches, filters (CORS, redirects, headers) and the backend Service</td></tr>
     </tbody></table></div>
@@ -155,8 +158,9 @@
   <figure class="figure" data-source="example"><div class="scroll-x" id="cors-seq"></div>
     <figcaption>Envoy applies the CORS filter on <code>stock-app-route</code>; stock-app has no CORS code at all.</figcaption></figure>
   <ul class="prose">
-    <li>The filter (a standard HTTPRoute field since Gateway API v1.5) allows exactly two origins, stock-ui and
-      traffic-generator, and only <code>GET</code>.</li>
+    <li>The filter (a standard HTTPRoute field since Gateway API v1.5) allows stock-ui and traffic-generator, and only
+      <code>GET</code>. An origin includes its scheme, so that is four origins: each on <code>http://</code> and
+      <code>https://</code>. The page calls stock-app with its own scheme.</li>
     <li>A plain <code>GET</code> is a "simple" request: no preflight. A custom header or a <code>PUT</code> makes the browser
       ask first with <code>OPTIONS</code>, and Envoy answers that itself.</li>
     <li>For any other origin Envoy adds no <code>Access-Control-Allow-Origin</code>, so the browser hides the response from
@@ -264,11 +268,12 @@ kubectl delete httproute,service demo -n data</pre></div></div>
   </div>
   <div class="findings">
     <div class="finding" id="routes-check"></div>
-    <div class="finding"><span class="sev">Open · TLS</span><h3>Everything is plain HTTP</h3>
-      <p>The Gateway has one HTTP listener, so Grafana logins and the Vault token cross the network unencrypted.</p>
-      <p class="fix">Exercise: add an HTTPS listener on 443 with a self-signed certificate Secret
-        (<code>tls.certificateRefs</code>), publish its nodePort in <code>kind-cluster.yaml</code>, and redirect HTTP to
-        HTTPS with a <code>RequestRedirect</code> filter.</p></div>
+    <div class="finding"><span class="sev">Open · TLS</span><h3>HTTP still answers next to HTTPS</h3>
+      <p>Every hostname works on <code>https://</code> too (<a href="security.html#certificates">how</a>), but nothing sends
+        you there, so Grafana logins and the Vault token still cross the network unencrypted over <code>http://</code>.</p>
+      <p class="fix">Exercise: trust the cluster CA, attach the app routes to the <code>https</code> listener only
+        (<code>sectionName</code>), and give the <code>http</code> listener one route with a <code>RequestRedirect</code>
+        filter to <code>scheme: https</code>.</p></div>
     <div class="finding"><span class="sev">Open · limits</span><h3>No rate limits and only the default timeout at the edge</h3>
       <p>Any client can open as many requests as it likes, and Envoy ends a request after its default 15 s route timeout and answers 504, even if the app is still working.</p>
       <p class="fix">Exercise: set an explicit request timeout that fits stock-app on <code>stock-app-route</code> (<code>timeouts.request</code>) and a

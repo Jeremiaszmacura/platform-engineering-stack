@@ -88,7 +88,7 @@
     <li><b>kind v0.33.x</b>: each kind release creates nodes of one Kubernetes version, and v0.33 creates 1.37, as in CI.
       The script stops if your kind has another version.</li>
     <li><b>kubectl 1.36 to 1.38</b>: kubectl supports one minor version either side of the API server.</li>
-    <li><b>curl</b>, and <b>host port 80</b> free: the script stops if something else listens on it.</li>
+    <li><b>curl</b>, and <b>host ports 80 and 443</b> free: the script stops if something else listens on them.</li>
     <li>Go 1.26, Node.js 24 and Python 3.14 only to change the code.</li>
   </ul>
   <div class="try">
@@ -101,9 +101,9 @@
   <p class="prose">It builds the four local images, deploys everything and waits until every <code>*.localhost</code> URL
     answers; <a href="delivery.html#pipeline">Build &amp; ship</a> shows each step. <code>*.localhost</code> resolves to
     <code>127.0.0.1</code> on macOS and most Linux systems, so there is no DNS to set up.</p>
-  <p class="callout warn">kind binds port 80 on every network interface (<code>0.0.0.0</code>), so other devices on your
+  <p class="callout warn">kind binds ports 80 and 443 on every network interface (<code>0.0.0.0</code>), so other devices on your
     network can reach Vault (token <code>root</code>) and Grafana (<code>admin</code> / <code>admin</code>). On a shared
-    network, add <code>listenAddress: "127.0.0.1"</code> to the port mapping in <code>platform/kind-cluster.yaml</code>.</p>
+    network, add <code>listenAddress: "127.0.0.1"</code> to both port mappings in <code>platform/kind-cluster.yaml</code>.</p>
 </section>
 
 <section class="chapter" id="troubleshooting">
@@ -112,8 +112,8 @@
     <h2>Troubleshooting</h2>
   </div>
   <div class="qa-list">
-    <details class="qa"><summary>Host port 80 is in use</summary><div>
-      <p>Find what listens on it with <code>sudo lsof -iTCP:80 -sTCP:LISTEN</code>, stop it and re-run. kind can only map
+    <details class="qa"><summary>Host port 80 or 443 is in use</summary><div>
+      <p>Find what listens on it with <code>sudo lsof -iTCP:80 -sTCP:LISTEN</code> (or <code>:443</code>), stop it and re-run. kind can only map
         a free port.</p></div></details>
     <details class="qa"><summary>kind has the wrong version, or <code>unknown containerd config version: 4</code></summary><div>
       <p>An older kind builds an older Kubernetes and can't load images into newer nodes. Check <code>kind version</code>
@@ -178,6 +178,7 @@
     <p>One line each; the link goes to where the site explains it.</p>
   </div>
   <dl class="spec">
+    <dt>CA</dt><dd>Certificate authority: signs certificates; a client trusts a server's certificate if a CA it trusts signed it. <a href="security.html#certificates">Identity</a></dd>
     <dt>cache-aside</dt><dd>Read the store first; on a miss, fetch from the source and store the result. <a href="state.html#cache-aside">State</a></dd>
     <dt>CNI</dt><dd>Container Network Interface: the plugin that gives each pod an IP and routes between nodes; here kindnet. <a href="networking.html#addresses">Networking</a></dd>
     <dt>controller</dt><dd>A program in the cluster that watches objects through the Kubernetes API and changes the real world to match them, such as Envoy Gateway. <a href="networking.html#gateway">Networking</a></dd>
@@ -188,7 +189,7 @@
     <dt>inhibition</dt><dd>An Alertmanager rule that hides the alerts another firing alert already explains. <a href="observability.html#alerts">Observability</a></dd>
     <dt>informer</dt><dd>A client-go cache: list each kind of object once, then watch, so reads come from memory. <a href="security.html#this-site">Identity</a></dd>
     <dt>ndots</dt><dd>A resolver option: names with fewer dots than this try every search domain first. <a href="networking.html#dns">Networking</a></dd>
-    <dt>NodePort</dt><dd>A Service port opened on every node; here 30080 carries host port 80 to the Gateway. <a href="networking.html#incoming">Networking</a></dd>
+    <dt>NodePort</dt><dd>A Service port opened on every node; here 30080 and 30443 carry host ports 80 and 443 to the Gateway. <a href="networking.html#incoming">Networking</a></dd>
     <dt>OTLP</dt><dd>OpenTelemetry Protocol: how spans travel from stock-app to the Collector and on to Tempo. <a href="observability.html#traces">Observability</a></dd>
     <dt>PSS, PSA</dt><dd>Pod Security Standards (privileged, baseline, restricted), enforced per namespace by Pod Security Admission. <a href="security.html#hardening">Identity</a></dd>
     <dt>QoS class</dt><dd>Guaranteed, Burstable or BestEffort, set by requests and limits; predicts eviction order. <a href="workloads.html#resources">Workloads</a></dd>

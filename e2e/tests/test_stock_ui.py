@@ -1,8 +1,12 @@
 """stock-ui is served, and stock-app answers its cross-origin calls with CORS headers."""
 
+import pytest
 import requests
 
-from cluster import REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL, STOCK_UI_URL
+from cluster import REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL, STOCK_UI_URL, https
+
+# The page calls stock-app from whichever scheme it was opened on.
+ORIGINS = [STOCK_UI_URL, https(STOCK_UI_URL)]
 
 
 def test_stock_ui_serves_ui():
@@ -12,23 +16,25 @@ def test_stock_ui_serves_ui():
     assert response.headers["Content-Type"].startswith("text/html")
 
 
-def test_stock_app_allows_stock_ui_origin():
+@pytest.mark.parametrize("origin", ORIGINS)
+def test_stock_app_allows_stock_ui_origin(origin):
     """stock-app responses carry CORS headers allowing the Stock App origin."""
     response = requests.get(
         f"{STOCK_APP_URL}/api/v1/instruments",
-        headers={"Origin": STOCK_UI_URL},
+        headers={"Origin": origin},
         timeout=REQUEST_TIMEOUT_SECONDS,
     )
     assert response.status_code == 200
-    assert response.headers["Access-Control-Allow-Origin"] in ("*", STOCK_UI_URL)
+    assert response.headers["Access-Control-Allow-Origin"] in ("*", origin)
 
 
-def test_stock_app_answers_cors_preflight():
+@pytest.mark.parametrize("origin", ORIGINS)
+def test_stock_app_answers_cors_preflight(origin):
     """OPTIONS preflight from the Stock App origin is accepted by stock-app's HTTPRoute."""
     response = requests.options(
         f"{STOCK_APP_URL}/api/v1/instruments",
-        headers={"Origin": STOCK_UI_URL, "Access-Control-Request-Method": "GET"},
+        headers={"Origin": origin, "Access-Control-Request-Method": "GET"},
         timeout=REQUEST_TIMEOUT_SECONDS,
     )
     assert response.status_code in (200, 204)
-    assert response.headers["Access-Control-Allow-Origin"] in ("*", STOCK_UI_URL)
+    assert response.headers["Access-Control-Allow-Origin"] in ("*", origin)

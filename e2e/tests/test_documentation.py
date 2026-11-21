@@ -81,13 +81,15 @@ def test_map_links_follow_routes_config_and_scraping():
 
 
 def test_gateway_is_programmed_and_accepts_every_route():
-    """The shared Gateway runs an Envoy proxy behind NodePort 30080 and has accepted every component's HTTPRoute."""
+    """The shared Gateway runs an Envoy proxy behind NodePorts 30080 (HTTP) and 30443 (HTTPS) and has accepted every
+    component's HTTPRoute."""
     cluster_map = fetch_map()
     gateway = next(g for g in cluster_map["gateways"] if g["name"] == "shared-gateway")
     proxy_service = next(s for s in cluster_map["services"] if s["id"] == gateway["proxy_service"])
     assert gateway["programmed"] is True
     assert gateway["proxy_pods"]
-    assert proxy_service["node_ports"] == ["30080"]
+    assert proxy_service["node_ports"] == ["30080", "30443"]
+    assert [listener["port"] for listener in gateway["listeners"]] == [80, 443]
     routes = {route["name"]: route["status"] for route in cluster_map["routes"]}
     assert routes["documentation-route"] == "Accepted"
     assert set(routes.values()) == {"Accepted"}

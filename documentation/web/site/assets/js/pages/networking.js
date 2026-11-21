@@ -61,7 +61,7 @@ function incomingJourney(map) {
       { at: 0.5, where: "Docker", text: `<code>extraPortMappings</code> in <code>platform/kind-cluster.yaml</code> publish host port 80 to port ${code(nodePort)} of the ${entry ? `<b>${esc(nodeShort(entry.name))}</b> container (${code(entry.ip)})` : "control-plane container"}.` },
       { at: 2, where: `${nodeShort(entry?.name)} · iptables`, text: `${code(nodePort)} is the nodePort of Service ${code(proxySvc ? proxySvc.name : "shared-gateway-proxy")}. kube-proxy's <code>KUBE-NODEPORTS</code> rule DNATs the packet to a ready Envoy pod, ${code(ip(proxyPod) + ":" + envoyPort)}.${snat}` },
       { at: 2.5, where: "kindnet", text: hop(entry, proxyNode, "the node's IP (from the SNAT)") },
-      { at: 3, where: "Envoy proxy", text: `Envoy Gateway maps privileged listener ports to port + 10000 (here 80 → ${code(envoyPort)}), so Envoy can run as non-root on any runtime. Envoy matches <code>Host: stock-ui.localhost</code> against the attached routes and picks ${code(route ? route.name : "stock-ui-route")}.` },
+      { at: 3, where: "Envoy proxy", text: `Envoy Gateway maps privileged listener ports to port + 10000 (here 80 → ${code(envoyPort)}, 443 → <code>10443</code>), so Envoy can run as non-root on any runtime. Envoy matches <code>Host: stock-ui.localhost</code> against the attached routes and picks ${code(route ? route.name : "stock-ui-route")}.` },
       { at: 3, where: "Envoy proxy", text: `It doesn't use the ClusterIP${uiSvc ? ` (${code(uiSvc.cluster_ip)})` : ""}: Envoy Gateway gave it the ready pod addresses from the Service's EndpointSlice, so Envoy connects straight to ${code(ip(ui) + ":" + target(uiSvc, "8080"))}, the Service's <code>targetPort</code>.` },
       { at: 3.5, where: "kindnet", text: hop(proxyNode, nodeOf(map, ui)) },
       { at: 4, where: "stock-ui pod", text: "nginx-unprivileged (uid 101) serves <code>index.html</code> and the JavaScript bundle. The response goes back the same way." },
@@ -110,8 +110,10 @@ function gatewayTree(map) {
   const ltr = { sides: ["r", "l"] };
   if (g) {
     const listener = g.listeners[0];
+    const protocols = g.listeners.map((l) => l.protocol).join(", ");
+    const ports = g.listeners.map((l) => `${l.protocol} :${l.port}`).join(", ");
     nodes.push({ id: "class", x: 32, y: mid, w: 168, h: 52, title: g.class, sub: "GatewayClass", color: nsColor("envoy-gateway-system") });
-    nodes.push({ id: "gw", x: 240, y: mid, w: 200, h: 52, title: g.name, sub: listener ? `Gateway · ${listener.protocol} :${listener.port} ${listener.hostname}` : "Gateway, no listener", color: nsColor("envoy-gateway-system"), status: g.programmed ? "ok" : "bad", tip: `${g.programmed ? "Programmed" : "NOT Programmed"}; routes from ${listener ? listener.allowed_routes : "?"}` });
+    nodes.push({ id: "gw", x: 240, y: mid, w: 200, h: 52, title: g.name, sub: listener ? `Gateway · ${protocols}` : "Gateway, no listener", color: nsColor("envoy-gateway-system"), status: g.programmed ? "ok" : "bad", tip: `${g.programmed ? "Programmed" : "NOT Programmed"}; ${listener ? `${ports} on ${listener.hostname}, routes from ${listener.allowed_routes}` : "no listener"}` });
     edges.push({ from: "class", to: "gw", color: nsColor("envoy-gateway-system"), ...ltr });
   }
   routes.forEach((r, i) => {

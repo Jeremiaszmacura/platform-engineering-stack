@@ -2,8 +2,8 @@
 
 import axios from 'axios';
 
-/** Base URL of stock-app. Overridable at build time for local development. */
-export const STOCK_API_URL = import.meta.env.VITE_STOCK_API_URL || 'http://stock.localhost';
+/** Base URL of stock-app, over this page's scheme (http: or https:). Overridable at build time for local development. */
+export const STOCK_API_URL = import.meta.env.VITE_STOCK_API_URL || `${window.location.protocol}//stock.localhost`;
 
 const REQUEST_TIMEOUT_MS = 60000;
 

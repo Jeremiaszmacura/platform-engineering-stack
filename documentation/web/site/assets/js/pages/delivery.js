@@ -8,16 +8,16 @@ const NAMESPACES = ["apps", "data", "vault", "monitoring", "docs"];
 
 // Each step of recreate-cluster.sh, with a check of what it should have left in the cluster.
 const STEPS = [
-  { title: "Recreate the kind cluster", what: "<code>kind delete cluster</code>, then <code>kind create cluster --config platform/kind-cluster.yaml</code>: one control-plane and two workers, host port 80 mapped to NodePort 30080.",
+  { title: "Recreate the kind cluster", what: "<code>kind delete cluster</code>, then <code>kind create cluster --config platform/kind-cluster.yaml</code>: one control-plane and two workers, host ports 80 and 443 mapped to NodePorts 30080 and 30443.",
     check: (m) => [m.nodes.length === 3, `${m.nodes.length} nodes, Kubernetes ${m.version}`] },
-  { title: "Install Envoy Gateway", what: "<code>kubectl apply --server-side -k platform/envoy-gateway</code>: the Gateway API CRDs and the controller, early so it starts while images build. Server-side because the CRDs are too large for client-side apply.",
-    check: (m) => { const pods = podsOf(m, "gateway-helm").filter((p) => p.ready); return [pods.length > 0, pods.length ? "controller ready" : "controller not ready"]; } },
+  { title: "Install Envoy Gateway and cert-manager", what: "<code>kubectl apply --server-side -k platform/envoy-gateway</code> (the Gateway API CRDs and the controller) and <code>kubectl apply -k platform/cert-manager</code>, early so both start while images build. Server-side because the Gateway API CRDs are too large for client-side apply.",
+    check: (m) => { const missing = ["gateway-helm", "cert-manager"].filter((app) => !podsOf(m, app).some((p) => p.ready)); return [!missing.length, missing.length ? `not ready: ${missing.join(", ")}` : "both controllers ready"]; } },
   { title: "Namespaces and RBAC", what: "<code>platform/namespaces.yaml</code> and <code>platform/rbac/</code>: they must exist before any component refers to them.",
     check: (m) => { const found = NAMESPACES.filter((ns) => m.pods.some((p) => p.namespace === ns)); return [found.length === NAMESPACES.length, `workloads in ${found.join(", ")}`]; } },
   { title: "Build and load the images", what: "<code>docker build</code> and <code>kind load docker-image</code> for stock-app, traffic-generator, stock-ui and documentation.",
     check: (m) => { const local = [...new Set(m.pods.flatMap((p) => p.images || []).filter((i) => i.endsWith(":dev")))]; return [local.length >= 4, local.join(", ") || "no local images running"]; } },
-  { title: "Create the shared Gateway", what: "Waits for the controller, applies <code>platform/gateway/</code> and waits until the Gateway is <code>Programmed</code>: its Envoy proxy runs.",
-    check: (m) => { const g = m.gateways[0]; return [Boolean(g && g.programmed), g ? `${g.name} ${g.programmed ? "Programmed" : "not Programmed"}` : "no Gateway"]; } },
+  { title: "Create the CA and the shared Gateway", what: "Applies the cluster's CA (<code>platform/cert-manager/cluster-ca.yaml</code>, retried until cert-manager's webhook accepts it), then <code>platform/gateway/</code>, and waits until the Gateway's certificate is issued and the Gateway is <code>Programmed</code>: its Envoy proxy runs.",
+    check: (m) => { const g = m.gateways[0]; return [Boolean(g && g.programmed), g ? `${g.name} ${g.programmed ? "Programmed" : "not Programmed"}, ${g.listeners.length} listeners` : "no Gateway"]; } },
   { title: "Deploy the components", what: "Monitoring first, then Vault and TimescaleDB (waiting for the database), then stock-app, traffic-generator, stock-ui and this site. A directory with a <code>kustomization.yaml</code> is applied with <code>-k</code>.",
     check: (m) => { const list = components(m); return [list.length >= 10, `${list.length} components running`]; } },
   { title: "Wait for rollouts", what: "<code>kubectl rollout status</code> for every Deployment, StatefulSet and DaemonSet, so a crashing new pod fails the run even while an old one still serves.",
@@ -37,9 +37,9 @@ function pipeline(map) {
 function pipelineFlow() {
   const box = (id, x, y, title, sub, ns) => ({ id, x, y, w: 196, h: 52, title, sub, color: nsColor(ns) });
   const names = [
-    ["kind", "kind cluster", "3 nodes", "outside"], ["eg", "Envoy Gateway", "CRDs + controller", "envoy-gateway-system"],
+    ["kind", "kind cluster", "3 nodes", "outside"], ["eg", "Envoy Gateway", "+ cert-manager", "envoy-gateway-system"],
     ["platform", "namespaces, RBAC", "platform/", "kube-system"], ["images", "4 images", "build + kind load", "outside"],
-    ["gateway", "shared Gateway", "wait: Programmed", "envoy-gateway-system"], ["apps", "components", "in dependency order", "apps"],
+    ["gateway", "CA, shared Gateway", "wait: cert, Programmed", "envoy-gateway-system"], ["apps", "components", "in dependency order", "apps"],
     ["wait", "rollouts", "rollout status", "kube-system"], ["urls", "*.localhost", "every URL answers", "outside"],
   ];
   const nodes = names.map(([id, title, sub, ns], i) => box(id, 16 + (i % 4) * 270, i < 4 ? 30 : 128, title, sub, ns));

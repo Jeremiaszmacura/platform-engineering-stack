@@ -59,6 +59,18 @@ export const APPS = {
     purpose: "One-shot Job of the Envoy Gateway install",
     note: "Creates the TLS certificates the controller and the proxies use for their xDS connection.",
   },
+  "cert-manager": {
+    purpose: "Issues and renews TLS certificates",
+    note: "Watches Certificate objects, has each one signed by its issuer (here the cluster's own CA) and writes certificate and key into a Secret, renewing it at two thirds of its life. The Gateway's HTTPS certificate comes from it.",
+  },
+  cainjector: {
+    purpose: "Part of cert-manager",
+    note: "Copies CA certificates into webhook configurations, so the API server trusts cert-manager's webhook.",
+  },
+  webhook: {
+    purpose: "Part of cert-manager",
+    note: "The API server sends it every new cert-manager object to check before storing it.",
+  },
   "kube-dns": {
     purpose: "CoreDNS: every pod's nameserver",
     note: "Answers <service>.<namespace>.svc.cluster.local with the Service's ClusterIP.",
@@ -74,7 +86,7 @@ export const APPS = {
 };
 
 // Apps documented in another app's section of the Components page.
-const SECTION_OF = { envoy: "platform", "gateway-helm": "platform", certgen: "platform" };
+const SECTION_OF = { envoy: "platform", "gateway-helm": "platform", certgen: "platform", "cert-manager": "platform", cainjector: "platform", webhook: "platform" };
 
 /** The link to an app's section on the Components page; kube-system internals have none, so null. */
 export const componentHref = (app, namespace = "") =>

@@ -17,9 +17,11 @@ spec:
         # Access-Control-Allow-* headers, so the app has no CORS code.
         - type: CORS
           cors:
-            allowOrigins:
+            allowOrigins:  # an origin includes its scheme, so HTTP and HTTPS pages are listed separately
               - http://stock-ui.localhost
+              - https://stock-ui.localhost
               - http://traffic-generator.localhost
+              - https://traffic-generator.localhost
             allowMethods: [GET]
       backendRefs:
         - name: stock-app-service

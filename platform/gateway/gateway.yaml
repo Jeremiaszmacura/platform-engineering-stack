@@ -1,4 +1,5 @@
-# The single entry point for traffic from the host: every http://*.localhost request arrives here.
+# The single entry point for traffic from the host: every http:// and https://*.localhost request arrives here.
+# HTTPRoutes name no listener (sectionName), so each one attaches to both.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -19,6 +20,20 @@ spec:
       allowedRoutes:
         namespaces:
           # Only namespaces labelled in platform/namespaces.yaml may attach HTTPRoutes
+          from: Selector
+          selector:
+            matchLabels:
+              shared-gateway-access: "true"
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.localhost"
+      tls:
+        mode: Terminate  # Envoy decrypts here and forwards plain HTTP to the pods
+        certificateRefs:
+          - name: shared-gateway-tls  # the Secret cert-manager writes (certificate.yaml)
+      allowedRoutes:
+        namespaces:
           from: Selector
           selector:
             matchLabels:

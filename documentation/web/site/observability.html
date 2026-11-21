@@ -77,7 +77,8 @@
     container, measured from their cgroups. These are the per-node numbers to trust, because node-exporter can't tell kind's
     nodes apart (<a href="components.html#node-exporter">why</a>). The kubelet asks the API server whether Prometheus' token
     may <code>get nodes/metrics</code>, a permission that, unlike <code>nodes/proxy</code>, reaches no exec or logs. kind's
-    kubelets serve a self-signed certificate, so this job skips TLS verification.</p>
+    kubelets serve a self-signed certificate, so this job skips TLS verification
+    (<a href="security.html#certificates">certificates</a>).</p>
   <div class="table-wrap"><table>
     <thead><tr><th>Job</th><th>Namespace</th><th>Pod</th><th>Node</th><th>Target</th><th>Up</th></tr></thead>
     <tbody id="target-rows"></tbody></table></div>

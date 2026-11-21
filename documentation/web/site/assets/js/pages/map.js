@@ -32,7 +32,7 @@ function nodesHtml(map, freshIds) {
   return map.nodes.map((n) => `<div class="node">
     <header><h3>${esc(nodeShort(n.name))}</h3><span class="mono">${esc(n.ip)} · pods ${esc(n.pod_cidr)}</span>
       ${n.taints.length ? `<span class="mono">taint ${esc(n.taints.join(", "))}</span>` : ""}
-      ${entry && n.name === entry.name ? `<span class="mono">host :80 lands here (Docker port mapping)</span>` : ""}</header>
+      ${entry && n.name === entry.name ? `<span class="mono">host :80, :443 land here (Docker port mapping)</span>` : ""}</header>
     <div class="chips">${drawn.filter((p) => p.node === n.name).map((p) => chip(p, freshIds.has(p.id))).join("")}</div>
     <div class="sys-row">${esc(n.agents.join(" · ") || "no node agents")}</div></div>`).join("");
 }
@@ -41,7 +41,7 @@ function hostbar(map) {
   const proxy = map.services.find((s) => map.gateways.some((g) => g.proxy_service === s.id));
   const entry = map.nodes.find((n) => n.roles.includes("control-plane"));
   fill("#hostbar-port", entry && proxy && proxy.node_ports.length
-    ? `Docker publishes :80 → ${esc(nodeShort(entry.name))} container :${esc(proxy.node_ports[0])} (NodePort of ${esc(proxy.name)})`
+    ? `Docker publishes :80, :443 → ${esc(nodeShort(entry.name))} container :${esc(proxy.node_ports.join(", :"))} (NodePorts of ${esc(proxy.name)})`
     : "No Gateway proxy Service with a NodePort found");
 }
 
