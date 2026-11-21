@@ -7,6 +7,8 @@ import { LABEL, REPO, issueBody, issueTitle, newIssueURL, parseIssue } from "./i
 
 const ISSUES_API = `https://api.github.com/repos/${REPO}/issues?labels=${LABEL}&state=open&per_page=100`;
 const SELECTION_DELAY_MS = 250;
+const FRESH_KEY = "comments-fresh-until";
+const FRESH_MS = 5 * 60_000;
 /** Not commentable as text: live data (elements with an id), figures, and controls that must stay clickable. */
 const SKIP = "[id], [data-app], a, summary, .figure, svg, button, nav, .term-tip, .comment-ui";
 const ROOTS = ".page-head, section.chapter[id]";
@@ -21,12 +23,30 @@ export function initComments(article) {
 async function fetchComments(page) {
   try {
     // Cached for GitHub's max-age (60 s): every answered request, 304s too, counts against 60 per hour and IP.
-    const res = await fetch(ISSUES_API);
+    const res = await fetch(ISSUES_API, { cache: changedRecently() ? "no-cache" : "default" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return (await res.json()).map(parseIssue).filter((c) => c?.page === page);
   } catch (err) {
     console.warn("comments: GitHub issues unavailable:", err.message);
     return [];
+  }
+}
+
+/** Skip the cached issue list for FRESH_MS: the reader just changed a comment, and the cached list is up to a minute old. */
+function noteChange() {
+  try {
+    sessionStorage.setItem(FRESH_KEY, String(Date.now() + FRESH_MS));
+  } catch {
+    // No storage: the list is at most a minute stale.
+  }
+}
+
+/** Whether the reader changed a comment in this tab less than FRESH_MS ago. */
+function changedRecently() {
+  try {
+    return Date.now() < Number(sessionStorage.getItem(FRESH_KEY));
+  } catch {
+    return false;
   }
 }
 
@@ -80,6 +100,10 @@ class Comments {
     this.addButton.addEventListener("click", () => this.selected && this.open([], this.selected.range, this.selected.target));
     this.article.addEventListener("click", (e) => this.onMarkClick(e));
     this.article.addEventListener("keydown", (e) => (e.key === "Enter" || e.key === " ") && this.onMarkClick(e));
+    this.article.addEventListener("mouseover", (e) => this.lightUp(e.target));
+    this.article.addEventListener("mouseleave", () => this.lightUp(null));
+    this.article.addEventListener("focusin", (e) => this.lightUp(e.target));
+    this.article.addEventListener("focusout", () => this.lightUp(null));
     this.box.addEventListener("click", (e) => this.onBoxClick(e));
     this.box.addEventListener("submit", (e) => this.onSubmit(e));
     this.box.addEventListener("toggle", (e) => e.newState === "closed" && this.onClose());
@@ -173,6 +197,12 @@ class Comments {
     place(this.addButton, range);
   }
 
+  /** Light up every mark of the comments el is in: a quote spanning several elements is split into several marks. */
+  lightUp(el) {
+    const ids = new Set(el ? ancestors(el, "mark.comment-mark").map((m) => m.dataset.comment) : []);
+    for (const mark of $$("mark.comment-mark", this.article)) mark.classList.toggle("lit", ids.has(mark.dataset.comment));
+  }
+
   /** Open the comments of the clicked mark and the marks around it. */
   onMarkClick(e) {
     const marks = ancestors(e.target, "mark.comment-mark");
@@ -228,6 +258,7 @@ class Comments {
     const page = currentPage();
     getSelection().removeAllRanges();
     if (!this.canAct) {
+      noteChange(); // the issue appears once the reader submits it on GitHub and comes back
       window.open(newIssueURL(page, this.target, text), "_blank", "noopener");
       this.box.hidePopover();
       return;
@@ -250,6 +281,7 @@ class Comments {
     }
     if (res.status === 401) return this.askSignIn(() => this.send(request, done));
     if (!res.ok) return this.showError((await res.json().catch(() => null))?.error || `HTTP ${res.status}`);
+    noteChange();
     this.box.hidePopover();
     await done(res);
   }
@@ -296,7 +328,7 @@ const SIGN_IN = `<p>Sign in to GitHub in this browser to save comments as issues
 /** The form for a new comment; without the service it hands the comment to GitHub's new-issue page. */
 const formHTML = (canAct) => `<form><textarea name="body" rows="3" required maxlength="60000" aria-label="Your comment" placeholder="What should change?"></textarea>
   ${canAct ? "" : "<small>Opens a pre-filled GitHub issue: submit it there.</small>"}
-  <div class="actions">${canAct ? '<button type="button" data-action="sign-out" class="quiet">Sign out of GitHub</button>' : ""}<button type="button" data-action="cancel">Cancel</button><button type="submit" class="primary">${canAct ? "Comment" : "Create issue"}</button></div></form>`;
+  <div class="actions">${canAct ? '<button type="button" data-action="sign-out" class="quiet">Sign out of GitHub</button>' : ""}<button type="button" data-action="cancel">Cancel</button><button type="submit" class="primary">Submit</button></div></form>`;
 
 /** One comment in the box, with Resolve and Delete when the service can close its issue. */
 const commentHTML = (c, canAct) => `<article data-id="${esc(c.id)}"><p>${esc(c.body)}</p><footer>
