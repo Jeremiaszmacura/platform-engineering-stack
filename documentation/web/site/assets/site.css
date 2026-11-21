@@ -14,7 +14,7 @@
   --ok-soft: #dcf1e4;
   --bad: #b42318;
   --bad-soft: #fbe3e1;
-  --comment: #fff0a6;  /* yellow always means a reader's comment */
+  --comment: #fff0a6;
   --comment-strong: #ffd84a;
   /* namespace colours */
   --ns-outside: #3d4b55;
@@ -422,7 +422,7 @@ svg.dg { display: block; width: 100%; height: auto; font-family: var(--font-mono
 .term-tip p { margin: 4px 0 8px; }
 .term-tip a { font-size: 0.86rem; }
 
-/* ---------- Reader comments: select text or use a figure's button (comments.js) ---------- */
+/* ---------- Reader comments (comments.js) ---------- */
 mark.comment-mark { background: var(--comment); color: inherit; border-radius: 2px; cursor: pointer; }
 mark.comment-mark:hover, mark.comment-mark:focus-visible, mark.comment-mark:hover mark.comment-mark { background: var(--comment-strong); outline: none; }
 .figure.has-comment { outline: 3px solid var(--comment-strong); outline-offset: 2px; }
@@ -444,7 +444,7 @@ button.comment-add { border-color: var(--comment-strong); background: var(--comm
   width: min(340px, calc(100vw - 16px)); padding: 12px; background: var(--surface); border: 1px solid var(--line);
   border-radius: 8px; outline: none;
 }
-.comment-box:popover-open { display: grid; gap: 10px; } /* display on .comment-box itself would keep it shown when closed */
+.comment-box:popover-open { display: grid; gap: 10px; } /* not on .comment-box: it would override the popover's hidden state */
 .comment-box article { border-left: 3px solid var(--comment-strong); padding-left: 10px; }
 .comment-box p { margin: 0 0 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .comment-box footer, .comment-box .actions { display: flex; gap: 6px; align-items: center; }

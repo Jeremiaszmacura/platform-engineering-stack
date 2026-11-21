@@ -55,7 +55,7 @@ export const currentPage = () => location.pathname.split("/").pop() || "index.ht
 
 const GAP_PX = 8;
 
-/** Position fixed box under anchor's first line (an element or a Range), or above it when there is no room below. */
+/** Place fixed box below anchor (element or Range), or above if there is no room. */
 export function place(box, anchor) {
   const line = anchor.getClientRects()[0] || anchor.getBoundingClientRect();
   const size = box.getBoundingClientRect();
