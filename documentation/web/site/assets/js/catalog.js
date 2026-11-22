@@ -45,7 +45,7 @@ export const APPS = {
   },
   documentation: {
     purpose: "This site, drawn live from the cluster",
-    note: "Informers keep a watched copy of the API objects in memory; each /api/map request turns that copy into the map. It also forwards read-only PromQL to Prometheus for the live traffic numbers.",
+    note: "Informers keep a watched copy of the API objects in memory. Each /api/map request turns that copy into the map. It also forwards read-only PromQL to Prometheus for the live traffic numbers.",
   },
   envoy: {
     purpose: "The Gateway's data plane: every request from your browser",

@@ -57,7 +57,7 @@
       directly.</p>
   </div>
   <figure class="figure" data-source="example"><div class="scroll-x" id="scrape-flow"></div>
-    <figcaption>One scrape job, <code>kubernetes-services</code>, covers every component; <code>kubelet</code> covers the
+    <figcaption>One scrape job, <code>kubernetes-services</code>, covers every component. <code>kubelet</code> covers the
       nodes and <code>self</code> is the only static target.</figcaption></figure>
   <div class="table-wrap"><table>
     <thead><tr><th>Annotation on the Service</th><th>Effect</th></tr></thead>
@@ -70,7 +70,7 @@
   <p class="prose">Relabel rules also copy where each series came from into <code>namespace</code>, <code>pod</code>,
     <code>service</code> and <code>node</code> labels: the same names trace spans carry as <code>k8s.namespace.name</code>,
     <code>k8s.pod.name</code>, so a metric and a trace point at the same pod. Discovery is limited to the namespaces listed in
-    <code>prometheus.yml</code>, because <code>kube-system</code>'s DNS Service carries the same annotation; a new namespace
+    <code>prometheus.yml</code>, because <code>kube-system</code>'s DNS Service carries the same annotation. A new namespace
     must be added there.</p>
   <p class="prose">A second job, <code id="kubelet">kubelet</code>, discovers the nodes (<code>role: node</code>) and scrapes
     each kubelet's <code>/metrics/resource</code> on port 10250: CPU and memory of the node, of each pod and of each
@@ -118,7 +118,7 @@
       <p>Rate and duration per route measured from traces, tables of recent, slow and failed requests, and whether the
         Collector delivers spans to Tempo.</p></a>
     <a class="comp" href="http://grafana.localhost/d/infrastructure" style="--c:var(--ns-monitoring)"><b>Infrastructure Overview</b>
-      <p>CPU and memory of each node and pod, measured by the kubelet; the Docker host as one line, from node-exporter; and
+      <p>CPU and memory of each node and pod, measured by the kubelet, the Docker host as one line, from node-exporter, and
         how many scrape targets are down.</p></a>
   </div>
   <p class="prose">Provisioned dashboards are read-only in the UI: change one there, <i>Export → Export as JSON</i>, save it
@@ -137,7 +137,7 @@
       Grafana under <i>Alerting → Alert groups</i> and <i>Silences</i>.</p>
   </div>
   <figure class="figure" data-source="example"><div class="scroll-x" id="alert-flow"></div>
-    <figcaption>Prometheus decides <i>whether</i> something is wrong; Alertmanager decides <i>who hears about it</i>. Real
+    <figcaption>Prometheus decides <i>whether</i> something is wrong. Alertmanager decides <i>who hears about it</i>. Real
       receivers (Slack, email, PagerDuty) plug in at the dashed box.</figcaption></figure>
   <div class="table-wrap"><table>
     <thead><tr><th>Alert</th><th>Severity</th><th>Fires when</th></tr></thead>
@@ -149,14 +149,14 @@
       <tr><td><code>SpansQueued</code></td><td>warning</td><td>the Collector's queue for Tempo hasn't emptied for a whole
         minute: Tempo is unreachable and the exporter is retrying</td></tr>
       <tr><td><code>SpansDropped</code></td><td>critical</td><td>the Collector gave up retrying (after about 5 minutes) and
-        dropped spans; those traces are lost</td></tr>
+        dropped spans. Those traces are lost</td></tr>
     </tbody></table></div>
   <div class="table-wrap"><table>
     <thead><tr><th>Firing now</th><th>Severity</th><th>Labels</th></tr></thead>
     <tbody id="alert-rows"></tbody></table></div>
   <div class="grid-2">
     <div class="card"><h3>What Alertmanager adds</h3><ul>
-      <li><b>Grouping</b>: alerts with the same <code>group_by</code> labels arrive as one notification; ours groups by
+      <li><b>Grouping</b>: alerts with the same <code>group_by</code> labels arrive as one notification. Ours groups by
         <code>alertname</code>.</li>
       <li><b>Inhibition</b>: a worse alert hides its symptoms. <code>SpansDropped</code> hides <code>SpansQueued</code> for
         the same exporter.</li>
@@ -164,9 +164,9 @@
         They live on an <code>emptyDir</code>, so a new pod forgets them.</li>
       <li><b>Routing</b>: labels pick the receiver, e.g. <code>critical</code> to a pager, <code>warning</code> to a chat.</li></ul></div>
     <div class="card"><h3>Good alerts</h3><ul>
-      <li>Page on <b>symptoms</b> users feel (errors, latency); open a ticket for <b>causes</b> (CPU, memory, disk).</li>
+      <li>Page on <b>symptoms</b> users feel (errors, latency). Open a ticket for <b>causes</b> (CPU, memory, disk).</li>
       <li>Use ratios and <code>for:</code>, not a single bad sample: a busy CPU isn't a problem, a slow service is.</li>
-      <li>Give every alert a <code>severity</code> label and a <code>summary</code>; real setups add a
+      <li>Give every alert a <code>severity</code> label and a <code>summary</code>. Real setups add a
         <code>runbook_url</code> that says what to do.</li>
       <li>Alert on your own alerting: that is what <code>Watchdog</code> is for.</li></ul></div>
   </div>
@@ -177,12 +177,12 @@
     <span class="eyebrow">Traces</span>
     <h2>One request, followed through everything it touches</h2>
     <p>A <b>trace</b> is the journey of one request, identified by a trace ID. A <b>span</b> is one step of it (handling
-      the request, one SQL query, one outgoing call) with a start, a duration and attributes; spans nest. <b>Context
+      the request, one SQL query, one outgoing call) with a start, a duration and attributes. Spans nest. <b>Context
       propagation</b> carries the trace ID: inside a process automatically, between services in the W3C
       <code>traceparent</code> header.</p>
   </div>
   <figure class="figure" data-source="example"><div class="scroll-x" id="waterfall"></div>
-    <figcaption>stock-ui asks for prices stock-app has never seen. Almost all of the time (96 %) is Yahoo; the database is not
+    <figcaption>stock-ui asks for prices stock-app has never seen. Almost all of the time (96 %) is Yahoo. The database is not
       the problem. Ask again and the trace shrinks to a few fast SELECTs, because the prices are now cached.</figcaption></figure>
   <figure class="figure" data-source="live"><div class="scroll-x" id="trace-flow"></div>
     <figcaption>The OpenTelemetry Collector's pipeline, with live span rates. The apps only know the Collector's address
@@ -191,7 +191,7 @@
     <thead><tr><th>Stage</th><th>What ours does</th></tr></thead>
     <tbody>
       <tr><td><b>Receivers</b> take data in</td><td>accept spans over OTLP/HTTP on 4318</td></tr>
-      <tr><td><b>Processors</b> change it</td><td><code>memory_limiter</code> refuses data before the pod runs out of memory;
+      <tr><td><b>Processors</b> change it</td><td><code>memory_limiter</code> refuses data before the pod runs out of memory.
         <code>k8s_attributes</code> looks up the sender's pod IP and adds namespace, pod, deployment and node</td></tr>
       <tr><td><b>Exporters</b> send it on</td><td>forward to Tempo, queueing and retrying while Tempo is down</td></tr>
     </tbody></table></div>
@@ -211,12 +211,12 @@
     <div class="card"><h3>Who creates the spans</h3><p><b>Instrumentation libraries</b> plug into what the app already
       uses (FastAPI, SQLAlchemy, requests) and turn every incoming request, SQL query and outgoing call into a span with
       standard attribute names. <b>Manual spans</b> cover the rest: in stock-app only the call to Yahoo, whose client has no
-      library. Tracing lives at the app's edges; its core layers never import OpenTelemetry.</p></div>
+      library. Tracing lives at the app's edges. Its core layers never import OpenTelemetry.</p></div>
     <div class="card"><h3>Good habits</h3><ul>
       <li>Name spans by route template, not raw URL, so similar requests group together.</li>
       <li>Never put secrets or personal data in attributes: many people read traces.</li>
       <li>Skip noise: <code>/health</code> and <code>/metrics</code> are not traced.</li>
-      <li>Sample when traffic grows; here every request is kept.</li></ul></div>
+      <li>Sample when traffic grows. Here every request is kept.</li></ul></div>
   </div>
 </section>
 
@@ -242,8 +242,8 @@
   <div class="try">
     <div><p>Chart a symbol you haven't used yet at <a href="http://stock-ui.localhost">stock-ui</a>, then open Grafana's
       <a href="http://grafana.localhost/d/tracing">Tracing</a> dashboard (<code>admin</code> / <code>admin</code>). After about
-      30 seconds the request appears under <i>Slow requests</i>; click its trace ID for the waterfall. Search needs Tempo to
-      cut a block first; opening a trace by ID works at once.</p></div>
+      30 seconds the request appears under <i>Slow requests</i>. Click its trace ID for the waterfall. Search needs Tempo to
+      cut a block first. Opening a trace by ID works at once.</p></div>
     <div><p>Every target and its health, the same list this page shows above.</p>
       <div class="cmd"><pre>curl -s http://prometheus.localhost/api/v1/targets | jq '.data.activeTargets[] | {job: .labels.job, pod: .labels.pod, health}'</pre></div></div>
     <div><p>The raw metrics of one pod, exactly what Prometheus scrapes.</p>
@@ -251,7 +251,7 @@
 curl -s localhost:8000/metrics | grep -E '^(http_requests_total|stock_cache_lookups_total)'</pre></div></div>
     <div><p>Break the trace pipeline and watch <a href="#alerts">alerts</a> fire: send traffic from
       <a href="http://traffic-generator.localhost">traffic-generator</a> while Tempo is gone. <code>SpansQueued</code> fires
-      after a minute; about 5 minutes later <code>SpansDropped</code> fires and inhibits it. Silence one at
+      after a minute. About 5 minutes later <code>SpansDropped</code> fires and inhibits it. Silence one at
       <a href="http://alertmanager.localhost">alertmanager.localhost</a> (<i>New Silence</i>), then bring Tempo back.</p>
       <div class="cmd"><pre>kubectl scale deploy/tempo -n monitoring --replicas=0
 kubectl exec -n monitoring deploy/alertmanager -- amtool alert query --alertmanager.url=http://localhost:9093
@@ -279,28 +279,28 @@ kubectl scale deploy/tempo -n monitoring --replicas=1</pre></div></div>
 <section class="chapter" id="interview">
   <div class="head"><span class="eyebrow">Interview check</span><h2>Questions to answer from this chapter</h2></div>
   <div class="qa-list">
-    <details class="qa"><summary>Prometheus pulls; OTLP pushes. What are the trade-offs?</summary><div>
-      <p>Pull gives a free health signal (<code>up</code>), central control of rate and targets, and no client buffering; it
+    <details class="qa"><summary>Prometheus pulls. OTLP pushes. What are the trade-offs?</summary><div>
+      <p>Pull gives a free health signal (<code>up</code>), central control of rate and targets, and no client buffering. It
       needs service discovery and network reach to every target. Push suits short-lived jobs, clients behind NAT, and
-      events like spans; the receiver then needs back-pressure, which is why the Collector has <code>memory_limiter</code>.</p></div></details>
+      events like spans. The receiver then needs back-pressure, which is why the Collector has <code>memory_limiter</code>.</p></div></details>
     <details class="qa"><summary>Why compute p95 from a histogram, and why with <code>rate()</code>?</summary><div>
-      <p>Histogram buckets can be summed across pods and then turned into a quantile; a client-side summary's quantiles
+      <p>Histogram buckets can be summed across pods and then turned into a quantile. A client-side summary's quantiles
       can't be averaged. <code>rate()</code> over the cumulative buckets gives the distribution of the last window instead
       of since the process started. The result is an estimate within the bucket bounds.</p></div></details>
     <details class="qa"><summary>What is label cardinality and how do you keep it bounded?</summary><div>
       <p>Every unique label combination is a series in memory. Only label with values from a small, known set (status
-      class, route template, provider); never user IDs, raw URLs or anything a client controls. Watch
+      class, route template, provider). Never user IDs, raw URLs or anything a client controls. Watch
       <code>prometheus_tsdb_head_series</code>.</p></div></details>
     <details class="qa"><summary>Which SLIs would you define for stock-app, and what SLO?</summary><div>
-      <p>Availability: share of non-5XX responses; latency: share of requests under 1 s. Both are on the Stock App
-      dashboard. An SLO like 99.5% over 30 days gives an error budget; alert on its burn rate (fast and slow windows),
+      <p>Availability: share of non-5XX responses. Latency: share of requests under 1 s. Both are on the Stock App
+      dashboard. An SLO like 99.5% over 30 days gives an error budget. Alert on its burn rate (fast and slow windows),
       not on single errors.</p></div></details>
     <details class="qa"><summary>Why is Alertmanager a separate service from Prometheus?</summary><div>
       <p>Prometheus only decides that a condition holds. Grouping, inhibition, silences and routing need one shared place:
       teams run several Prometheus servers, often two identical ones for availability, and all send to the same
       Alertmanagers, which de-duplicate their alerts so a person is told once.</p></div></details>
     <details class="qa"><summary>A silence or an inhibition: which one when?</summary><div>
-      <p>A silence is a person muting known alerts for a while, such as during maintenance; it expires by itself. An
+      <p>A silence is a person muting known alerts for a while, such as during maintenance. It expires by itself. An
       inhibition is a standing rule in the config: while one alert fires, the alerts it causes stay hidden.</p></div></details>
     <details class="qa"><summary>Why not let every app send traces straight to Tempo?</summary><div>
       <p>Then every app owns retries, batching, metadata and backend choice. A Collector centralizes that: tail sampling,

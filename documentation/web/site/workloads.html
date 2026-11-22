@@ -70,7 +70,7 @@
       probe before any traffic arrives.</p>
   </div>
   <figure class="figure" data-source="example"><div class="scroll-x" id="startup-seq"></div>
-    <figcaption>Init containers run one after another, each to completion; regular containers start together after them.</figcaption></figure>
+    <figcaption>Init containers run one after another, each to completion. Regular containers start together after them.</figcaption></figure>
   <p class="prose">Vault's container has a <b><code>postStart</code> hook</b> instead: the kubelet runs it inside the
     container as soon as the container starts, and treats the container as running, so probes it and can mark it ready,
     only once the hook exits. A failed hook restarts the container. Unlike an init container, the hook runs again when
@@ -87,15 +87,15 @@
     <div class="card"><h3>Requests schedule</h3><p>The scheduler places a pod only on a node with enough unrequested CPU
       and memory. Requests are a reservation, not a cap: stock-app asks for 192Mi because pandas and yfinance need that
       much just to start.</p></div>
-    <div class="card"><h3>Limits enforce</h3><p>Above its CPU limit a container is throttled; above its memory limit it is
+    <div class="card"><h3>Limits enforce</h3><p>Above its CPU limit a container is throttled. Above its memory limit it is
       OOM-killed and restarted. Grafana was killed at 512Mi with dashboards refreshing, so it now has 1Gi and
       <code>GOMEMLIMIT</code>, which makes Go collect garbage harder before it reaches the limit.</p></div>
-    <div class="card"><h3>QoS classes</h3><p>Requests equal to limits make a pod <b>Guaranteed</b>; lower requests make it
-      <b>Burstable</b> (every pod here); none at all, <b>BestEffort</b>. Under memory pressure the kubelet evicts
+    <div class="card"><h3>QoS classes</h3><p>Requests equal to limits make a pod <b>Guaranteed</b>. Lower requests make it
+      <b>Burstable</b> (every pod here). No requests at all make it <b>BestEffort</b>. Under memory pressure the kubelet evicts
       first the pods using most memory above their requests, so the QoS class predicts the likely order: BestEffort first,
       Guaranteed last.</p></div>
   </div>
-  <p class="callout">Every workload here sets requests and limits; the <a href="security.html#hardening">hardening
+  <p class="callout">Every workload here sets requests and limits. The <a href="security.html#hardening">hardening
     scorecard</a> checks it live. What the cluster can't show you yet is actual usage:
     <code>kubectl top</code> needs metrics-server, which kind doesn't install.</p>
 </section>
@@ -121,7 +121,7 @@
       <li>Grafana: a new pod, so you log in again.</li>
       <li>Tempo: a new pod, so its traces are gone.</li>
       <li>Alertmanager: a new pod, so its silences are gone.</li>
-      <li>OpenTelemetry Collector: a new pod; spans buffered in the app's SDK are retried.</li>
+      <li>OpenTelemetry Collector: a new pod. Spans buffered in the app's SDK are retried.</li>
       <li>Prometheus: nothing, if the file is valid.</li></ul></div>
   </div>
 </section>
@@ -132,7 +132,7 @@
     <h2>Where every image comes from</h2>
     <p>The four <code>:dev</code> images are built by <code>./recreate-cluster.sh</code> and loaded straight into the nodes'
       containerd, so their <code>imagePullPolicy: IfNotPresent</code> never pulls. Every other image is pinned to a version
-      and pulled by the node; Renovate proposes the updates (<a href="delivery.html#renovate">Build &amp; ship</a>).</p>
+      and pulled by the node. Renovate proposes the updates (<a href="delivery.html#renovate">Build &amp; ship</a>).</p>
   </div>
   <div class="table-wrap"><table>
     <thead><tr><th>Component</th><th>Namespace</th><th>Images</th><th>Source</th></tr></thead>
@@ -142,7 +142,7 @@
 <section class="chapter" id="try">
   <div class="head"><span class="eyebrow">Hands on</span><h2>Try it</h2></div>
   <div class="try">
-    <div><p>Scale out and back; the <a href="map.html">Cluster map</a> shows where each new pod lands.</p>
+    <div><p>Scale out and back. The <a href="map.html">Cluster map</a> shows where each new pod lands.</p>
       <div class="cmd"><pre>kubectl scale deploy/traffic-generator -n apps --replicas=3
 kubectl scale deploy/traffic-generator -n apps --replicas=1</pre></div></div>
     <div><p>Roll out a restart and watch a new ReplicaSet replace the old one.</p>
@@ -162,12 +162,12 @@ kubectl scale statefulset/timescaledb -n data --replicas=1</pre></div></div>
   <div class="findings">
     <div class="finding" id="replica-check"></div>
     <div class="finding"><span class="sev">Static · scale</span><h3>Nothing scales with load</h3>
-      <p>Replica counts are fixed; a burst from traffic-generator just makes stock-app slower.</p>
+      <p>Replica counts are fixed. A burst from traffic-generator just makes stock-app slower.</p>
       <p class="fix">Exercise: install metrics-server, add a HorizontalPodAutoscaler for stock-app on CPU, fire 100
         concurrent requests and watch replicas appear on the map.</p></div>
     <div class="finding"><span class="sev">Unbounded · namespaces</span><h3>No quotas or defaults per namespace</h3>
       <p>A pod without requests would still be accepted, and one namespace could take the whole node.</p>
-      <p class="fix">Exercise: a LimitRange with default requests and a ResourceQuota for <code>apps</code>; apply a pod
+      <p class="fix">Exercise: a LimitRange with default requests and a ResourceQuota for <code>apps</code>. Apply a pod
         without resources and read the defaults the API filled in.</p></div>
   </div>
 </section>
@@ -180,7 +180,7 @@ kubectl scale statefulset/timescaledb -n data --replicas=1</pre></div></div>
       container. A startup probe holds off both until a slow starter is up, instead of a huge
       <code>initialDelaySeconds</code>. A liveness probe should check only the process itself, never its dependencies.</p></div></details>
     <details class="qa"><summary>A pod is in CrashLoopBackOff. How do you find out why?</summary><div>
-      <p><code>kubectl describe pod</code> for events and the last state (exit code; 137 means killed, often OOM),
+      <p><code>kubectl describe pod</code> for events and the last state (exit code 137 means killed, often OOM),
       <code>kubectl logs --previous</code> for the crashed run, then the probes, the limits and missing config or Secrets.
       The back-off grows to five minutes between attempts.</p></div></details>
     <details class="qa"><summary>How does a rolling update avoid downtime, and when doesn't it?</summary><div>

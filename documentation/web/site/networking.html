@@ -34,7 +34,7 @@
     <span class="eyebrow">Basics</span>
     <h2>Three kinds of IP address</h2>
     <p>Every IP address in a cluster is one of three kinds, and each kind comes from somewhere else and behaves differently.
-      Node and pod IPs belong to real network interfaces; a Service IP belongs to none. An address is never two kinds at
+      Node and pod IPs belong to real network interfaces. A Service IP belongs to none. An address is never two kinds at
       once, so their ranges must not overlap with each other or with networks the pods need to reach. The cards show the
       ranges of this cluster.</p>
   </div>
@@ -64,7 +64,7 @@
     <div class="card"><h3>Why a NodePort?</h3><p>On a cloud the Gateway's Service would be <code>type: LoadBalancer</code>
       with an external IP. kind has no load balancer, so <code>platform/gateway/envoyproxy.yaml</code> makes it a NodePort
       with a fixed port, and kind publishes that one port. A NodePort is open on every node, so a rescheduled Envoy pod
-      keeps answering; CI restarts the proxy to prove it.</p></div>
+      keeps answering. CI restarts the proxy to prove it.</p></div>
     <div class="card"><h3>Why Envoy skips the ClusterIP</h3><p>Envoy Gateway watches the backend Service's EndpointSlice
       and hands Envoy the ready pod IPs over xDS. Envoy balances across them itself (and could retry or eject a bad
       one), instead of letting kube-proxy pick a pod blindly behind a second NAT.</p></div>
@@ -77,25 +77,25 @@
     <h2>Who decides where traffic goes</h2>
     <p>Pods and Services are reachable only from inside the cluster. Your browser gets in through one shared Gateway.
       Gateway API describes it with three kinds of objects, each owned by a different role. This is the tree in your
-      cluster right now; a rejected route turns red.</p>
+      cluster right now. A rejected route turns red.</p>
   </div>
   <div class="prose">
     <p>A <b>controller</b> is a program running in the cluster, usually a Deployment, that watches some kinds of objects
       through the Kubernetes API, changes the real world until it matches them and writes the result into each object's
       <code>status</code>. Kubernetes itself is built from controllers: the Deployment controller creates ReplicaSets, and
       they create pods (<a href="workloads.html#kinds">Workloads</a>). A Gateway API object is only data until a controller
-      acts on it; here that controller is Envoy Gateway.</p>
+      acts on it. Here that controller is Envoy Gateway.</p>
     <p>A <b>GatewayClass</b> says which controller acts on a Gateway, the way a StorageClass says who creates a volume. Ours
-      names <code>controllerName: gateway.envoyproxy.io/gatewayclass-controller</code>; every controller ignores Gateways of
+      names <code>controllerName: gateway.envoyproxy.io/gatewayclass-controller</code>. Every controller ignores Gateways of
       other classes, so one cluster can run several. The class has no network layer of its own: a Gateway's listeners and
-      the kinds of route attached to it decide. HTTPRoute and GRPCRoute work at layer 7 (HTTP: hostnames, paths, headers);
+      the kinds of route attached to it decide. HTTPRoute and GRPCRoute work at layer 7 (HTTP: hostnames, paths, headers).
       TCPRoute, UDPRoute and TLSRoute at layer 4 (addresses and ports). This cluster uses only HTTPRoutes, on an HTTP
       and an HTTPS listener.</p>
   </div>
   <div class="table-wrap"><table>
     <thead><tr><th>GatewayClass</th><th>The controller turns a Gateway into</th><th>Layer</th></tr></thead>
     <tbody>
-      <tr><td>Proxy in the cluster: <code>envoy-gateway</code> here; Istio, Cilium, NGINX Gateway Fabric</td><td>proxy pods inside the
+      <tr><td>Proxy in the cluster: <code>envoy-gateway</code> here. Istio, Cilium, NGINX Gateway Fabric</td><td>proxy pods inside the
         cluster. On a cloud their Service is <code>type: LoadBalancer</code>, so the cloud puts a layer-4 load balancer in
         front (an NLB on AWS). Works the same on a laptop and on any cloud.</td><td>7 in the proxy</td></tr>
       <tr><td>AWS Load Balancer Controller: <code>gateway.k8s.aws/alb</code>, <code>gateway.k8s.aws/nlb</code></td><td>an
@@ -135,7 +135,7 @@
   <p class="callout"><b>Who may attach.</b> The listener admits HTTPRoutes only from namespaces labelled
     <code>shared-gateway-access: "true"</code> (<code>platform/namespaces.yaml</code>). <code>data</code> has no label, so a
     route there is rejected with <code>NotAllowedByListeners</code> and TimescaleDB can't be exposed by accident. The
-    platform team controls the door; app teams control their own routes.</p>
+    platform team controls the door. App teams control their own routes.</p>
   <div class="table-wrap"><table>
     <thead><tr><th>HTTPRoute</th><th>Namespace</th><th>Hostnames</th><th>Backend</th><th>Filters</th><th>Status</th></tr></thead>
     <tbody id="route-rows"></tbody></table></div>
@@ -156,7 +156,7 @@
       <code>http://stock-ui.localhost</code>.</p>
   </div>
   <figure class="figure" data-source="example"><div class="scroll-x" id="cors-seq"></div>
-    <figcaption>Envoy applies the CORS filter on <code>stock-app-route</code>; stock-app has no CORS code at all.</figcaption></figure>
+    <figcaption>Envoy applies the CORS filter on <code>stock-app-route</code>. stock-app has no CORS code at all.</figcaption></figure>
   <ul class="prose">
     <li>The filter (a standard HTTPRoute field since Gateway API v1.5) allows stock-ui and traffic-generator, and only
       <code>GET</code>. An origin includes its scheme, so that is four origins: each on <code>http://</code> and
@@ -194,7 +194,7 @@
   </div>
   <ul class="prose">
     <li><b>Here:</b> kindnet rewrites the pod IP to the node's IP, and Docker rewrites that to your machine's.</li>
-    <li><b>On AWS EKS:</b> the VPC CNI rewrites the pod IP to the node's IP; nodes in private subnets go out through a NAT
+    <li><b>On AWS EKS:</b> the VPC CNI rewrites the pod IP to the node's IP. Nodes in private subnets go out through a NAT
       Gateway, which rewrites it again to its public IP.</li>
     <li>Outgoing traffic passes no Gateway, so nothing limits which hosts a pod may call. A NetworkPolicy with
       <code>egress</code> rules can (<a href="security.html#network-policy">Identity</a>).</li>
@@ -205,7 +205,7 @@
   <div class="head">
     <span class="eyebrow">Discovery</span>
     <h2>Services and DNS names</h2>
-    <p>A <code>ClusterIP</code> Service is reachable only from inside the cluster; from your machine it is reachable
+    <p>A <code>ClusterIP</code> Service is reachable only from inside the cluster. From your machine it is reachable
       through an accepted HTTPRoute, or for debugging with <code>kubectl port-forward</code>. The DNS name works from any pod. A headless Service (ClusterIP
       <code>None</code>) has no virtual IP: its name resolves straight to the ready pods' IPs, and a StatefulSet's pods
       get a name each (<a href="state.html#statefulset">TimescaleDB's</a>).</p>
@@ -277,7 +277,7 @@ kubectl delete httproute,service demo -n data</pre></div></div>
     <div class="finding"><span class="sev">Open · limits</span><h3>No rate limits and only the default timeout at the edge</h3>
       <p>Any client can open as many requests as it likes, and Envoy ends a request after its default 15 s route timeout and answers 504, even if the app is still working.</p>
       <p class="fix">Exercise: set an explicit request timeout that fits stock-app on <code>stock-app-route</code> (<code>timeouts.request</code>) and a
-        local rate limit with Envoy Gateway's <code>BackendTrafficPolicy</code>; fire traffic-generator at it.</p></div>
+        local rate limit with Envoy Gateway's <code>BackendTrafficPolicy</code>. Fire traffic-generator at it.</p></div>
   </div>
 </section>
 
@@ -285,29 +285,29 @@ kubectl delete httproute,service demo -n data</pre></div></div>
   <div class="head"><span class="eyebrow">Interview check</span><h2>Questions to answer from this chapter</h2></div>
   <div class="qa-list">
     <details class="qa"><summary>Walk me through what happens when I open http://stock-ui.localhost.</summary><div>
-      <p>The name resolves to 127.0.0.1; Docker forwards host :80 to the control-plane container's :30080; kube-proxy's
-      NodePort rule DNATs it to an Envoy pod; Envoy matches the Host header to <code>stock-ui-route</code> and connects to a
-      ready stock-ui pod IP from the EndpointSlice; kindnet routes the packet to that pod's node; nginx answers.</p></div></details>
+      <p>The name resolves to 127.0.0.1. Docker forwards host :80 to the control-plane container's :30080. kube-proxy's
+      NodePort rule DNATs it to an Envoy pod. Envoy matches the Host header to <code>stock-ui-route</code> and connects to a
+      ready stock-ui pod IP from the EndpointSlice. kindnet routes the packet to that pod's node. nginx answers.</p></div></details>
     <details class="qa"><summary>ClusterIP, NodePort, LoadBalancer: which does this cluster use where, and why?</summary><div>
       <p>Every app Service is ClusterIP: only reachable inside. The Gateway's proxy Service is a NodePort with a fixed port,
       because kind has no cloud load balancer and kind can publish one fixed port. On a cloud it would be a LoadBalancer.
       Apps never get NodePorts: one entry point, one place for TLS, auth and limits.</p></div></details>
     <details class="qa"><summary>A new HTTPRoute doesn't work. How do you debug it?</summary><div>
       <p><code>kubectl describe httproute</code>: <code>Accepted: False</code> with <code>NotAllowedByListeners</code> means the
-      namespace lacks the label; <code>NoMatchingListenerHostname</code> means the hostname isn't under <code>*.localhost</code>;
+      namespace lacks the label. <code>NoMatchingListenerHostname</code> means the hostname isn't under <code>*.localhost</code>.
       <code>ResolvedRefs: False</code> means the backend Service or port is wrong. Then check the EndpointSlice has ready
       pods, and Envoy's <code>/clusters</code>. <code>curl -H 'Host: x.localhost' 127.0.0.1</code> takes DNS out of the picture.</p></div></details>
     <details class="qa"><summary>How does kube-proxy load-balance a ClusterIP, and what are its limits?</summary><div>
-      <p>In iptables mode, random-probability rules (1/n, 1/(n-1), …; the last rule has none) pick a pod per new connection.
+      <p>In iptables mode, random-probability rules (1/n, 1/(n-1), …, and none on the last rule) pick a pod per new connection.
       They know nothing about load or health beyond readiness, and long-lived connections stick to one pod. nftables mode
-      scales better (IPVS is deprecated since 1.35);
+      scales better (IPVS is deprecated since 1.35).
       L7 balancing (per request, with retries) needs a proxy such as Envoy or a service mesh.</p></div></details>
     <details class="qa"><summary>What does <code>ndots:5</code> cost, and how would you reduce it?</summary><div>
       <p>Names with fewer than five dots try every search domain first, so <code>query1.finance.yahoo.com</code> costs three
       NXDOMAIN answers before the real lookup. Use fully qualified names with a trailing dot, lower <code>ndots</code> in the
       pod's <code>dnsConfig</code>, or run NodeLocal DNSCache to make the misses cheap.</p></div></details>
     <details class="qa"><summary>Why put CORS on the route instead of in the app, and what is the trade-off?</summary><div>
-      <p>One typed, validated place that a gateway supporting the Extended CORS feature implements; preflights never reach the app; the policy is
+      <p>One typed, validated place that a gateway supporting the Extended CORS feature implements. Preflights never reach the app. The policy is
       visible in the manifest. The trade-off: changing allowed origins is a route change, and a request that bypasses the
       Gateway (pod to pod) gets no CORS, which is fine because only browsers enforce it.</p></div></details>
   </div>

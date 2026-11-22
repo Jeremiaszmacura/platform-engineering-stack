@@ -18,7 +18,7 @@ export const TERMS = [
   term("node", "Node", /nodes?/i, "concepts/architecture/nodes/",
     "A machine, virtual or physical, that runs pods. Each node runs the kubelet, which starts its containers, and kube-proxy, which makes Service addresses work. The scheduler decides which node each pod runs on."),
   term("control-plane", "Control plane", /control plane/i, "concepts/overview/components/#control-plane-components",
-    "The components that manage the cluster: the API server, etcd, the scheduler and the controller manager. They decide what should run where; the kubelets on the nodes do the running."),
+    "The components that manage the cluster: the API server, etcd, the scheduler and the controller manager. They decide what should run where. The kubelets on the nodes do the running."),
   term("api-server", "API server", /API server|kube-apiserver/, "concepts/overview/kubernetes-api/",
     "The front door of the control plane: kubectl, controllers and kubelets all work with the cluster through its REST API. It checks who is calling and what RBAC allows, then stores the objects in etcd."),
   term("etcd", "etcd", /etcd/, "tasks/administer-cluster/configure-upgrade-etcd/",
@@ -42,7 +42,7 @@ export const TERMS = [
 
   // Workloads
   term("pod", "Pod", /pods?/i, "concepts/workloads/pods/",
-    "The smallest thing Kubernetes runs: one or more containers that share an IP address and can share volumes. Pods are ephemeral; a controller such as a Deployment creates them and replaces them when they fail."),
+    "The smallest thing Kubernetes runs: one or more containers that share an IP address and can share volumes. Pods are ephemeral. A controller such as a Deployment creates them and replaces them when they fail."),
   term("container", "Container", /(?<!init )containers?/i, "concepts/containers/",
     "A process packaged with everything it needs as an image, and run isolated from the other processes on the node. In Kubernetes containers always run inside pods, started by the kubelet through a container runtime such as containerd."),
   term("init-container", "Init container", /init containers?/i, "concepts/workloads/pods/init-containers/",
@@ -66,7 +66,7 @@ export const TERMS = [
   term("cronjob", "CronJob", /CronJobs?/, "concepts/workloads/controllers/cron-jobs/",
     "Creates a Job on a schedule written in cron syntax, such as every night at 02:00. Each run is a new Job with its own pods."),
   term("probe", "Probe", /probes?/i, "concepts/configuration/liveness-readiness-startup-probes/",
-    "A health check the kubelet runs against a container: an HTTP request, a TCP connection or a command. A failing liveness probe restarts the container; a failing readiness probe only stops traffic to the pod. A startup probe holds the other two off until a slow app has started."),
+    "A health check the kubelet runs against a container: an HTTP request, a TCP connection or a command. A failing liveness probe restarts the container. A failing readiness probe only stops traffic to the pod. A startup probe holds the other two off until a slow app has started."),
   term("label", "Label", /labels?/i, "concepts/overview/working-with-objects/labels/",
     "A key-value pair on an object, such as app: stock-app, used to group and select objects. Services, Deployments and kubectl find their pods with label selectors."),
   term("selector", "Selector", /selectors?/i, "concepts/overview/working-with-objects/labels/#label-selectors",
@@ -100,11 +100,11 @@ export const TERMS = [
 
   // Configuration and storage
   term("configmap", "ConfigMap", /ConfigMaps?/, "concepts/configuration/configmap/",
-    "Holds configuration that isn't secret, as key-value pairs or whole files. Pods read it as environment variables or as files in a volume. Mounted files follow changes after a short delay; environment variables only change when the container restarts."),
+    "Holds configuration that isn't secret, as key-value pairs or whole files. Pods read it as environment variables or as files in a volume. Mounted files follow changes after a short delay. Environment variables only change when the container restarts."),
   term("secret", "Secret", /Secrets?/, "concepts/configuration/secret/",
     "Holds small pieces of sensitive data, such as passwords, tokens or keys, for pods to read as files or environment variables. The values are only base64-encoded, not encrypted, so RBAC must limit who can read Secrets."),
   term("volume", "Volume", /volumes?/i, "concepts/storage/volumes/",
-    "A directory that a pod's containers can mount. Some kinds live only as long as the pod (emptyDir); others bring in a ConfigMap, a Secret or durable storage through a PersistentVolumeClaim."),
+    "A directory that a pod's containers can mount. Some kinds live only as long as the pod (emptyDir). Others bring in a ConfigMap, a Secret or durable storage through a PersistentVolumeClaim."),
   term("emptydir", "emptyDir", /emptyDir/, "concepts/storage/volumes/#emptydir",
     "A volume that starts empty when the pod starts on a node and is deleted with the pod. The pod's containers can share files through it. It survives a container restart, but not a new pod."),
   term("pvc", "PersistentVolumeClaim", /PersistentVolumeClaims?|PVCs?/, "concepts/storage/persistent-volumes/",
@@ -121,9 +121,9 @@ export const TERMS = [
     "How Kubernetes decides who may do what in its API. A Role or ClusterRole lists allowed actions, such as get and list on pods, and a binding grants them to users, groups or ServiceAccounts. Anything not allowed is denied."),
     full: "Role-based access control" },
   term("role", "Role", /(?:Cluster)?Roles?/, "reference/access-authn-authz/rbac/#role-and-clusterrole",
-    "A list of allowed actions on API resources, such as get and list on pods. A Role applies inside one namespace; a ClusterRole applies cluster-wide or can be reused in many namespaces. It grants nothing until a binding connects it to someone."),
+    "A list of allowed actions on API resources, such as get and list on pods. A Role applies inside one namespace. A ClusterRole applies cluster-wide or can be reused in many namespaces. It grants nothing until a binding connects it to someone."),
   term("rolebinding", "RoleBinding", /(?:Cluster)?RoleBindings?/, "reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding",
-    "Grants the actions of a Role or ClusterRole to users, groups or ServiceAccounts. A RoleBinding grants them in its own namespace; a ClusterRoleBinding in every namespace."),
+    "Grants the actions of a Role or ClusterRole to users, groups or ServiceAccounts. A RoleBinding grants them in its own namespace, a ClusterRoleBinding in every namespace."),
   term("tokenreview", "TokenReview", /TokenReviews?/, "reference/kubernetes-api/authentication-resources/token-review-v1/",
     "An API call that checks a ServiceAccount token: the API server answers whether it is valid and whose it is. Systems outside Kubernetes, such as Vault, use it to trust a pod's identity."),
   // Abbreviations

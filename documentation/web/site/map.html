@@ -23,9 +23,10 @@
 <header class="page-head">
   <span class="eyebrow">Start · the physical view</span>
   <h1>Where everything runs</h1>
-  <p class="lede">Each node is a Docker container on your machine; each chip is a pod, coloured by namespace. Select a pod to
-    see its IP, Service, identity and secrets. Lines show who it talks to: solid for calls it makes, dashed for calls it
-    receives.</p>
+  <p class="lede">Each node is a Docker container on your machine. Each chip, a small box inside a node, is a pod,
+    coloured by namespace. Select a pod to see its pod IP, its Service's virtual IP, its identity and secrets.
+    <a href="networking.html#addresses">Three kinds of IP address</a> explains how the two IPs differ. Lines show who it
+    talks to: solid for calls it makes, dashed for calls it receives.</p>
   <div class="facts" id="facts"></div>
   <nav class="toc" id="toc" aria-label="On this page"></nav>
 </header>
@@ -97,13 +98,13 @@ kubectl delete pod -n apps -l app=stock-ui</pre></div></div>
     <details class="qa"><summary>What is a "node" in this cluster, physically?</summary><div>
       <p>A Docker container running systemd, containerd and the kubelet, created by kind from the
       <code>kindest/node</code> image. The three containers sit on Docker's <code>kind</code> bridge network, so node IPs
-      are Docker addresses. On a cloud a node would be a VM; nothing above the kubelet changes.</p></div></details>
+      are Docker addresses. On a cloud a node would be a VM. Nothing above the kubelet changes.</p></div></details>
     <details class="qa"><summary>A pod shows Running but not Ready. What happens to its traffic?</summary><div>
       <p>The EndpointSlice controller marks its endpoint not ready in every Service it backs, so kube-proxy and Envoy stop sending it new
-      connections. The kubelet does not restart it; only a failing liveness probe would.</p></div></details>
+      connections. The kubelet does not restart it. Only a failing liveness probe would.</p></div></details>
     <details class="qa"><summary>Why does node-exporter run on the control-plane node when stock-app can't?</summary><div>
       <p>The control-plane node is tainted <code>NoSchedule</code>. node-exporter's DaemonSet tolerates that taint so every
-      node is monitored; stock-app's Deployment doesn't, so the scheduler filters that node out.</p></div></details>
+      node is monitored. stock-app's Deployment doesn't, so the scheduler filters that node out.</p></div></details>
     <details class="qa"><summary>Two replicas of an app landed on the same worker. How do you prevent it?</summary><div>
       <p>Add a <code>topologySpreadConstraints</code> entry on <code>kubernetes.io/hostname</code> with
       <code>maxSkew: 1</code> (or pod anti-affinity), and a PodDisruptionBudget so a node drain keeps one running.</p></div></details>

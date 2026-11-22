@@ -91,7 +91,7 @@ function checks(map, pods) {
       span metadata, this site, Vault's token checks and unseal key). Apart from Vault, which keeps its unseal key in a
       Secret, none may read Secrets or change anything.</p>
     <p class="fix">Exercise: list what each may do with <code>kubectl auth can-i --list --as=system:serviceaccount:&lt;ns&gt;:&lt;name&gt;</code>
-      and remove a verb; see what breaks.</p>`;
+      and remove a verb. See what breaks.</p>`;
   const netpol = document.getElementById("netpol-check");
   const policies = map.network_policies;
   netpol.className = `finding ${policies.length ? "live-ok" : "live-bad"}`;

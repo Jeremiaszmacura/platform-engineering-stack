@@ -50,11 +50,11 @@
   <div class="table-wrap"><table>
     <thead><tr><th>Command</th><th>Runs</th></tr></thead>
     <tbody>
-      <tr><td><code>make test-unit</code></td><td>Go (<code>go test</code>) and Python (<code>tox -e tests</code>) unit tests, found by <code>go.mod</code> and <code>tox.ini</code>; for this site that includes a check of every link between pages</td></tr>
+      <tr><td><code>make test-unit</code></td><td>Go (<code>go test</code>) and Python (<code>tox -e tests</code>) unit tests, found by <code>go.mod</code> and <code>tox.ini</code>. For this site that includes a check of every link between pages</td></tr>
       <tr><td><code>make lint</code></td><td>golangci-lint, then pre-commit (black, bandit, YAML and JSON checks), stock-app's import rules and API-model drift check</td></tr>
       <tr><td><code>make build-frontend test-unit-frontend</code></td><td>both Vite frontends, stock-ui's Vitest tests (traffic-generator has none), and this site's JavaScript tests (<code>node --test</code>)</td></tr>
-      <tr><td><code>make test-rules</code></td><td>unit tests of the alert rules (<code>monitoring/prometheus/alerts.test.yml</code>) with <code>promtool</code>, from the image Prometheus runs; needs Docker</td></tr>
-      <tr><td><code>make test-e2e</code></td><td>pytest in <code>e2e/</code> against the running cluster, over HTTP and HTTPS; <code>kubectl</code>,
+      <tr><td><code>make test-rules</code></td><td>unit tests of the alert rules (<code>monitoring/prometheus/alerts.test.yml</code>) with <code>promtool</code>, from the image Prometheus runs, and needs Docker</td></tr>
+      <tr><td><code>make test-e2e</code></td><td>pytest in <code>e2e/</code> against the running cluster, over HTTP and HTTPS. <code>kubectl</code>,
         pinned to the <code>kind-sample-cluster</code> context, only restarts Vault, issues ServiceAccount tokens, checks
         who may read Vault's unseal key and reads the cluster CA's certificate</td></tr>
     </tbody></table></div>
@@ -106,15 +106,15 @@ make test-e2e E2E_PYTEST_ARGS='-k stock'   # scope with -k</pre></div>
     <h2>Every version pinned, every pin updated</h2>
     <p>Images, Go modules, Python and npm packages, pre-commit hooks, GitHub Actions, the Envoy Gateway and cert-manager releases, kind in CI
       and golangci-lint are all pinned. Tags can be moved, so <code>Dockerfile</code> base images and GitHub Actions are
-      pinned by digest, with the tag kept as a label (<code>python:3.14-slim@sha256:…</code>, <code>actions/checkout@… # v6.1.0</code>);
-      the cluster's images use exact release tags. Renovate (<code>renovate.json</code>) opens update pull requests every day.</p>
+      pinned by digest, with the tag kept as a label (<code>python:3.14-slim@sha256:…</code>, <code>actions/checkout@… # v6.1.0</code>).
+      The cluster's images use exact release tags. Renovate (<code>renovate.json</code>) opens update pull requests every day.</p>
   </div>
   <ul class="prose">
-    <li>Minor, patch and digest updates merge automatically once CI is green; the e2e job deploys the whole cluster, so a
+    <li>Minor, patch and digest updates merge automatically once CI is green. The e2e job deploys the whole cluster, so a
       broken image can't sneak in.</li>
     <li>Major updates and new language runtime versions (Python, Go, Node) wait for a human, because their versions are
       also set in the workflows. A new digest of the same base-image tag merges automatically.</li>
-    <li>A release must be three days old; the local <code>:dev</code> images are ignored.</li>
+    <li>A release must be three days old. The local <code>:dev</code> images are ignored.</li>
     <li>Renovate runs as the Mend Renovate GitHub App: Mend, the company behind Renovate, hosts it for free, so no workflow
       is needed. Run logs: <a href="https://developer.mend.io/github/Jeremiaszmacura">developer.mend.io</a>.</li>
   </ul>
@@ -134,12 +134,12 @@ make test-e2e E2E_PYTEST_ARGS='-k stock'   # scope with -k</pre></div>
       <code>my-service</code>, Service <code>my-service-service</code>, HTTPRoute <code>my-service-route</code> for
       <code>my-service.localhost</code> (add that hostname to <code>platform/gateway/certificate.yaml</code> too, or HTTPS
       fails for it), and ServiceAccount <code>my-service</code> with
-      <code>automountServiceAccountToken: false</code>; requests and limits, a readiness probe and a non-root
+      <code>automountServiceAccountToken: false</code>. Requests and limits, a readiness probe and a non-root
       <code>securityContext</code> (<a href="design.html#conventions">conventions</a>).</div></li>
     <li><div><span class="where">cluster script</span>Add it to <code>IMAGES</code>, <code>COMPONENTS</code> and
       <code>URLS</code> in <code>recreate-cluster.sh</code>.</div></li>
     <li><div><span class="where">metrics</span>Annotate the Service with <code>prometheus.io/scrape: "true"</code> and
-      <code>prometheus.io/job</code> (plus <code>port</code> or <code>path</code> when needed); add a dashboard JSON with a fixed
+      <code>prometheus.io/job</code> (plus <code>port</code> or <code>path</code> when needed). Add a dashboard JSON with a fixed
       <code>uid</code> to <code>monitoring/grafana/k8s/dashboards/</code> and list it in that directory's
       <code>kustomization.yaml</code>.</div></li>
     <li><div><span class="where">tests</span>Add its URL to <code>SERVICE_URLS</code> in <code>e2e/cluster.py</code>, and e2e

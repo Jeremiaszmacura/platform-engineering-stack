@@ -27,7 +27,7 @@ function ranges(map) {
   fill("#ranges", [
     ["Node IPs", nodeRange, "One per machine, from the network the nodes sit on: a VPC subnet on a cloud, here the Docker network kind creates (each node is a container). Set up by the infrastructure, not by Kubernetes.",
       map.nodes.map((n) => `${esc(nodeShort(n.name))} ${code(n.ip)}`)],
-    ["Pod IPs", map.ranges.pods || "per node", "One per pod, handed out by the CNI plugin. Here <b>kindnet</b> gives each node a slice of a private range and adds routes between nodes; on EKS the AWS VPC CNI gives pods addresses from the VPC itself. Either way any pod reaches any other pod without NAT.",
+    ["Pod IPs", map.ranges.pods || "per node", "One per pod, handed out by the CNI plugin. Here <b>kindnet</b> gives each node a slice of a private range and adds routes between nodes. On EKS the AWS VPC CNI gives pods addresses from the VPC itself. Either way any pod reaches any other pod without NAT.",
       map.nodes.map((n) => `${esc(nodeShort(n.name))} ${code(n.pod_cidr)}`)],
     ["Service IPs", map.ranges.services || "unknown", "Virtual IPs the API server hands to Services from its service range. No interface owns them: <b>kube-proxy</b> rewrites packets sent to them into a real pod IP. This part works the same on every cluster.",
       [api && `API server ${code(api.cluster_ip + ":443")}`, dns && `CoreDNS ${code(dns.cluster_ip + ":53")}`].filter(Boolean)],
