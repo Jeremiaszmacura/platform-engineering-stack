@@ -1,11 +1,11 @@
 """TimescaleDB implementation of the PriceBarRepository port."""
 
-from collections.abc import Sequence
-from contextlib import contextmanager
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import AbstractContextManager, contextmanager
 from datetime import date, datetime, time, timezone
 
-from sqlalchemy import Engine, Row, select, text
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import Connection, Engine, Row, select, text
+from sqlalchemy.dialects.postgresql import Insert, insert
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.adapters.persistence.tables import instruments, price_bars
@@ -113,7 +113,9 @@ class TimescalePriceBarRepository:
         return True
 
     @contextmanager
-    def _translating_errors(self, open_connection):
+    def _translating_errors(
+        self, open_connection: Callable[[], AbstractContextManager[Connection]]
+    ) -> Iterator[Connection]:
         """Yield a connection; raise RepositoryError for any database failure, including during statements."""
         try:
             with open_connection() as connection:
@@ -121,16 +123,16 @@ class TimescalePriceBarRepository:
         except SQLAlchemyError as error:
             raise RepositoryError("database operation failed") from error
 
-    def _connect(self):
+    def _connect(self) -> AbstractContextManager[Connection]:
         """Return a context manager yielding a read-only connection."""
         return self._translating_errors(self._engine.connect)
 
-    def _begin(self):
+    def _begin(self) -> AbstractContextManager[Connection]:
         """Return a context manager yielding a connection inside a transaction."""
         return self._translating_errors(self._engine.begin)
 
     @staticmethod
-    def _upsert_instrument_statement(instrument: Instrument):
+    def _upsert_instrument_statement(instrument: Instrument) -> Insert:
         """Return the upsert statement for one instrument."""
         values = {
             "symbol": instrument.symbol,
@@ -149,7 +151,7 @@ class TimescalePriceBarRepository:
         )
 
     @staticmethod
-    def _upsert_bars_statement(source: str, bars: Sequence[PriceBar]):
+    def _upsert_bars_statement(source: str, bars: Sequence[PriceBar]) -> Insert:
         """Return the upsert statement for a batch of bars (existing rows are overwritten)."""
         rows = [
             {

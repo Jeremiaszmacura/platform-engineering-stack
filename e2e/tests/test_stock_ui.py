@@ -9,7 +9,7 @@ from cluster import REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL, STOCK_UI_URL, https
 ORIGINS = [STOCK_UI_URL, https(STOCK_UI_URL)]
 
 
-def test_stock_ui_serves_ui():
+def test_stock_ui_serves_ui() -> None:
     """GET / serves the React single-page application."""
     response = requests.get(STOCK_UI_URL, timeout=REQUEST_TIMEOUT_SECONDS)
     assert response.status_code == 200
@@ -17,7 +17,7 @@ def test_stock_ui_serves_ui():
 
 
 @pytest.mark.parametrize("origin", ORIGINS)
-def test_stock_app_allows_stock_ui_origin(origin):
+def test_stock_app_allows_stock_ui_origin(origin: str) -> None:
     """stock-app responses carry CORS headers allowing the Stock App origin."""
     response = requests.get(
         f"{STOCK_APP_URL}/api/v1/instruments",
@@ -29,7 +29,7 @@ def test_stock_app_allows_stock_ui_origin(origin):
 
 
 @pytest.mark.parametrize("origin", ORIGINS)
-def test_stock_app_answers_cors_preflight(origin):
+def test_stock_app_answers_cors_preflight(origin: str) -> None:
     """OPTIONS preflight from the Stock App origin is accepted by stock-app's HTTPRoute."""
     response = requests.options(
         f"{STOCK_APP_URL}/api/v1/instruments",

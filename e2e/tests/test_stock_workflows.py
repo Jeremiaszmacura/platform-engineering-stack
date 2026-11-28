@@ -9,7 +9,7 @@ from datetime import date, timedelta
 import pytest
 import requests
 
-from cluster import REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL, read_counter
+from cluster import REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL, JsonObject, read_counter
 
 SYMBOL = "AAPL"
 PERIOD_DAYS = 30
@@ -24,29 +24,29 @@ class Period:
     end: date
 
     @property
-    def params(self):
+    def params(self) -> dict[str, str]:
         """Return the window as start/end query parameters."""
         return {"start": self.start.isoformat(), "end": self.end.isoformat()}
 
 
-def bars_url(symbol):
+def bars_url(symbol: str) -> str:
     """Return the bars URL for symbol."""
     return f"{STOCK_APP_URL}/api/v1/instruments/{symbol}/bars"
 
 
-def summary_url(symbol):
+def summary_url(symbol: str) -> str:
     """Return the summary URL for symbol."""
     return f"{STOCK_APP_URL}/api/v1/instruments/{symbol}/summary"
 
 
-def fetch_metrics():
+def fetch_metrics() -> str:
     """Return stock-app's /metrics text."""
     response = requests.get(f"{STOCK_APP_URL}/metrics", timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     return response.text
 
 
-def fetch_ledger(symbol):
+def fetch_ledger(symbol: str) -> JsonObject | None:
     """Return the /api/v1/instruments entry for symbol, or None."""
     response = requests.get(f"{STOCK_APP_URL}/api/v1/instruments", timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
@@ -54,7 +54,7 @@ def fetch_ledger(symbol):
 
 
 @pytest.fixture(scope="module")
-def unsynced_period():
+def unsynced_period() -> Period:
     """Return a window starting before anything synced, so the provider must be called even on a warm cluster."""
     ledger = fetch_ledger(SYMBOL)
     end = date.today() - timedelta(days=7)
@@ -64,7 +64,7 @@ def unsynced_period():
 
 
 @pytest.fixture(scope="module")
-def cold_then_cached(unsynced_period):
+def cold_then_cached(unsynced_period: Period) -> tuple[JsonObject, JsonObject]:
     """Request an unsynced window twice (once per module); return both response bodies."""
     first = requests.get(bars_url(SYMBOL), params=unsynced_period.params, timeout=PROVIDER_TIMEOUT_SECONDS)
     first.raise_for_status()
@@ -73,7 +73,7 @@ def cold_then_cached(unsynced_period):
     return first.json(), second.json()
 
 
-def test_metrics_expose_the_cache_aside_pipeline():
+def test_metrics_expose_the_cache_aside_pipeline() -> None:
     """GET /metrics serves every stock-specific metric, even before any traffic."""
     metrics = fetch_metrics()
     for metric in (
@@ -86,12 +86,12 @@ def test_metrics_expose_the_cache_aside_pipeline():
         assert metric in metrics
 
 
-def test_no_metric_is_labeled_by_symbol():
+def test_no_metric_is_labeled_by_symbol() -> None:
     """Symbols come from request paths, so they must never become label values."""
     assert "symbol=" not in fetch_metrics()
 
 
-def test_cold_request_comes_from_the_provider(cold_then_cached):
+def test_cold_request_comes_from_the_provider(cold_then_cached: tuple[JsonObject, JsonObject]) -> None:
     """The first request for a symbol fills the store from the provider."""
     cold, _ = cold_then_cached
     assert cold["source"] == "provider"
@@ -100,7 +100,7 @@ def test_cold_request_comes_from_the_provider(cold_then_cached):
     assert cold["count"] > 0
 
 
-def test_repeat_request_is_served_from_cache(cold_then_cached):
+def test_repeat_request_is_served_from_cache(cold_then_cached: tuple[JsonObject, JsonObject]) -> None:
     """An immediate repeat is served from the store with identical bars."""
     cold, cached = cold_then_cached
     assert cached["source"] == "cache"
@@ -108,7 +108,7 @@ def test_repeat_request_is_served_from_cache(cold_then_cached):
 
 
 @pytest.mark.usefixtures("cold_then_cached")
-def test_cached_request_makes_no_provider_call(unsynced_period):
+def test_cached_request_makes_no_provider_call(unsynced_period: Period) -> None:
     """The cached path must not increment the provider call counter."""
     labels = {"outcome": "success"}
     before = read_counter(fetch_metrics(), "stock_provider_requests_total", labels)
@@ -120,7 +120,7 @@ def test_cached_request_makes_no_provider_call(unsynced_period):
 
 
 @pytest.mark.usefixtures("cold_then_cached")
-def test_cache_hits_are_counted(unsynced_period):
+def test_cache_hits_are_counted(unsynced_period: Period) -> None:
     """A cached request increments the cache hit counter."""
     labels = {"outcome": "hit"}
     before = read_counter(fetch_metrics(), "stock_cache_lookups_total", labels)
@@ -130,7 +130,7 @@ def test_cache_hits_are_counted(unsynced_period):
     assert read_counter(fetch_metrics(), "stock_cache_lookups_total", labels) > before
 
 
-def test_bars_are_ordered_and_internally_consistent(cold_then_cached):
+def test_bars_are_ordered_and_internally_consistent(cold_then_cached: tuple[JsonObject, JsonObject]) -> None:
     """Every returned bar satisfies the OHLC invariants and dates ascend."""
     cold, _ = cold_then_cached
     bars = cold["bars"]
@@ -143,13 +143,15 @@ def test_bars_are_ordered_and_internally_consistent(cold_then_cached):
         assert bar["adjClose"] is not None
 
 
-def test_calendar_window_holds_fewer_bars_than_days(cold_then_cached):
+def test_calendar_window_holds_fewer_bars_than_days(cold_then_cached: tuple[JsonObject, JsonObject]) -> None:
     """Markets close on weekends, so a 30 day window cannot hold 30 sessions."""
     cold, _ = cold_then_cached
     assert cold["count"] < PERIOD_DAYS
 
 
-def test_summary_agrees_with_the_bars_it_summarizes(cold_then_cached, unsynced_period):
+def test_summary_agrees_with_the_bars_it_summarizes(
+    cold_then_cached: tuple[JsonObject, JsonObject], unsynced_period: Period
+) -> None:
     """The Timescale aggregates match the bars returned for the same period."""
     cold, _ = cold_then_cached
     bars = cold["bars"]
@@ -166,7 +168,7 @@ def test_summary_agrees_with_the_bars_it_summarizes(cold_then_cached, unsynced_p
 
 
 @pytest.mark.usefixtures("cold_then_cached")
-def test_fetched_symbol_appears_in_the_instrument_list(unsynced_period):
+def test_fetched_symbol_appears_in_the_instrument_list(unsynced_period: Period) -> None:
     """The fetched symbol is listed with a synced window covering at least the request."""
     ledger = fetch_ledger(SYMBOL)
 

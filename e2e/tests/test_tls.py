@@ -9,7 +9,7 @@ from cluster import REQUEST_TIMEOUT_SECONDS, SERVICE_URLS, https, kubectl
 
 
 @pytest.fixture(scope="module")
-def cluster_ca(tmp_path_factory):
+def cluster_ca(tmp_path_factory: pytest.TempPathFactory) -> str:
     """Return the path of a file holding the cluster CA's certificate, read from its Secret."""
     encoded = kubectl("get", "secret", "sample-cluster-ca", "-n", "cert-manager", "-o", r"jsonpath={.data.ca\.crt}")
     path = tmp_path_factory.mktemp("tls") / "sample-cluster-ca.crt"
@@ -18,13 +18,13 @@ def cluster_ca(tmp_path_factory):
 
 
 @pytest.mark.parametrize("service_name", sorted(SERVICE_URLS))
-def test_service_answers_https(service_name, cluster_ca):
+def test_service_answers_https(service_name: str, cluster_ca: str) -> None:
     """The service answers over HTTPS with a certificate valid for its hostname and signed by the cluster CA."""
     response = requests.get(https(SERVICE_URLS[service_name]), verify=cluster_ca, timeout=REQUEST_TIMEOUT_SECONDS)
     assert response.status_code == 200
 
 
-def test_certificate_is_untrusted_without_the_cluster_ca():
+def test_certificate_is_untrusted_without_the_cluster_ca() -> None:
     """A client that trusts only public CAs rejects the certificate, not the handshake."""
     with pytest.raises(requests.exceptions.SSLError, match="CERTIFICATE_VERIFY_FAILED"):
         requests.get(https(SERVICE_URLS["documentation"]), timeout=REQUEST_TIMEOUT_SECONDS)

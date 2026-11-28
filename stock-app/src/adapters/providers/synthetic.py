@@ -135,7 +135,7 @@ class SyntheticMarketDataProvider:
 
     name = PROVIDER_NAME
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create the provider and register its metric label combinations."""
         register_provider(self.name)
 

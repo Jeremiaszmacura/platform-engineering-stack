@@ -1,11 +1,16 @@
 """OpenTelemetry tracing: one trace per HTTP request, exported over OTLP to the OpenTelemetry Collector."""
 
+from collections.abc import Sequence
+
 from opentelemetry import trace
+from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter
 from opentelemetry.sdk.trace.sampling import Decision, ParentBased, Sampler, SamplingResult
+from opentelemetry.trace import Link, SpanKind, TraceState
+from opentelemetry.util.types import Attributes
 
 STOCK_APP_SERVICE_NAME = "stock-app"
 
@@ -18,9 +23,18 @@ class HttpRequestRootSampler(Sampler):
     Without it, work outside a request (the readiness probe's database query) would become one-span traces.
     """
 
-    def should_sample(self, parent_context, trace_id, name, kind=None, attributes=None, links=None, trace_state=None):
+    def should_sample(
+        self,
+        parent_context: Context | None,
+        trace_id: int,
+        name: str,
+        kind: SpanKind | None = None,
+        attributes: Attributes = None,
+        links: Sequence[Link] | None = None,
+        trace_state: TraceState | None = None,
+    ) -> SamplingResult:
         """Record SERVER spans and drop every other root span."""
-        if kind == trace.SpanKind.SERVER:
+        if kind == SpanKind.SERVER:
             return SamplingResult(Decision.RECORD_AND_SAMPLE, attributes)
         return SamplingResult(Decision.DROP)
 

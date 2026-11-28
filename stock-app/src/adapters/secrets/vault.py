@@ -1,7 +1,6 @@
 """Vault KV v2 implementation of the SecretStore port; the only module that imports hvac."""
 
 from collections.abc import Callable
-from typing import Any
 
 import hvac
 from hvac.exceptions import Forbidden, InvalidPath, VaultError
@@ -50,7 +49,7 @@ class VaultSecretStore:
             raise SecretStoreError(f"failed to read secret {key!r}") from error
         return response["data"]["data"]["value"]
 
-    def _signed_in(self, request: Callable[[], Any]) -> Any:
+    def _signed_in[T](self, request: Callable[[], T]) -> T:
         """Run request, signing in first if needed and once more if Vault rejects the token."""
         if not self._client.token:
             self._sign_in()

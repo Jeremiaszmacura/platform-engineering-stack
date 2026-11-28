@@ -2,6 +2,8 @@
 
 import subprocess  # nosec B404 - runs kubectl with fixed arguments
 import time
+from collections.abc import Callable
+from typing import Any
 
 import requests
 
@@ -25,6 +27,9 @@ VAULT_TOKEN = "root"  # nosec B105 - root token of this local cluster
 # The cluster ./recreate-cluster.sh creates; tests that restart pods never use the current context.
 KUBE_CONTEXT = "kind-sample-cluster"
 
+# A decoded JSON object from one of the services' APIs.
+type JsonObject = dict[str, Any]
+
 
 STOCK_APP_URL = "http://stock.localhost"
 DOCS_URL = "http://docs.localhost"
@@ -41,12 +46,12 @@ SERVICE_URLS = {
 }
 
 
-def https(url):
+def https(url: str) -> str:
     """Return url with https:// instead of http://: the Gateway serves every hostname on both."""
     return url.replace("http://", "https://", 1)
 
 
-def kubectl(*args, check=True):
+def kubectl(*args: str, check: bool = True) -> str:
     """Run kubectl with args against the test cluster and return its output; check=False allows a non-zero exit."""
     result = subprocess.run(  # nosec B603 B607 - fixed kubectl command, pinned to the test cluster
         ["kubectl", "--context", KUBE_CONTEXT, *args],
@@ -58,7 +63,7 @@ def kubectl(*args, check=True):
     return result.stdout.strip()
 
 
-def wait_until(check, timeout_seconds, description):
+def wait_until(check: Callable[[], object], timeout_seconds: float, description: str) -> None:
     """Poll check() until it is truthy (connection errors count as not yet); fail with description on timeout."""
     deadline = time.monotonic() + timeout_seconds
     last_error = None
@@ -73,13 +78,13 @@ def wait_until(check, timeout_seconds, description):
     raise AssertionError(f"timed out after {timeout_seconds}s waiting for {description}{detail}")
 
 
-def service_responds(url):
+def service_responds(url: str) -> bool:
     """Return True if a GET to url answers below 500."""
     response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
     return response.status_code < 500
 
 
-def read_counter(metrics_text, metric_name, required_labels):
+def read_counter(metrics_text: str, metric_name: str, required_labels: dict[str, str]) -> float:
     """Sum the samples of a counter that carry all required_labels (matched one by one, as label order varies)."""
     total = 0.0
     for line in metrics_text.splitlines():
@@ -90,7 +95,7 @@ def read_counter(metrics_text, metric_name, required_labels):
     return total
 
 
-def query_prometheus_value(promql):
+def query_prometheus_value(promql: str) -> float:
     """Return the value of an instant PromQL query, or 0.0 if it has no result."""
     response = requests.get(f"{PROMETHEUS_URL}/api/v1/query", params={"query": promql}, timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()

@@ -7,6 +7,7 @@ from datetime import date, timedelta
 
 import pytest
 import requests
+from openapi_core import OpenAPI
 import yaml
 
 from cluster import REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL
@@ -26,18 +27,20 @@ SUMMARY = f"/api/v1/instruments/{SYMBOL}/summary"
 
 
 @pytest.fixture(scope="module")
-def synced_window(contract):
+def synced_window(contract: OpenAPI) -> dict[str, str]:
     """Sync WINDOW for SYMBOL once per module, so the tests read from the store."""
     call(contract, BARS, params=WINDOW, timeout=PROVIDER_TIMEOUT_SECONDS)
     return WINDOW
 
 
-def call(contract, path, params=None, timeout=REQUEST_TIMEOUT_SECONDS):
+def call(
+    contract: OpenAPI, path: str, params: dict[str, str] | None = None, timeout: float = REQUEST_TIMEOUT_SECONDS
+) -> requests.Response:
     """GET path and assert status, content type and body match the contract; return the response."""
     return conforming(contract, requests.get(f"{STOCK_APP_URL}{path}", params=params, timeout=timeout))
 
 
-def test_service_identity(contract):
+def test_service_identity(contract: OpenAPI) -> None:
     """GET / names the service."""
     response = call(contract, "/")
 
@@ -45,7 +48,7 @@ def test_service_identity(contract):
     assert response.json() == {"service": "stock-app"}
 
 
-def test_health_reports_a_reachable_database(contract):
+def test_health_reports_a_reachable_database(contract: OpenAPI) -> None:
     """GET /health confirms the service reached TimescaleDB."""
     response = call(contract, "/health")
 
@@ -53,7 +56,7 @@ def test_health_reports_a_reachable_database(contract):
     assert response.json() == {"status": "healthy", "database": "reachable"}
 
 
-def test_metrics_are_served_in_prometheus_format(contract):
+def test_metrics_are_served_in_prometheus_format(contract: OpenAPI) -> None:
     """GET /metrics answers in the text exposition format Prometheus scrapes."""
     response = call(contract, "/metrics")
 
@@ -62,7 +65,7 @@ def test_metrics_are_served_in_prometheus_format(contract):
     assert "# HELP" in response.text
 
 
-def test_instruments_are_listed(contract):
+def test_instruments_are_listed(contract: OpenAPI) -> None:
     """GET /api/v1/instruments answers with a list, empty or not."""
     response = call(contract, "/api/v1/instruments")
 
@@ -70,7 +73,7 @@ def test_instruments_are_listed(contract):
     assert isinstance(response.json(), list)
 
 
-def test_contract_is_published():
+def test_contract_is_published() -> None:
     """GET /openapi.yaml serves the authored contract."""
     response = requests.get(f"{STOCK_APP_URL}/openapi.yaml", timeout=REQUEST_TIMEOUT_SECONDS)
 
@@ -83,7 +86,7 @@ def test_contract_is_published():
     assert "Symbol" in document["components"]["parameters"]
 
 
-def test_swagger_ui_renders_the_contract():
+def test_swagger_ui_renders_the_contract() -> None:
     """GET /docs serves the Swagger UI page that loads /openapi.yaml."""
     response = requests.get(f"{STOCK_APP_URL}/docs", timeout=REQUEST_TIMEOUT_SECONDS)
 
@@ -111,7 +114,9 @@ INVALID_WINDOWS = [
 
 @pytest.mark.parametrize("path", [BARS, SUMMARY], ids=["bars", "summary"])
 @pytest.mark.parametrize("params", INVALID_WINDOWS)
-def test_invalid_window_is_rejected_before_the_provider_is_called(contract, path, params):
+def test_invalid_window_is_rejected_before_the_provider_is_called(
+    contract: OpenAPI, path: str, params: dict[str, str]
+) -> None:
     """Every window rule answers 422 on both windowed endpoints, without a provider call."""
     response = call(contract, path, params=params)
 
@@ -120,7 +125,7 @@ def test_invalid_window_is_rejected_before_the_provider_is_called(contract, path
 
 
 @pytest.mark.parametrize("endpoint", ["bars", "summary"])
-def test_symbol_outside_the_allowed_alphabet_is_rejected(contract, endpoint):
+def test_symbol_outside_the_allowed_alphabet_is_rejected(contract: OpenAPI, endpoint: str) -> None:
     """A symbol that could not be a ticker never reaches the provider."""
     response = call(contract, f"/api/v1/instruments/AA;DROP/{endpoint}", params=WINDOW)
 
@@ -128,7 +133,7 @@ def test_symbol_outside_the_allowed_alphabet_is_rejected(contract, endpoint):
     assert set(response.json()) == {"detail"}
 
 
-def test_bars_are_served_for_the_requested_window(contract, synced_window):
+def test_bars_are_served_for_the_requested_window(contract: OpenAPI, synced_window: dict[str, str]) -> None:
     """GET /bars answers 200 with the window it was asked for."""
     response = call(contract, BARS, params=synced_window, timeout=PROVIDER_TIMEOUT_SECONDS)
 
@@ -141,7 +146,7 @@ def test_bars_are_served_for_the_requested_window(contract, synced_window):
     assert body["count"] > 0
 
 
-def test_summary_is_served_for_the_requested_window(contract, synced_window):
+def test_summary_is_served_for_the_requested_window(contract: OpenAPI, synced_window: dict[str, str]) -> None:
     """GET /summary answers 200 with statistics over the same window."""
     response = call(contract, SUMMARY, params=synced_window, timeout=PROVIDER_TIMEOUT_SECONDS)
 
@@ -154,7 +159,7 @@ def test_summary_is_served_for_the_requested_window(contract, synced_window):
 
 
 @pytest.mark.usefixtures("synced_window")
-def test_window_without_trading_sessions_is_not_found(contract):
+def test_window_without_trading_sessions_is_not_found(contract: OpenAPI) -> None:
     """A weekend inside the synced window answers 404 from the store, without the provider."""
     saturday = WINDOW_START + timedelta(days=(5 - WINDOW_START.weekday()) % 7)
     weekend = {"start": saturday.isoformat(), "end": (saturday + timedelta(days=1)).isoformat()}
@@ -165,7 +170,7 @@ def test_window_without_trading_sessions_is_not_found(contract):
     assert set(response.json()) == {"detail"}
 
 
-def test_unknown_symbol_is_not_found(contract):
+def test_unknown_symbol_is_not_found(contract: OpenAPI) -> None:
     """A well-formed symbol the provider does not know answers 404."""
     response = call(contract, "/api/v1/instruments/ZZNOSUCHZZ/bars", params=WINDOW, timeout=PROVIDER_TIMEOUT_SECONDS)
 

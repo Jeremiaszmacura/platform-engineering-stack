@@ -28,3 +28,22 @@ use-standard-collections = true
 use-union-operator = true
 # A timestamp in the header would make every regeneration a diff.
 disable-timestamp = true
+
+# Google style 2.21: type-check the build. Run by `tox -e pre-commit`.
+[tool.mypy]
+python_version = "3.14"
+plugins = ["pydantic.mypy"]
+files = ["src", "tests"]
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+# Tests only need their calls into src checked, not their own annotations.
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# yfinance ships neither types nor stubs.
+[[tool.mypy.overrides]]
+module = "yfinance.*"
+ignore_missing_imports = true

@@ -51,7 +51,7 @@
     <thead><tr><th>Command</th><th>Runs</th></tr></thead>
     <tbody>
       <tr><td><code>make test-unit</code></td><td>Go (<code>go test</code>) and Python (<code>tox -e tests</code>) unit tests, found by <code>go.mod</code> and <code>tox.ini</code>. For this site that includes a check of every link between pages</td></tr>
-      <tr><td><code>make lint</code></td><td>golangci-lint, then pre-commit (black, bandit, YAML and JSON checks), pylint with Google's <code>.pylintrc</code> on stock-app and <code>e2e/</code>, stock-app's import rules and API-model drift check</td></tr>
+      <tr><td><code>make lint</code></td><td>golangci-lint, then pre-commit (black, bandit, YAML and JSON checks), pylint with Google's <code>.pylintrc</code> and mypy (every function annotated) on stock-app and <code>e2e/</code>, stock-app's import rules and API-model drift check</td></tr>
       <tr><td><code>make build-frontend test-unit-frontend</code></td><td>both Vite frontends, stock-ui's Vitest tests (traffic-generator has none), and this site's JavaScript tests (<code>node --test</code>)</td></tr>
       <tr><td><code>make test-rules</code></td><td>unit tests of the alert rules (<code>monitoring/prometheus/alerts.test.yml</code>) with <code>promtool</code>, from the image Prometheus runs, and needs Docker</td></tr>
       <tr><td><code>make test-e2e</code></td><td>pytest in <code>e2e/</code> against the running cluster, over HTTP and HTTPS. <code>kubectl</code>,

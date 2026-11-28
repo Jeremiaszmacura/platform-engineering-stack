@@ -3,6 +3,7 @@
 Handlers are sync (def) because yfinance and SQLAlchemy Core are; FastAPI runs them in a threadpool.
 """
 
+from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -51,7 +52,7 @@ def get_health(repository: Repository, response: Response) -> HealthStatus:
     if repository.check_health():
         return HealthStatus(status="healthy", database="reachable")
     logger.error("Health check failed: database unreachable")
-    response.status_code = 503
+    response.status_code = HTTPStatus.SERVICE_UNAVAILABLE
     return HealthStatus(status="unhealthy", database="unreachable")
 
 
@@ -62,7 +63,7 @@ def get_metrics(request: Request) -> Response:
     return Response(encoder(REGISTRY), media_type=content_type)
 
 
-@router.post("/secret", operation_id="storeSecret", status_code=201)
+@router.post("/secret", operation_id="storeSecret", status_code=HTTPStatus.CREATED)
 def store_secret(secret: SecretRequest, store: Secrets) -> StoredSecretResponse:
     """Store a secret in Vault; the value is not echoed back."""
     logger.info("Storing secret under key %s", secret.key)
@@ -96,5 +97,5 @@ def get_price_summary(symbol: SymbolPath, period: Period, service: History) -> P
     logger.info("Summary requested for %s over %s..%s", symbol, period.start, period.end)
     summary = service.get_price_summary(symbol, period)
     if summary is None:
-        raise HTTPException(status_code=404, detail="no bars in the requested range")
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="no bars in the requested range")
     return to_price_summary_response(summary)
