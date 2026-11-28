@@ -6,11 +6,11 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pandas as pd
+from prometheus_client import REGISTRY
 from yfinance.exceptions import YFPricesMissingError, YFTickerMissingError
 
 from src.adapters.providers.yahoo import YahooMarketDataProvider
 from src.domain.errors import ProviderError, SymbolNotFoundError
-from src.observability.metrics import PROVIDER_REQUESTS, ROWS_REJECTED
 
 EXCHANGE_TIMEZONE = "America/New_York"
 
@@ -37,7 +37,7 @@ class StubTicker:
     info = INFO
     history_error = None
     info_error = None
-    history_kwargs = None
+    history_kwargs = {}
 
     def __init__(self, symbol):
         """Record the symbol the caller asked for."""
@@ -65,7 +65,7 @@ class YahooProviderTestCase(unittest.TestCase):
         StubTicker.info = INFO
         StubTicker.history_error = None
         StubTicker.info_error = None
-        StubTicker.history_kwargs = None
+        StubTicker.history_kwargs = {}
         patcher = patch("src.adapters.providers.yahoo.yf.Ticker", StubTicker)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -78,12 +78,14 @@ class YahooProviderTestCase(unittest.TestCase):
     @staticmethod
     def rejected(reason):
         """Return the current value of the rejection counter for a reason."""
-        return ROWS_REJECTED.labels(provider="yahoo", reason=reason)._value.get()
+        labels = {"provider": "yahoo", "reason": reason}
+        return REGISTRY.get_sample_value("stock_provider_rows_rejected_total", labels) or 0
 
     @staticmethod
     def provider_calls(outcome):
         """Return the current value of the provider call counter for an outcome."""
-        return PROVIDER_REQUESTS.labels(provider="yahoo", outcome=outcome)._value.get()
+        labels = {"provider": "yahoo", "outcome": outcome}
+        return REGISTRY.get_sample_value("stock_provider_requests_total", labels) or 0
 
 
 class TestFetchDailyBars(YahooProviderTestCase):

@@ -70,6 +70,7 @@ class FakeService:
 
     def get_price_history(self, symbol, period):
         """Return a canned price history."""
+        del symbol
         self._fail_if_configured()
         return PriceHistory(
             symbol="AAPL",
@@ -82,6 +83,7 @@ class FakeService:
 
     def get_price_summary(self, symbol, period):
         """Return a canned summary."""
+        del symbol, period
         self._fail_if_configured()
         return self.summary
 

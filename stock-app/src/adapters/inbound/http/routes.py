@@ -65,7 +65,7 @@ def get_metrics(request: Request) -> Response:
 @router.post("/secret", operation_id="storeSecret", status_code=201)
 def store_secret(secret: SecretRequest, store: Secrets) -> StoredSecretResponse:
     """Store a secret in Vault; the value is not echoed back."""
-    logger.info(f"Storing secret under key {secret.key}")
+    logger.info("Storing secret under key %s", secret.key)
     store.write_secret(secret.key, secret.value)
     return StoredSecretResponse(key=secret.key, status="stored")
 
@@ -73,7 +73,7 @@ def store_secret(secret: SecretRequest, store: Secrets) -> StoredSecretResponse:
 @router.get("/secret/{key}", operation_id="readSecret")
 def read_secret(key: SecretKeyPath, store: Secrets) -> SecretResponse:
     """Return a stored secret."""
-    logger.info(f"Reading secret under key {key}")
+    logger.info("Reading secret under key %s", key)
     return SecretResponse(key=key, value=store.read_secret(key))
 
 
@@ -86,14 +86,14 @@ def list_instruments(service: History) -> list[InstrumentResponse]:
 @router.get(API_PREFIX + "/instruments/{symbol}/bars", operation_id="getPriceHistory")
 def get_price_history(symbol: SymbolPath, period: Period, service: History) -> PriceHistoryResponse:
     """Return daily bars for a symbol, fetching any missing part from the provider."""
-    logger.info(f"Bars requested for {symbol} over {period.start}..{period.end}")
+    logger.info("Bars requested for %s over %s..%s", symbol, period.start, period.end)
     return to_price_history_response(service.get_price_history(symbol, period))
 
 
 @router.get(API_PREFIX + "/instruments/{symbol}/summary", operation_id="getPriceSummary")
 def get_price_summary(symbol: SymbolPath, period: Period, service: History) -> PriceSummaryResponse:
     """Return period statistics for a symbol; 404 when the period has no sessions."""
-    logger.info(f"Summary requested for {symbol} over {period.start}..{period.end}")
+    logger.info("Summary requested for %s over %s..%s", symbol, period.start, period.end)
     summary = service.get_price_summary(symbol, period)
     if summary is None:
         raise HTTPException(status_code=404, detail="no bars in the requested range")

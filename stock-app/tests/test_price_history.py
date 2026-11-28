@@ -56,6 +56,7 @@ class FakeProvider:
 
     def fetch_daily_bars(self, symbol, start, end):
         """Return the known bars that fall inside the requested range."""
+        del symbol
         self.calls.append(DateRange(start=start, end=end))
         if self.error is not None:
             raise self.error
@@ -86,6 +87,7 @@ class FakeRepository:
 
     def bars_in_range(self, symbol, interval, start, end):
         """Return stored bars inside the range, in ascending date order."""
+        del interval
         stored = self.bars.get(symbol, {})
         return [stored[session] for session in sorted(stored) if start <= session <= end]
 

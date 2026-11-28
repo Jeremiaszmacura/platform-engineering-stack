@@ -34,6 +34,7 @@ class FakeKeyValueEngine:
 
     def read_secret_version(self, path, mount_point, raise_on_deleted_version):
         """Return a recorded write, or raise InvalidPath when there is none."""
+        del raise_on_deleted_version
         self._fail_if_configured()
         self.calls.append((mount_point, path))
         if path not in self.stored:

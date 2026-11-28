@@ -102,6 +102,7 @@ class FakeProvider:
 
     def fetch_daily_bars(self, symbol, start, end):
         """Return one bar or raise the configured error."""
+        del symbol, start, end
         if self.error is not None:
             raise self.error
         return [BAR]

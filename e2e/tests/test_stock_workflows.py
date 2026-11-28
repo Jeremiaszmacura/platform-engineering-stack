@@ -107,7 +107,8 @@ def test_repeat_request_is_served_from_cache(cold_then_cached):
     assert cached["bars"] == cold["bars"]
 
 
-def test_cached_request_makes_no_provider_call(cold_then_cached, unsynced_period):
+@pytest.mark.usefixtures("cold_then_cached")
+def test_cached_request_makes_no_provider_call(unsynced_period):
     """The cached path must not increment the provider call counter."""
     labels = {"outcome": "success"}
     before = read_counter(fetch_metrics(), "stock_provider_requests_total", labels)
@@ -118,7 +119,8 @@ def test_cached_request_makes_no_provider_call(cold_then_cached, unsynced_period
     assert read_counter(fetch_metrics(), "stock_provider_requests_total", labels) == before
 
 
-def test_cache_hits_are_counted(cold_then_cached, unsynced_period):
+@pytest.mark.usefixtures("cold_then_cached")
+def test_cache_hits_are_counted(unsynced_period):
     """A cached request increments the cache hit counter."""
     labels = {"outcome": "hit"}
     before = read_counter(fetch_metrics(), "stock_cache_lookups_total", labels)
@@ -163,7 +165,8 @@ def test_summary_agrees_with_the_bars_it_summarizes(cold_then_cached, unsynced_p
     assert summary["periodLow"] == pytest.approx(min(bar["low"] for bar in bars))
 
 
-def test_fetched_symbol_appears_in_the_instrument_list(cold_then_cached, unsynced_period):
+@pytest.mark.usefixtures("cold_then_cached")
+def test_fetched_symbol_appears_in_the_instrument_list(unsynced_period):
     """The fetched symbol is listed with a synced window covering at least the request."""
     ledger = fetch_ledger(SYMBOL)
 

@@ -23,7 +23,7 @@ help:
 	@echo "  test-rules      Unit-test the Prometheus alert rules with promtool (needs Docker)"
 	@echo "  test-e2e        Run end-to-end tests (needs a running cluster: ./recreate-cluster.sh)"
 	@echo "  tidy            Run go mod tidy in every Go service"
-	@echo "  lint            Run Go linters and pre-commit hooks"
+	@echo "  lint            Run Go linters, pre-commit hooks and pylint"
 	@echo "  all             build + test-unit"
 
 all: build test
@@ -104,3 +104,7 @@ lint-python:
 		echo "==> tox pre-commit: $$service"; \
 		(cd $$service && tox -e pre-commit) || exit 1; \
 	done
+	@echo "==> pylint: $(E2E_DIR)"
+	python3 -m venv $(E2E_VENV)
+	$(E2E_VENV)/bin/pip install --quiet -r $(E2E_DIR)/requirements-dev.txt
+	cd $(E2E_DIR) && .venv/bin/pylint --rcfile=../.pylintrc --disable=redefined-outer-name *.py tests
