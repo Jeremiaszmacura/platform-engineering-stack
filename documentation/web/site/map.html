@@ -23,7 +23,9 @@
 <header class="page-head">
   <span class="eyebrow">Start · the physical view</span>
   <h1>Where everything runs</h1>
-  <p class="lede">Each node is a Docker container on your machine. Each chip, a small box inside a node, is a pod,
+  <p class="lede">In a production cluster each node is its own machine, for example an EC2 instance on AWS, which
+    EKS starts and manages for you. Only in this local test cluster is each node a Docker container on your machine
+    (<a href="#nodes">three ways to run nodes</a>). Each chip, a small box inside a node, is a pod,
     coloured by namespace. Select a pod to see its pod IP, its Service's virtual IP, its identity and secrets.
     <a href="networking.html#addresses">Three kinds of IP address</a> explains how the two IPs differ. Lines show who it
     talks to: solid for calls it makes, dashed for calls it receives.</p>
@@ -46,7 +48,7 @@
         <span class="mono" id="hostbar-port"></span>
       </div>
       <div class="dockernet">
-        <span class="label">Docker network "kind" · each node is a container on it</span>
+        <span class="label">Docker network "kind" · local test cluster only: each node is a container on it</span>
         <div class="nodes" id="nodes"></div>
       </div>
     </div>
@@ -63,6 +65,29 @@
       or delete a pod, then watch the scheduler place the replacement:</p>
       <div class="cmd"><pre>kubectl scale deploy/traffic-generator -n apps --replicas=3
 kubectl delete pod -n apps -l app=stock-ui</pre></div></div>
+  </div>
+</section>
+
+<section class="chapter" id="nodes">
+  <div class="head">
+    <span class="eyebrow">Nodes</span>
+    <h2>Three ways to run the same nodes</h2>
+    <p>A node is any machine that runs the kubelet and a container runtime. Production clusters on AWS run nodes in one
+      of the first two ways. This cluster uses the third, a local test environment that simulates them. Pods, Services and
+      the manifests in this repo work the same on all three.</p>
+  </div>
+  <div class="grid-3">
+    <div class="card"><h3>Your own EC2 machines</h3><p>You start EC2 instances in a VPC subnet and install Kubernetes on
+      them yourself, for example with kubeadm. Some of them run the control plane, which you also upgrade and back up.
+      Each node IP is a VPC address.</p></div>
+    <div class="card"><h3>AWS EKS</h3><p>AWS runs the control plane for you, out of sight, so <code>kubectl get nodes</code>
+      lists only workers. The workers are almost always EC2 instances in your account, started by a managed node group,
+      Karpenter or EKS Auto Mode. With Fargate there is no EC2 you can see: each pod gets its own small VM run by
+      AWS.</p></div>
+    <div class="card"><h3>kind, this local test cluster</h3><p>kind simulates those machines on your laptop. Each node is a
+      Docker container with systemd, containerd and the kubelet, from the <code>kindest/node</code> image, and the control
+      plane is a node you can see. The containers sit on Docker's <code>kind</code> network, so node IPs are Docker
+      addresses.</p></div>
   </div>
 </section>
 
@@ -96,9 +121,9 @@ kubectl delete pod -n apps -l app=stock-ui</pre></div></div>
   </div>
   <div class="qa-list">
     <details class="qa"><summary>What is a "node" in this cluster, physically?</summary><div>
-      <p>A Docker container running systemd, containerd and the kubelet, created by kind from the
-      <code>kindest/node</code> image. The three containers sit on Docker's <code>kind</code> bridge network, so node IPs
-      are Docker addresses. On a cloud a node would be a VM. Nothing above the kubelet changes.</p></div></details>
+      <p>A Docker container on your machine, which kind runs to stand in for a real machine. In production a node is an
+      EC2 instance on AWS, either one you run yourself or one EKS starts for you
+      (<a href="#nodes">three ways to run nodes</a>). Nothing above the kubelet changes.</p></div></details>
     <details class="qa"><summary>A pod shows Running but not Ready. What happens to its traffic?</summary><div>
       <p>The EndpointSlice controller marks its endpoint not ready in every Service it backs, so kube-proxy and Envoy stop sending it new
       connections. The kubelet does not restart it. Only a failing liveness probe would.</p></div></details>

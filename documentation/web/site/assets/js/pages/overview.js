@@ -14,12 +14,13 @@ const view = graph($("#arch"), (id) => {
 });
 
 const OUTSIDE = {
-  browser: `<h3>Your browser</h3><p><code>*.localhost</code> resolves to <code>127.0.0.1</code>. Docker publishes host ports 80 and
-    443 to the control-plane node's NodePorts 30080 and 30443, where kube-proxy hands the connection to the Envoy proxy. The JavaScript of
+  browser: `<h3>Your browser</h3><p><code>*.localhost</code> resolves to <code>127.0.0.1</code>. In this local test cluster Docker publishes
+    host ports 80 and 443 to the control-plane node's NodePorts 30080 and 30443, where kube-proxy hands the connection to the
+    Envoy proxy. In production a cloud load balancer (an NLB on AWS) does Docker's part. The JavaScript of
     stock-ui and traffic-generator runs here too, so their calls to <code>stock.localhost</code> come from your browser,
     not from their pods.</p><p><a href="networking.html#incoming">Follow it packet by packet →</a></p>`,
   yahoo: `<h3>Yahoo Finance</h3><p>stock-app asks it only for dates it has never stored. The call leaves the pod, is
-    NATed to the node's IP and then by Docker to your machine's. With <code>STOCK_PROVIDER=synthetic</code> stock-app generates
+    NATed to the node's IP and then by Docker to your machine's. In production on AWS a NAT Gateway does Docker's part. With <code>STOCK_PROVIDER=synthetic</code> stock-app generates
     its prices instead, which is what CI does.</p><p><a href="state.html#cache-aside">How the cache works →</a></p>`,
 };
 

@@ -25,9 +25,9 @@ function ranges(map) {
   const prefixes = map.nodes.map((n) => n.ip.split(".").slice(0, 3).join("."));
   const nodeRange = prefixes.length && prefixes.every((p) => p === prefixes[0]) ? `${prefixes[0]}.x` : "per node";
   fill("#ranges", [
-    ["Node IPs", nodeRange, "One per machine, from the network the nodes sit on: a VPC subnet on a cloud, here the Docker network kind creates (each node is a container). Set up by the infrastructure, not by Kubernetes.",
+    ["Node IPs", nodeRange, "One per machine, from the network the nodes sit on. In a production cluster on a cloud the nodes are virtual machines in a VPC subnet, for example EC2 instances in a subnet of an AWS VPC. Only in this local test cluster are the nodes Docker containers, on the network kind creates. Set up by the infrastructure, not by Kubernetes.",
       map.nodes.map((n) => `${esc(nodeShort(n.name))} ${code(n.ip)}`)],
-    ["Pod IPs", map.ranges.pods || "per node", "One per pod, handed out by the CNI plugin. Here <b>kindnet</b> gives each node a slice of a private range and adds routes between nodes. On EKS the AWS VPC CNI gives pods addresses from the VPC itself. Either way any pod reaches any other pod without NAT.",
+    ["Pod IPs", map.ranges.pods || "per node", "One per pod, handed out by the CNI plugin. In this local test cluster <b>kindnet</b> gives each node a slice of a private range and adds routes between nodes. In production on AWS EKS the VPC CNI gives pods addresses from the VPC itself. Either way any pod reaches any other pod without NAT.",
       map.nodes.map((n) => `${esc(nodeShort(n.name))} ${code(n.pod_cidr)}`)],
     ["Service IPs", map.ranges.services || "unknown", "Virtual IPs the API server hands to Services from its service range. No interface owns them: <b>kube-proxy</b> rewrites packets sent to them into a real pod IP. This part works the same on every cluster.",
       [api && `API server ${code(api.cluster_ip + ":443")}`, dns && `CoreDNS ${code(dns.cluster_ip + ":53")}`].filter(Boolean)],
@@ -58,7 +58,7 @@ function incomingJourney(map) {
     ],
     steps: [
       { at: 0, where: "your machine", text: "<code>*.localhost</code> resolves to <code>127.0.0.1</code> with no DNS setup. The browser connects to port 80 and sends <code>Host: stock-ui.localhost</code>." },
-      { at: 0.5, where: "Docker", text: `<code>extraPortMappings</code> in <code>platform/kind-cluster.yaml</code> publish host port 80 to port ${code(nodePort)} of the ${entry ? `<b>${esc(nodeShort(entry.name))}</b> container (${code(entry.ip)})` : "control-plane container"}.` },
+      { at: 0.5, where: "Docker", text: `<code>extraPortMappings</code> in <code>platform/kind-cluster.yaml</code> publish host port 80 to port ${code(nodePort)} of the ${entry ? `<b>${esc(nodeShort(entry.name))}</b> container (${code(entry.ip)})` : "control-plane container"}. Docker stands in for a cloud load balancer (an NLB on AWS) only in this local test cluster.` },
       { at: 2, where: `${nodeShort(entry?.name)} · iptables`, text: `${code(nodePort)} is the nodePort of Service ${code(proxySvc ? proxySvc.name : "shared-gateway-proxy")}. kube-proxy's <code>KUBE-NODEPORTS</code> rule DNATs the packet to a ready Envoy pod, ${code(ip(proxyPod) + ":" + envoyPort)}.${snat}` },
       { at: 2.5, where: "kindnet", text: hop(entry, proxyNode, "the node's IP (from the SNAT)") },
       { at: 3, where: "Envoy proxy", text: `Envoy Gateway maps privileged listener ports to port + 10000 (here 80 → ${code(envoyPort)}, 443 → <code>10443</code>), so Envoy can run as non-root on any runtime. Envoy matches <code>Host: stock-ui.localhost</code> against the attached routes and picks ${code(route ? route.name : "stock-ui-route")}.` },

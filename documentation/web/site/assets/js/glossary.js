@@ -142,6 +142,7 @@ export const TERMS = [
   abbr("DNAT", "Destination network address translation"),
   abbr("DNS", "Domain Name System"),
   abbr("EBS", "Amazon Elastic Block Store"),
+  abbr("EC2", "Amazon Elastic Compute Cloud: virtual machines on AWS"),
   abbr("EKS", "Amazon Elastic Kubernetes Service"),
   abbr("GB", "Gigabyte"),
   abbr("GKE", "Google Kubernetes Engine"),

@@ -1,7 +1,7 @@
 export const APPS = {
   "stock-app": {
     purpose: "The real backend: daily stock prices, cached in TimescaleDB",
-    note: "Answers from TimescaleDB and fetches the dates it has not synced from Yahoo Finance, over the internet (pod → node SNAT → Docker → your machine). Readiness probe only: /health checks the database, and a database outage must not restart the app.",
+    note: "Answers from TimescaleDB and fetches the dates it has not synced from Yahoo Finance, over the internet (pod → node SNAT → Docker → your machine in this local test cluster, a NAT Gateway instead of Docker on AWS). Readiness probe only: /health checks the database, and a database outage must not restart the app.",
   },
   "stock-ui": {
     purpose: "Charts stock-app's prices in your browser",
