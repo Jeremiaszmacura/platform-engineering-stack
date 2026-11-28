@@ -1,8 +1,10 @@
 """Yahoo Finance provider; the only module that imports pandas or yfinance."""
 
 import time
+from collections.abc import Hashable, Iterator
 from contextlib import contextmanager
 from datetime import date, timedelta
+from typing import Any, cast
 
 import pandas as pd
 import yfinance as yf
@@ -37,7 +39,7 @@ class YahooMarketDataProvider:
 
     name = PROVIDER_NAME
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create the provider and register its metric label combinations."""
         register_provider(self.name)
 
@@ -65,7 +67,7 @@ class YahooMarketDataProvider:
         )
 
     @contextmanager
-    def _timed_call(self):
+    def _timed_call(self) -> Iterator[None]:
         """Time one provider call and record its outcome."""
         started_at = time.monotonic()
         try:
@@ -97,7 +99,7 @@ class YahooMarketDataProvider:
         except Exception as error:  # yfinance wraps a scraper: network, parsing and rate-limit errors
             raise ProviderError(f"yahoo price history request failed for {symbol}") from error
 
-    def _request_info(self, symbol: str) -> dict:
+    def _request_info(self, symbol: str) -> dict[str, Any]:
         """Return yfinance's info mapping; raise SymbolNotFoundError or ProviderError."""
         try:
             info = yf.Ticker(symbol).get_info()
@@ -121,13 +123,15 @@ class YahooMarketDataProvider:
     def _to_price_bars(self, symbol: str, frame: pd.DataFrame) -> list[PriceBar]:
         """Build PriceBars from a cleaned frame; invalid rows are counted and dropped."""
         bars = []
-        for session_date, row in zip(frame.index.date, frame.to_dict("records"), strict=True):
+        # yfinance indexes history by session timestamp.
+        session_dates = cast(pd.DatetimeIndex, frame.index).date
+        for session_date, row in zip(session_dates, frame.to_dict("records"), strict=True):
             bar = self._to_price_bar(symbol, session_date, row)
             if bar is not None:
                 bars.append(bar)
         return bars
 
-    def _to_price_bar(self, symbol: str, session_date, row: dict) -> PriceBar | None:
+    def _to_price_bar(self, symbol: str, session_date: date, row: dict[Hashable, Any]) -> PriceBar | None:
         """Return one PriceBar, or None (counted as rejected) if the row breaks an invariant."""
         try:
             return PriceBar(
@@ -149,7 +153,7 @@ class YahooMarketDataProvider:
         return None
 
     @staticmethod
-    def _optional_price(value) -> float | None:
+    def _optional_price(value: float | None) -> float | None:
         """Return the price, or None if it is missing or NaN."""
         if value is None or pd.isna(value):
             return None

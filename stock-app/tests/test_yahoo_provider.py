@@ -37,7 +37,7 @@ class StubTicker:
     info = INFO
     history_error = None
     info_error = None
-    history_kwargs = {}
+    history_kwargs: dict[str, object] = {}
 
     def __init__(self, symbol):
         """Record the symbol the caller asked for."""

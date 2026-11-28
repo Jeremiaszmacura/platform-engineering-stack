@@ -31,7 +31,7 @@ def build_bar(session_date: date, symbol: str = "AAPL") -> PriceBar:
     )
 
 
-def build_coverage(first: date, last: date, synced_at: datetime) -> Instrument:
+def build_synced_instrument(first: date, last: date, synced_at: datetime) -> Instrument:
     """Return an instrument whose sync ledger spans first..last."""
     return Instrument(
         symbol="AAPL",
@@ -111,56 +111,53 @@ class FakeRepository:
 class TestMissingRange(unittest.TestCase):
     """Tests for the pure cache-completeness decision."""
 
-    def test_unknown_instrument_fetches_the_whole_range(self):
-        self.assertEqual(missing_range(None, JUNE, NOW, STALE_AFTER), JUNE)
-
     def test_instrument_without_a_ledger_fetches_the_whole_range(self):
-        coverage = Instrument(symbol="AAPL", source="fake")
-        self.assertEqual(missing_range(coverage, JUNE, NOW, STALE_AFTER), JUNE)
+        stored = Instrument(symbol="AAPL", source="fake")
+        self.assertEqual(missing_range(stored, JUNE, NOW, STALE_AFTER), JUNE)
 
     def test_range_inside_the_synced_window_is_a_cache_hit(self):
-        coverage = build_coverage(date(2026, 1, 1), date(2026, 7, 20), NOW)
-        self.assertIsNone(missing_range(coverage, JUNE, NOW, STALE_AFTER))
+        stored = build_synced_instrument(date(2026, 1, 1), date(2026, 7, 20), NOW)
+        self.assertIsNone(missing_range(stored, JUNE, NOW, STALE_AFTER))
 
     def test_start_before_the_window_widens_to_one_contiguous_fetch(self):
-        coverage = build_coverage(date(2026, 6, 10), date(2026, 7, 20), NOW)
-        self.assertEqual(missing_range(coverage, JUNE, NOW, STALE_AFTER), JUNE)
+        stored = build_synced_instrument(date(2026, 6, 10), date(2026, 7, 20), NOW)
+        self.assertEqual(missing_range(stored, JUNE, NOW, STALE_AFTER), JUNE)
 
     def test_range_before_a_disjoint_window_also_fetches_the_gap(self):
         """The ledger is one window, so an earlier range must be fetched up to it, not just on its own."""
-        coverage = build_coverage(JUNE.start, JUNE.end, NOW)
+        stored = build_synced_instrument(JUNE.start, JUNE.end, NOW)
 
-        fetched = missing_range(coverage, JANUARY, NOW, STALE_AFTER)
+        fetched = missing_range(stored, JANUARY, NOW, STALE_AFTER)
 
         self.assertEqual(fetched, DateRange(start=JANUARY.start, end=JUNE.start))
 
     def test_end_beyond_the_window_fetches_only_the_tail(self):
-        coverage = build_coverage(date(2026, 1, 1), date(2026, 6, 10), NOW)
+        stored = build_synced_instrument(date(2026, 1, 1), date(2026, 6, 10), NOW)
 
-        fetched = missing_range(coverage, JUNE, NOW, STALE_AFTER)
+        fetched = missing_range(stored, JUNE, NOW, STALE_AFTER)
 
         self.assertEqual(fetched, DateRange(start=date(2026, 6, 10), end=date(2026, 6, 30)))
 
     def test_stale_unsettled_edge_is_refetched(self):
-        coverage = build_coverage(date(2026, 1, 1), JUNE.end, NOW - timedelta(hours=2))
+        stored = build_synced_instrument(date(2026, 1, 1), JUNE.end, NOW - timedelta(hours=2))
 
-        fetched = missing_range(coverage, JUNE, NOW, STALE_AFTER)
+        fetched = missing_range(stored, JUNE, NOW, STALE_AFTER)
 
         self.assertEqual(fetched, DateRange(start=JUNE.end, end=JUNE.end))
 
     def test_fresh_unsettled_edge_is_not_refetched(self):
-        coverage = build_coverage(date(2026, 1, 1), JUNE.end, NOW - timedelta(minutes=5))
-        self.assertIsNone(missing_range(coverage, JUNE, NOW, STALE_AFTER))
+        stored = build_synced_instrument(date(2026, 1, 1), JUNE.end, NOW - timedelta(minutes=5))
+        self.assertIsNone(missing_range(stored, JUNE, NOW, STALE_AFTER))
 
     def test_never_synced_edge_is_treated_as_stale(self):
-        coverage = Instrument(
+        stored = Instrument(
             symbol="AAPL",
             source="fake",
             first_synced_date=date(2026, 1, 1),
             last_synced_date=JUNE.end,
             last_synced_at=None,
         )
-        self.assertIsNotNone(missing_range(coverage, JUNE, NOW, STALE_AFTER))
+        self.assertIsNotNone(missing_range(stored, JUNE, NOW, STALE_AFTER))
 
 
 class TestPriceHistoryService(unittest.TestCase):

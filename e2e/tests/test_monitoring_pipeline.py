@@ -1,10 +1,13 @@
 """End-to-end tests of the observability pipeline: traffic -> Prometheus -> Grafana."""
 
+from functools import partial
+
 import requests
 
 from cluster import (
     GRAFANA_CREDENTIALS,
     GRAFANA_URL,
+    JsonObject,
     METRICS_PIPELINE_TIMEOUT_SECONDS,
     PROMETHEUS_URL,
     REQUEST_TIMEOUT_SECONDS,
@@ -41,14 +44,14 @@ EXPECTED_TARGETS_PER_JOB = {"node-exporter": KIND_NODE_COUNT, "kubelet": KIND_NO
 KUBERNETES_TARGET_LABELS = {"namespace", "pod", "service", "node"}
 
 
-def fetch_active_targets():
+def fetch_active_targets() -> list[JsonObject]:
     """Return Prometheus' active scrape targets."""
     response = requests.get(f"{PROMETHEUS_URL}/api/v1/targets", timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     return response.json()["data"]["activeTargets"]
 
 
-def fetch_up_jobs():
+def fetch_up_jobs() -> set[str]:
     """Return the jobs whose active targets are all up."""
     targets = fetch_active_targets()
     all_jobs = {target["labels"]["job"] for target in targets}
@@ -56,23 +59,23 @@ def fetch_up_jobs():
     return all_jobs - down_jobs
 
 
-def count_up_targets(job):
-    """Return how many targets of job are up."""
+def has_up_targets(job: str, expected: int) -> bool:
+    """Return True if exactly expected targets of job are up."""
     targets = fetch_active_targets()
-    return sum(1 for target in targets if target["labels"]["job"] == job and target["health"] == "up")
+    return expected == sum(1 for target in targets if target["labels"]["job"] == job and target["health"] == "up")
 
 
-def test_multi_instance_jobs_scrape_every_instance():
+def test_multi_instance_jobs_scrape_every_instance() -> None:
     """Every node is scraped as its own target."""
     for job, expected in EXPECTED_TARGETS_PER_JOB.items():
         wait_until(
-            lambda job=job, expected=expected: count_up_targets(job) == expected,
+            partial(has_up_targets, job, expected),
             TARGETS_UP_TIMEOUT_SECONDS,
             description=f"{expected} up targets for job {job}",
         )
 
 
-def test_all_scrape_targets_are_up():
+def test_all_scrape_targets_are_up() -> None:
     """Every scrape job configured in Prometheus reports healthy targets."""
     wait_until(
         lambda: EXPECTED_PROMETHEUS_JOBS <= fetch_up_jobs(),
@@ -81,7 +84,7 @@ def test_all_scrape_targets_are_up():
     )
 
 
-def test_discovered_targets_name_their_kubernetes_source():
+def test_discovered_targets_name_their_kubernetes_source() -> None:
     """Every discovered target is labelled with its namespace, pod, Service and node."""
     discovered = [target for target in fetch_active_targets() if target["scrapePool"] == "kubernetes-services"]
     assert discovered, "no targets discovered from Kubernetes"
@@ -91,7 +94,7 @@ def test_discovered_targets_name_their_kubernetes_source():
         assert not missing, f"target {labels} has no {sorted(missing)} label"
 
 
-def test_kubelet_reports_each_node_and_pod():
+def test_kubelet_reports_each_node_and_pod() -> None:
     """The kubelet job measures every node by name and every pod, which node-exporter can't on kind."""
     wait_until(
         lambda: query_prometheus_value('count(count by (node) (node_memory_working_set_bytes{job="kubelet"}))')
@@ -108,7 +111,7 @@ def test_kubelet_reports_each_node_and_pod():
     )
 
 
-def test_alert_rules_are_loaded():
+def test_alert_rules_are_loaded() -> None:
     """Prometheus evaluates the alert rules from alerts.yml."""
     response = requests.get(f"{PROMETHEUS_URL}/api/v1/rules", params={"type": "alert"}, timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
@@ -116,7 +119,7 @@ def test_alert_rules_are_loaded():
     assert EXPECTED_ALERT_RULES <= names
 
 
-def test_backend_traffic_reaches_prometheus():
+def test_backend_traffic_reaches_prometheus() -> None:
     """Requests to stock-app show up in Prometheus."""
     request_count = 5
     query = 'sum(http_requests_total{job="stock-app"})'
@@ -132,14 +135,14 @@ def test_backend_traffic_reaches_prometheus():
     )
 
 
-def test_grafana_is_healthy():
+def test_grafana_is_healthy() -> None:
     """Grafana's health API reports a working database."""
     response = requests.get(f"{GRAFANA_URL}/api/health", timeout=REQUEST_TIMEOUT_SECONDS)
     assert response.status_code == 200
     assert response.json()["database"] == "ok"
 
 
-def test_grafana_has_prometheus_datasource():
+def test_grafana_has_prometheus_datasource() -> None:
     """Grafana is provisioned with a Prometheus datasource."""
     response = requests.get(f"{GRAFANA_URL}/api/datasources", auth=GRAFANA_CREDENTIALS, timeout=REQUEST_TIMEOUT_SECONDS)
     assert response.status_code == 200
@@ -147,7 +150,7 @@ def test_grafana_has_prometheus_datasource():
     assert "prometheus" in datasource_types
 
 
-def test_grafana_dashboards_are_provisioned():
+def test_grafana_dashboards_are_provisioned() -> None:
     """All dashboards defined as code in the repository exist in Grafana."""
     response = requests.get(
         f"{GRAFANA_URL}/api/search",

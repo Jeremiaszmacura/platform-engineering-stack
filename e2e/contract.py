@@ -10,14 +10,14 @@ from openapi_core.exceptions import OpenAPIError
 from cluster import REQUEST_TIMEOUT_SECONDS, STOCK_APP_URL
 
 
-def fetch_contract():
+def fetch_contract() -> OpenAPI:
     """Return the contract the running service publishes at /openapi.yaml."""
     response = requests.get(f"{STOCK_APP_URL}/openapi.yaml", timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     return OpenAPI.from_dict(yaml.safe_load(response.text))
 
 
-def conforming(contract, response):
+def conforming(contract: OpenAPI, response: requests.Response) -> requests.Response:
     """Fail the test unless response's status, content type and body match the contract; return response."""
     try:
         contract.validate_response(RequestsOpenAPIRequest(response.request), RequestsOpenAPIResponse(response))

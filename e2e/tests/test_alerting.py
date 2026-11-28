@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import requests
 
 from cluster import (
+    JsonObject,
     ALERT_DELIVERY_TIMEOUT_SECONDS,
     ALERTMANAGER_URL,
     GRAFANA_CREDENTIALS,
@@ -16,7 +17,7 @@ from cluster import (
 SILENCE_DURATION = timedelta(minutes=5)
 
 
-def fetch_alerts(alertname):
+def fetch_alerts(alertname: str) -> list[JsonObject]:
     """Return Alertmanager's alerts named alertname."""
     response = requests.get(
         f"{ALERTMANAGER_URL}/api/v2/alerts",
@@ -27,7 +28,7 @@ def fetch_alerts(alertname):
     return response.json()
 
 
-def create_silence(alertname):
+def create_silence(alertname: str) -> str:
     """Silence alertname for SILENCE_DURATION and return the silence's ID."""
     now = datetime.now(UTC)
     response = requests.post(
@@ -45,19 +46,19 @@ def create_silence(alertname):
     return response.json()["silenceID"]
 
 
-def expire_silence(silence_id):
+def expire_silence(silence_id: str) -> None:
     """Expire the silence silence_id."""
     response = requests.delete(f"{ALERTMANAGER_URL}/api/v2/silence/{silence_id}", timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
 
 
-def is_silenced_by(alertname, silence_id):
+def is_silenced_by(alertname: str, silence_id: str) -> bool:
     """Return True if every alertname alert is suppressed by silence_id."""
     alerts = fetch_alerts(alertname)
     return bool(alerts) and all(silence_id in alert["status"]["silencedBy"] for alert in alerts)
 
 
-def test_prometheus_sends_alerts_to_alertmanager():
+def test_prometheus_sends_alerts_to_alertmanager() -> None:
     """The always-firing Watchdog arrives in Alertmanager."""
     wait_until(
         lambda: fetch_alerts("Watchdog"),
@@ -66,7 +67,7 @@ def test_prometheus_sends_alerts_to_alertmanager():
     )
 
 
-def test_silence_suppresses_matching_alert():
+def test_silence_suppresses_matching_alert() -> None:
     """A silence on Watchdog marks it suppressed until the silence expires."""
     wait_until(lambda: fetch_alerts("Watchdog"), ALERT_DELIVERY_TIMEOUT_SECONDS, description="the Watchdog alert")
     silence_id = create_silence("Watchdog")
@@ -85,7 +86,7 @@ def test_silence_suppresses_matching_alert():
     )
 
 
-def watchdog_in_grafana():
+def watchdog_in_grafana() -> bool:
     """Return True if Grafana's Alert groups, read through the Alertmanager datasource, list the Watchdog."""
     response = requests.get(
         f"{GRAFANA_URL}/api/alertmanager/alertmanager/api/v2/alerts/groups",
@@ -97,6 +98,6 @@ def watchdog_in_grafana():
     return any(alert["labels"]["alertname"] == "Watchdog" for alert in alerts)
 
 
-def test_grafana_shows_alertmanager_alerts():
+def test_grafana_shows_alertmanager_alerts() -> None:
     """Grafana reaches Alertmanager through its datasource and shows the Watchdog."""
     wait_until(watchdog_in_grafana, ALERT_DELIVERY_TIMEOUT_SECONDS, description="the Watchdog alert in Grafana")

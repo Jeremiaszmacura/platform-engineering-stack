@@ -1,23 +1,26 @@
 """Shared pytest fixtures for the end-to-end test suite."""
 
+from functools import partial
+
 import pytest
+from openapi_core import OpenAPI
 
 from cluster import CLUSTER_READY_TIMEOUT_SECONDS, SERVICE_URLS, service_responds, wait_until
 from contract import fetch_contract
 
 
 @pytest.fixture(scope="session", autouse=True)
-def cluster_ready():
+def cluster_ready() -> None:
     """Wait until every service answers, failing fast with the name of the one that doesn't."""
     for name, url in SERVICE_URLS.items():
         wait_until(
-            lambda url=url: service_responds(url),
+            partial(service_responds, url),
             CLUSTER_READY_TIMEOUT_SECONDS,
             description=f"{name} to respond at {url}",
         )
 
 
 @pytest.fixture(scope="session")
-def contract():
+def contract() -> OpenAPI:
     """Return stock-app's published contract, once per run."""
     return fetch_contract()

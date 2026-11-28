@@ -1,9 +1,10 @@
 """HTTP request instrumentation, recording per-request Prometheus metrics."""
 
 import time
+from collections.abc import Awaitable, Callable
 from http import HTTPMethod, HTTPStatus
 
-from fastapi import Request
+from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.observability.metrics import (
@@ -19,7 +20,7 @@ from src.observability.tracing import current_trace_id
 class PrometheusMiddleware(BaseHTTPMiddleware):
     """Counts requests, durations and status classes for every matched route."""
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Time the request and update the HTTP metrics, counting an unhandled exception as a 500."""
         start_time = time.perf_counter()
         try:

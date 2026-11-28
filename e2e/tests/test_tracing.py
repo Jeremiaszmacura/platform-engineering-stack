@@ -7,11 +7,13 @@ queried through Grafana's datasource proxy, which also proves the datasource is 
 import secrets
 import time
 import uuid
-from typing import NamedTuple
+from collections.abc import Callable
+from typing import Any, NamedTuple
 
 import requests
 
 from cluster import (
+    JsonObject,
     GRAFANA_CREDENTIALS,
     GRAFANA_URL,
     METRICS_PIPELINE_TIMEOUT_SECONDS,
@@ -35,11 +37,11 @@ class Span(NamedTuple):
 
     kind: str
     name: str
-    attributes: dict
-    resource: dict
+    attributes: dict[str, Any]
+    resource: dict[str, Any]
 
 
-def traced_request(method, path, **kwargs):
+def traced_request(method: str, path: str, **kwargs: Any) -> str:
     """Send a request to stock-app inside a new sampled trace; return the trace id."""
     trace_id = secrets.token_hex(16)
     headers = {"traceparent": f"00-{trace_id}-{secrets.token_hex(8)}-01"}
@@ -50,12 +52,12 @@ def traced_request(method, path, **kwargs):
     return trace_id
 
 
-def attribute_values(attributes):
+def attribute_values(attributes: list[JsonObject]) -> dict[str, Any]:
     """Flatten OTLP JSON attributes ([{key, value: {stringValue: ...}}]) into a dict."""
     return {attribute["key"]: next(iter(attribute["value"].values())) for attribute in attributes}
 
 
-def fetch_spans(trace_id):
+def fetch_spans(trace_id: str) -> list[Span]:
     """Return the trace's spans, or [] while Tempo has not received it."""
     response = requests.get(
         f"{TEMPO_VIA_GRAFANA_URL}/api/v2/traces/{trace_id}", auth=GRAFANA_CREDENTIALS, timeout=REQUEST_TIMEOUT_SECONDS
@@ -75,11 +77,11 @@ def fetch_spans(trace_id):
     ]
 
 
-def wait_for_spans(trace_id, is_complete):
+def wait_for_spans(trace_id: str, is_complete: Callable[[list[Span]], bool]) -> list[Span]:
     """Poll Tempo until the trace's spans satisfy is_complete; return them."""
-    found = []
+    found: list[Span] = []
 
-    def check():
+    def check() -> bool:
         found[:] = fetch_spans(trace_id)
         return is_complete(found)
 
@@ -87,12 +89,12 @@ def wait_for_spans(trace_id, is_complete):
     return found
 
 
-def has_server_span(spans, name):
+def has_server_span(spans: list[Span], name: str) -> bool:
     """Return True if spans include the stock-app request span called name."""
     return any(span.kind == SERVER and span.name == name for span in spans)
 
 
-def test_a_request_is_traced_with_its_database_queries():
+def test_a_request_is_traced_with_its_database_queries() -> None:
     """The request span and its SQL queries land in one trace."""
     trace_id = traced_request("GET", "/api/v1/instruments")
 
@@ -105,7 +107,7 @@ def test_a_request_is_traced_with_its_database_queries():
     assert any(span.attributes.get("http.status_code") == "200" for span in spans if span.kind == SERVER)
 
 
-def test_the_collector_adds_kubernetes_metadata():
+def test_the_collector_adds_kubernetes_metadata() -> None:
     """Spans reach Tempo through the Collector, which names the pod, deployment and namespace that sent them."""
     trace_id = traced_request("GET", "/")
 
@@ -118,7 +120,7 @@ def test_the_collector_adds_kubernetes_metadata():
     assert span.resource["k8s.pod.name"].startswith("stock-app-")
 
 
-def test_a_secret_request_traces_the_vault_call():
+def test_a_secret_request_traces_the_vault_call() -> None:
     """The outgoing call to Vault is a child span of the request."""
     trace_id = traced_request("POST", "/secret", json={"key": f"e2e-trace-{uuid.uuid4().hex}", "value": "v"})
 
@@ -132,16 +134,17 @@ def test_a_secret_request_traces_the_vault_call():
     )
 
 
-def count_trace_exemplars():
+def count_trace_exemplars() -> int:
     """Return how many recent stock-app latency exemplars carry a trace id."""
     now = time.time()
+    params: dict[str, str | float] = {
+        "query": 'http_request_duration_seconds_bucket{job="stock-app"}',
+        "start": now - EXEMPLAR_WINDOW_SECONDS,
+        "end": now,
+    }
     response = requests.get(
         f"{PROMETHEUS_URL}/api/v1/query_exemplars",
-        params={
-            "query": 'http_request_duration_seconds_bucket{job="stock-app"}',
-            "start": now - EXEMPLAR_WINDOW_SECONDS,
-            "end": now,
-        },
+        params=params,
         timeout=REQUEST_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
@@ -150,7 +153,7 @@ def count_trace_exemplars():
     )
 
 
-def test_latency_samples_link_to_traces():
+def test_latency_samples_link_to_traces() -> None:
     """Prometheus stores exemplars that point from the latency histogram to traces."""
     traced_request("GET", "/")
 
@@ -161,7 +164,7 @@ def test_latency_samples_link_to_traces():
     )
 
 
-def test_grafana_has_tempo_datasource():
+def test_grafana_has_tempo_datasource() -> None:
     """Grafana is provisioned with the Tempo datasource the exemplars link to."""
     response = requests.get(
         f"{GRAFANA_URL}/api/datasources/uid/tempo", auth=GRAFANA_CREDENTIALS, timeout=REQUEST_TIMEOUT_SECONDS
