@@ -86,8 +86,9 @@ def test_discovered_targets_name_their_kubernetes_source():
     discovered = [target for target in fetch_active_targets() if target["scrapePool"] == "kubernetes-services"]
     assert discovered, "no targets discovered from Kubernetes"
     for target in discovered:
-        missing = KUBERNETES_TARGET_LABELS - target["labels"].keys()
-        assert not missing, f"target {target['labels']} has no {sorted(missing)} label"
+        labels = target["labels"]
+        missing = KUBERNETES_TARGET_LABELS - labels.keys()
+        assert not missing, f"target {labels} has no {sorted(missing)} label"
 
 
 def test_kubelet_reports_each_node_and_pod():

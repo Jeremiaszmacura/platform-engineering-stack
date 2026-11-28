@@ -38,14 +38,14 @@ def build_provider(name: str) -> MarketDataProvider:
     raise ValueError(f"unknown market data provider: {name!r}")
 
 
-def instrument_tracing(app: FastAPI, engine: Engine, tracer_provider: TracerProvider) -> None:
+def instrument_tracing(fastapi_app: FastAPI, engine: Engine, tracer_provider: TracerProvider) -> None:
     """Trace each HTTP request with its SQL queries and Vault calls as child spans."""
     SQLAlchemyInstrumentor().instrument(engine=engine, tracer_provider=tracer_provider)
     # hvac talks to Vault through requests.
     RequestsInstrumentor().instrument(tracer_provider=tracer_provider)
     # "receive"/"send" would add a span per ASGI message.
     FastAPIInstrumentor.instrument_app(
-        app, tracer_provider=tracer_provider, excluded_urls=UNTRACED_URLS, exclude_spans=["receive", "send"]
+        fastapi_app, tracer_provider=tracer_provider, excluded_urls=UNTRACED_URLS, exclude_spans=["receive", "send"]
     )
 
 
@@ -65,19 +65,21 @@ def create_app(settings: Settings | None = None, tracer_provider: TracerProvider
 
     # Title and version come from the contract. openapi_url=None: serve_contract publishes the YAML instead.
     contract = load_contract()
-    app = FastAPI(title=contract["info"]["title"], version=contract["info"]["version"], openapi_url=None)
-    app.state.repository = repository
-    app.state.price_history_service = service
-    app.state.secret_store = secret_store
-    app.add_middleware(PrometheusMiddleware)
-    register_exception_handlers(app)
-    serve_contract(app)
-    app.include_router(router)
-    instrument_tracing(app, engine, tracer_provider)
+    fastapi_app = FastAPI(title=contract["info"]["title"], version=contract["info"]["version"], openapi_url=None)
+    fastapi_app.state.repository = repository
+    fastapi_app.state.price_history_service = service
+    fastapi_app.state.secret_store = secret_store
+    fastapi_app.add_middleware(PrometheusMiddleware)
+    register_exception_handlers(fastapi_app)
+    serve_contract(fastapi_app)
+    fastapi_app.include_router(router)
+    instrument_tracing(fastapi_app, engine, tracer_provider)
 
     tracing = settings.otlp_endpoint or "off"
-    logger.info(f"stock-app configured with provider '{provider.name}', database {settings.db_host}, tracing {tracing}")
-    return app
+    logger.info(
+        "stock-app configured with provider '%s', database %s, tracing %s", provider.name, settings.db_host, tracing
+    )
+    return fastapi_app
 
 
 app = create_app()

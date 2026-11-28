@@ -153,7 +153,8 @@ def test_summary_is_served_for_the_requested_window(contract, synced_window):
     assert body["periodLow"] <= body["periodHigh"]
 
 
-def test_window_without_trading_sessions_is_not_found(contract, synced_window):
+@pytest.mark.usefixtures("synced_window")
+def test_window_without_trading_sessions_is_not_found(contract):
     """A weekend inside the synced window answers 404 from the store, without the provider."""
     saturday = WINDOW_START + timedelta(days=(5 - WINDOW_START.weekday()) % 7)
     weekend = {"start": saturday.isoformat(), "end": (saturday + timedelta(days=1)).isoformat()}

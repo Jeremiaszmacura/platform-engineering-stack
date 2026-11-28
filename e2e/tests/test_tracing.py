@@ -109,8 +109,10 @@ def test_the_collector_adds_kubernetes_metadata():
     """Spans reach Tempo through the Collector, which names the pod, deployment and namespace that sent them."""
     trace_id = traced_request("GET", "/")
 
-    (span,) = wait_for_spans(trace_id, lambda spans: has_server_span(spans, "GET /"))
+    spans = wait_for_spans(trace_id, lambda spans: has_server_span(spans, "GET /"))
 
+    assert len(spans) == 1
+    span = spans[0]
     assert span.resource["k8s.namespace.name"] == "apps"
     assert span.resource["k8s.deployment.name"] == "stock-app"
     assert span.resource["k8s.pod.name"].startswith("stock-app-")

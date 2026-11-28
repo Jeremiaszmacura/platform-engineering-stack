@@ -69,7 +69,8 @@ def sign_in(role, jwt):
 def assert_token_opens_only(token, own):
     """Assert Vault token can write under services/<own>/ and is denied another service's path and infra/."""
     headers = {"X-Vault-Token": token}
-    own_path = f"{VAULT_URL}/v1/services/data/{own}/{unique_key('e2e-own')}"
+    key = unique_key("e2e-own")
+    own_path = f"{VAULT_URL}/v1/services/data/{own}/{key}"
     written = requests.post(
         own_path, json={"data": {"value": SECRET_VALUE}}, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS
     )

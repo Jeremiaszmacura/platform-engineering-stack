@@ -24,6 +24,7 @@ def conforming(contract, response):
     except OpenAPIError as error:
         request = response.request
         pytest.fail(
-            f"{request.method} {request.path_url} answered {response.status_code} in a shape the contract forbids: {error}"
+            f"{request.method} {request.path_url} answered {response.status_code}"
+            f" in a shape the contract forbids: {error}"
         )
     return response
