@@ -34,9 +34,12 @@
     <span class="eyebrow">Basics</span>
     <h2>Three kinds of IP address</h2>
     <p>Every IP address in a cluster is one of three kinds, and each kind comes from somewhere else and behaves differently.
-      Node and pod IPs belong to real network interfaces. A Service IP belongs to none. An address is never two kinds at
-      once, so their ranges must not overlap with each other or with networks the pods need to reach. The cards show the
-      ranges of this cluster.</p>
+      Node and pod IPs belong to real network interfaces. A Service IP is a virtual IP: Kubernetes gives it to a Service,
+      and kube-proxy on every node turns traffic sent to it into traffic to one of the Service's pods. The three ranges
+      must not overlap with each other or with networks the pods need to reach, because a packet is routed by its
+      destination address alone. A pod or node address inside the Service range could not be reached: kube-proxy treats
+      every packet to that range as Service traffic. A pod range that overlaps your VPC would keep packets meant for those
+      hosts inside the cluster. The cards show the ranges of this cluster.</p>
   </div>
   <div class="ranges" id="ranges"></div>
   <p class="callout">A pod IP changes every time the pod is recreated. A Service's ClusterIP and DNS name last as long as
@@ -53,7 +56,7 @@
   </div>
   <div class="figure" data-source="live"><div id="journey-incoming"></div></div>
   <div class="table-wrap"><table>
-    <thead><tr><th>Hop</th><th>Here (kind on a laptop)</th><th>On a cloud, e.g. AWS EKS</th></tr></thead>
+    <thead><tr><th>Hop</th><th>This local test cluster (kind)</th><th>Production on a cloud, e.g. AWS EKS</th></tr></thead>
     <tbody>
       <tr><td>Name to address</td><td><code>*.localhost</code> is always <code>127.0.0.1</code></td><td>public DNS (Route 53) points the hostname at the load balancer</td></tr>
       <tr><td>Into the cluster</td><td>Docker publishes host ports 80 and 443, on 127.0.0.1 only, to NodePorts 30080 and 30443 of one node</td><td>a cloud load balancer (an NLB on AWS), created for the Gateway's <code>type: LoadBalancer</code> Service, sends to the nodes or straight to the Envoy pods</td></tr>
@@ -61,8 +64,8 @@
       <tr><td>Node to pod</td><td>kindnet routes the packet to the pod's node</td><td>the VPC delivers it: the AWS VPC CNI gives pods VPC addresses</td></tr>
     </tbody></table></div>
   <div class="grid-2">
-    <div class="card"><h3>Why a NodePort?</h3><p>On a cloud the Gateway's Service would be <code>type: LoadBalancer</code>
-      with an external IP. kind has no load balancer, so <code>platform/gateway/envoyproxy.yaml</code> makes it a NodePort
+    <div class="card"><h3>Why a NodePort?</h3><p>In a production cluster on a cloud the Gateway's Service is <code>type: LoadBalancer</code>
+      with an external IP (an NLB on AWS). kind, our local test cluster, has no load balancer, so <code>platform/gateway/envoyproxy.yaml</code> makes it a NodePort
       with a fixed port, and kind publishes that one port. A NodePort is open on every node, so a rescheduled Envoy pod
       keeps answering. CI restarts the proxy to prove it.</p></div>
     <div class="card"><h3>Why Envoy skips the ClusterIP</h3><p>Envoy Gateway watches the backend Service's EndpointSlice
@@ -193,8 +196,8 @@
       the source address is rewritten (SNAT) to one the outside world can answer.</p>
   </div>
   <ul class="prose">
-    <li><b>Here:</b> kindnet rewrites the pod IP to the node's IP, and Docker rewrites that to your machine's.</li>
-    <li><b>On AWS EKS:</b> the VPC CNI rewrites the pod IP to the node's IP. Nodes in private subnets go out through a NAT
+    <li><b>In this local test cluster:</b> kindnet rewrites the pod IP to the node's IP, and Docker rewrites that to your machine's.</li>
+    <li><b>In production on AWS EKS:</b> the VPC CNI rewrites the pod IP to the node's IP. Nodes in private subnets go out through a NAT
       Gateway, which rewrites it again to its public IP.</li>
     <li>Outgoing traffic passes no Gateway, so nothing limits which hosts a pod may call. A NetworkPolicy with
       <code>egress</code> rules can (<a href="security.html#network-policy">Identity</a>).</li>
@@ -290,7 +293,7 @@ kubectl delete httproute,service demo -n data</pre></div></div>
       ready stock-ui pod IP from the EndpointSlice. kindnet routes the packet to that pod's node. nginx answers.</p></div></details>
     <details class="qa"><summary>ClusterIP, NodePort, LoadBalancer: which does this cluster use where, and why?</summary><div>
       <p>Every app Service is ClusterIP: only reachable inside. The Gateway's proxy Service is a NodePort with a fixed port,
-      because kind has no cloud load balancer and kind can publish one fixed port. On a cloud it would be a LoadBalancer.
+      because kind has no cloud load balancer and kind can publish one fixed port. In production on a cloud it is a LoadBalancer (an NLB on AWS).
       Apps never get NodePorts: one entry point, one place for TLS, auth and limits.</p></div></details>
     <details class="qa"><summary>A new HTTPRoute doesn't work. How do you debug it?</summary><div>
       <p><code>kubectl describe httproute</code>: <code>Accepted: False</code> with <code>NotAllowedByListeners</code> means the

@@ -152,11 +152,12 @@ kubectl scale statefulset/vault -n vault --replicas=1</pre></div>
 <section class="chapter" id="node-exporter" style="--c:var(--ns-monitoring)">
   <div class="head"><span class="eyebrow">monitoring · node metrics</span><h2>node-exporter</h2>
     <p>A DaemonSet, one pod per node including the control plane, with the host's network and process table and read-only
-      mounts of <code>/proc</code>, <code>/sys</code> and <code>/</code>. On kind the nodes are containers sharing one kernel,
-      the Docker host's (on macOS the Docker Desktop VM), and <code>/proc</code> describes that whole kernel: all three pods
-      report the same machine, including every other container on it. The Infrastructure Overview dashboard therefore draws
-      it as one Docker host line. Per-node use comes from the kubelet (<a href="observability.html#kubelet">how</a>). On a
-      cloud, where each node is its own VM, each pod would report its own node.</p></div>
+      mounts of <code>/proc</code>, <code>/sys</code> and <code>/</code>. In a production cluster each node is its own machine
+      (an EC2 instance on AWS), so each pod reports its own node. Only in this local test cluster are the nodes containers
+      sharing one kernel, the Docker host's (on macOS the Docker Desktop VM), and <code>/proc</code> describes that whole
+      kernel: all three pods report the same machine, including every other container on it. The Infrastructure Overview
+      dashboard therefore draws it as one Docker host line. Per-node use comes from the kubelet
+      (<a href="observability.html#kubelet">how</a>).</p></div>
   <dl class="spec" data-app="node-exporter"></dl>
 </section>
 

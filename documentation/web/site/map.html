@@ -23,7 +23,8 @@
 <header class="page-head">
   <span class="eyebrow">Start · the physical view</span>
   <h1>Where everything runs</h1>
-  <p class="lede">Each node is a Docker container on your machine. Each chip, a small box inside a node, is a pod,
+  <p class="lede">In a production cluster each node is its own machine, for example an EC2 instance on AWS. Only in
+    this local test cluster is each node a Docker container on your machine. Each chip, a small box inside a node, is a pod,
     coloured by namespace. Select a pod to see its pod IP, its Service's virtual IP, its identity and secrets.
     <a href="networking.html#addresses">Three kinds of IP address</a> explains how the two IPs differ. Lines show who it
     talks to: solid for calls it makes, dashed for calls it receives.</p>
@@ -46,7 +47,7 @@
         <span class="mono" id="hostbar-port"></span>
       </div>
       <div class="dockernet">
-        <span class="label">Docker network "kind" · each node is a container on it</span>
+        <span class="label">Docker network "kind" · local test cluster only: each node is a container on it</span>
         <div class="nodes" id="nodes"></div>
       </div>
     </div>
@@ -96,9 +97,11 @@ kubectl delete pod -n apps -l app=stock-ui</pre></div></div>
   </div>
   <div class="qa-list">
     <details class="qa"><summary>What is a "node" in this cluster, physically?</summary><div>
-      <p>A Docker container running systemd, containerd and the kubelet, created by kind from the
-      <code>kindest/node</code> image. The three containers sit on Docker's <code>kind</code> bridge network, so node IPs
-      are Docker addresses. On a cloud a node would be a VM. Nothing above the kubelet changes.</p></div></details>
+      <p>In a production cluster a node is a virtual or physical machine. On AWS it is an EC2 instance in a VPC subnet, and
+      its node IP is a VPC address. This cluster is a local test environment that simulates that: kind runs each node as a
+      Docker container with systemd, containerd and the kubelet, from the <code>kindest/node</code> image. The three
+      containers sit on Docker's <code>kind</code> bridge network, so here node IPs are Docker addresses. Nothing above the
+      kubelet changes.</p></div></details>
     <details class="qa"><summary>A pod shows Running but not Ready. What happens to its traffic?</summary><div>
       <p>The EndpointSlice controller marks its endpoint not ready in every Service it backs, so kube-proxy and Envoy stop sending it new
       connections. The kubelet does not restart it. Only a failing liveness probe would.</p></div></details>
